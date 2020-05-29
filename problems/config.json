@@ -1,0 +1,36 @@
+{
+    "experiment": {
+        "n_folds": 10,
+        "n_epochs": 200,
+        "metrics": {
+            "update_metric": null
+        }
+    },
+    "fold": {},
+    "data": {
+        "augment": true,
+        "n_workers": 8,
+        "bs_train": 32,
+        "bs_valid": 32
+    },
+    "network": {
+        "class": null,
+        "params": null,
+        "quantize": null
+    },
+    "training": {
+        "loss_function": {
+            "class": null,
+            "params": null
+        },
+        "optimizer": {
+            "class": null,
+            "params": null
+        },
+        "lr_scheduler": {
+            "class": null,
+            "params": null,
+            "step_metric": null
+        }
+    }
+}
