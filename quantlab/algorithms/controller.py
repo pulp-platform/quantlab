@@ -10,6 +10,12 @@ class Controller(object):
     def get_modules(nodes_set):
         return [n[1] for n in nodes_set]
 
+    def state_dict(self):
+        return {}
+
+    def load_state_dict(self, state_dict):
+        self.__dict__.update(state_dict)
+
     def step_pre_training(self, *args, **kwargs):
         """Update the network's quantization-related structures before the
         training pass of current epoch.

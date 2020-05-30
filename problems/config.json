@@ -1,17 +1,15 @@
 {
     "experiment": {
-        "n_folds": 10,
-        "n_epochs": 200,
+        "n_folds": 1,
+        "n_epochs": 100,
         "metrics": {
-            "update_metric": null
+            "target_metric": "valid_metric"
         }
     },
-    "fold": {},
     "data": {
         "augment": true,
-        "n_workers": 8,
-        "bs_train": 32,
-        "bs_valid": 32
+        "bs_train": 64,
+        "bs_valid": 64
     },
     "network": {
         "class": null,
@@ -31,6 +29,7 @@
             "class": null,
             "params": null,
             "step_metric": null
-        }
+        },
+        "quantize": null
     }
 }

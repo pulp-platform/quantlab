@@ -81,13 +81,13 @@ class ResNet(nn.Module):
         super(ResNet, self).__init__()
 
         if not socket3x3:
-            socket = nn.Sequential(
+            adapter = nn.Sequential(
                 nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False),
                 nn.BatchNorm2d(64),
                 nn.ReLU(inplace=True)
             )
         else:
-            socket = nn.Sequential(
+            adapter = nn.Sequential(
                 nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(64),
                 nn.ReLU(inplace=True),
@@ -98,7 +98,7 @@ class ResNet(nn.Module):
                 nn.BatchNorm2d(64),
                 nn.ReLU(inplace=True)
             )
-        self.socket = socket
+        self.socket = adapter
 
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 

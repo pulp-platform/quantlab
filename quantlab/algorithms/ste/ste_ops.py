@@ -16,15 +16,21 @@ class STEController(Controller):
         super(STEController).__init__()
         self.modules = modules
         self.clear_optim_state_on_step = clear_optim_state_on_step
-        
+
+    def state_dict(self):
+        return {k: v for k, v in self.__dict__.items() if k in ()}
+
+    def load_state_dict(self, state_dict):
+        self.__dict__.update(state_dict)
+
     def step_pre_training(self, epoch, optimizer=None, tb_writer=None):
         # step each STE module
-        for m in self.modules: 
+        for m in self.modules:
             m.step(epoch)
         if (optimizer is not None) and self.clear_optim_state_on_step:
             for m in self.modules:
                 if m.quant_start_epoch == epoch:
-                    optimizer.state.clear()
+                    optimizer.state.clear()  # weight decay?
 
     @staticmethod
     def get_ste_modules(nodes_set):
@@ -50,11 +56,11 @@ class STEActivation(torch.nn.Module):
 
         self.monitor_epoch = self.quant_start_epoch - 1
         self.monitoring = False
-        if self.monitor_epoch >= 0:
-            self.monitoring = self.monitor_epoch == 1  # because 'epoch' starts at 1
+        if 0 <= self.monitor_epoch:
+            self.monitoring = self.monitor_epoch == 0
 
     def step(self, epoch):
-        if 0 <= self.monitor_epoch == epoch:
+        if self.monitor_epoch == epoch:
             self.monitoring = True
             self.abs_max_value.data[0] = 0.0  # prepare to log maximum activation value
         else:
@@ -69,7 +75,7 @@ class STEActivation(torch.nn.Module):
 
     def forward(self, x):
         if self.monitoring:
-            self.abs_max_value.data[0] = max(x.abs().max(), self.abs_max_value.item())
+            self.abs_max_value.data[0] = max(self.abs_max_value.item(), x.abs().max())
             
         if self.started:
             x = x / self.abs_max_value.item()  # map from [-max, max] to [-1, 1]

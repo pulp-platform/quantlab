@@ -24,26 +24,29 @@ class INQController(Controller):
     modules to control and an INQ schedule; then, insert a call to the `step`
     function once per epoch.
     """
-    def __init__(self, modules, schedule, clear_optim_state_on_step=False,
-                 step_every_epoch=False):#, rescale_weights=False):
+    def __init__(self, modules, schedule, clear_optim_state_on_step=False):#, rescale_weights=False):
         super(INQController, self).__init__()
         self.modules = modules
-        self.schedule = {int(k): v for k, v in schedule.items()}  # parse string keys to ints
         self.fraction = 0.0
+        self.schedule = {int(k): v for k, v in schedule.items()}  # parse string keys to ints
         self.clear_optim_state_on_step = clear_optim_state_on_step
-        self.step_every_epoch = step_every_epoch  # USAGE NOT CLEAR
         # self.rescale_weights = rescale_weights
-        
+
+    def state_dict(self):
+        return {k: v for k, v in self.__dict__.items() if k in ('fraction',)}  # parameters not passed at construction time should be stored
+
+    def load_state_dict(self, state_dict):
+        self.__dict__.update(state_dict)
+
     def step_pre_training(self, epoch, optimizer=None, tb_writer=None):
         """Call this each epoch before training loop."""
         if epoch in self.schedule.keys():
             self.fraction = self.schedule[epoch]
-        elif self.step_every_epoch:
-            pass
         else:
-            return
+            return  # exit immediately: no freezing needed this epoch
+
         # step each INQ module
-        for m in self.modules: 
+        for m in self.modules:
             m.step(self.fraction)
         # clear optimizer state (e.g. Adam's momentum)
         if (optimizer is not None) and self.clear_optim_state_on_step:
@@ -182,8 +185,8 @@ class INQNodeController:
                             assert(False)
                     bounds = (1e-6, weight.abs().max().item())
                     opt_res = brute(loss, ranges=(bounds,),
-                                                   Ns=1000, disp=True,
-                                                   finish=fmin)
+                                    Ns=1000, disp=True,
+                                    finish=fmin)
                     s = opt_res[0]
                     weight.mul_(1/s)
                     s = 1
