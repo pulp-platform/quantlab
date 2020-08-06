@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import shutil
+import math
 
 
 def export_gamma(gamma, gamma_name, export_dir=os.path.curdir, int_bits=10, frac_bits=17):
@@ -34,28 +35,48 @@ def import_gamma(gamma, gamma_name, export_dir=os.path.curdir):
     return gamma
 
 
-def export_beta(beta, beta_name, export_dir=os.path.curdir, int_bits=8, frac_bits=17):
+def export_beta(beta, beta_name, export_dir=os.path.curdir, int_bits=8, frac_bits=17, true_frac_bits=17):
 
     quantum = 2**(-frac_bits)
     beta /= quantum
     beta = beta.astype(np.int64)
 
-    beta //= 2**frac_bits   # truncate fractional part
+    assert true_frac_bits <= frac_bits
+    # how many bytes do I need to store this parameter?
+    n_bytes = math.ceil((int_bits+true_frac_bits) / 2**3)  # ceil(n_bits / 8)
+    n_bytes = 2**math.ceil(math.log(n_bytes, 2))  # allowed formats are 1, 2, 4, 8 bytes
+    n_bytes = str(n_bytes)
 
-    assert np.all(np.logical_and(np.abs(beta) <= (2**int_bits / 2), beta != (2**int_bits / 2)))  # each beta is a SIGNED integer with `int_bits` precision
-    beta = beta.astype('i1')
+    unused_bits = frac_bits - true_frac_bits
+
+    probs = (beta % 2**unused_bits) / 2**unused_bits
+
+    beta //= 2**unused_bits   # truncate fractional part
+
+    # beta += np.random.binomial(1, probs)
+    beta += (probs > 0.).astype(np.int64)
+
+    assert np.all(np.logical_and(np.abs(beta) <= (2**(int_bits+true_frac_bits) / 2), beta != (2**(int_bits+true_frac_bits) / 2)))  # each beta is a SIGNED integer with `int_bits` precision
+    beta = beta.astype('i'+n_bytes)
 
     with open(os.path.join(export_dir, beta_name), 'wb') as fp:
         fp.write(beta)
 
 
-def import_beta(beta, beta_name, export_dir=os.path.curdir, int_bits=8, frac_bits=17):
+def import_beta(beta, beta_name, export_dir=os.path.curdir, int_bits=8, frac_bits=17, true_frac_bits=17):
+
+    assert true_frac_bits <= frac_bits
+    # how many bytes did I need to store this parameter?
+    n_bytes = math.ceil((int_bits+true_frac_bits) / 2**3)  # ceil(n_bits / 8)
+    n_bytes = 2**math.ceil(math.log(n_bytes, 2))  # allowed formats are 1, 2, 4, 8 bytes
+    n_bytes = str(n_bytes)
 
     with open(os.path.join(export_dir, beta_name), 'rb') as fp:
-        buffer = np.frombuffer(fp.read(), dtype='i1')
+        buffer = np.frombuffer(fp.read(), dtype='i'+n_bytes)
         assert len(buffer) == len(beta)
 
-    beta = buffer.astype(np.int64) * 2**frac_bits
+    unused_bits = frac_bits - true_frac_bits
+    beta = buffer.astype(np.int64) * 2**unused_bits
     beta = beta.astype(np.float64)
 
     return beta

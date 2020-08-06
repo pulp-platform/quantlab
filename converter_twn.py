@@ -71,19 +71,29 @@ def revert_ste_postproc(x, ste_n, ste_m):
     return (x / ex).to(torch.float64).round()
 
 
+is_input_uint8 = False
 output_dir = 'trialVGG'
-tq_net, fq_net = compile_vgg(net, output_dir=output_dir)
-
-fq_x = 2 * torch.rand((1, 3, 224, 224)) - 1.  # fake-quantized graph is in FP32 precision
-tq_x = fq_x.to(torch.float64)  # true-quantized graph is in FP64 precision (to mimic accelerator)
+tq_net, fq_net = compile_vgg(net, output_dir=output_dir, input_uint8=is_input_uint8)
 
 n_trials = 1
 match = 0
 for i in range(n_trials):
     # i = torch.randint(low=0, high=len(valid_set), size=(1,))
     img = valid_set[i][0].unsqueeze(0)
-    fq_x = img.clone().to(torch.float32)
-    tq_x = fq_x.to(torch.float64)
+
+    fq_x_in = img.clone().to(torch.float32)
+    fq_x = fq_x_in.clone()
+
+    if is_input_uint8:
+        from problems.ImageNet.VGG.preprocess import _ImageNet
+        mean = np.array(_ImageNet['Normalize']['mean']) * 255.
+        std = np.array(_ImageNet['Normalize']['std']) * 255.
+        tq_x_in = (fq_x_in.permute(0, 2, 3, 1) * std + mean).clamp(min=0., max=255.).round().permute(0, 3, 1, 2)
+        tq_x_in = tq_x_in.to(torch.float64)
+    else:
+        tq_x_in = fq_x_in.clone().to(torch.float64)
+    tq_x_in = tq_x_in.to(torch.float64)
+    tq_x = tq_x_in.clone()
 
     errors = []
     for l, (tql, fql) in enumerate(zip(tq_net, fq_net)):
@@ -120,9 +130,11 @@ for i in range(n_trials):
 
 from backends.twn_accelerator.debug import get_operands_fq, get_operands_tq
 
-tq_out1 = tq_net[0](img.to(torch.float64))
+tq_out1 = tq_net[0](tq_x_in)
 
-fq_out1 = fq_net[0](img.to(torch.float32))
+fq_x = img.to(torch.float32)
+
+fq_out1 = fq_net[0](fq_x_in)
 n_out1 = fq_net[0][-1].num_levels
 m_out1 = fq_net[0][-1].abs_max_value
 fq_out1_ck = revert_ste_postproc(fq_out1, n_out1, m_out1)
@@ -131,8 +143,8 @@ diff1 = (tq_out1 - fq_out1_ck).detach().numpy()
 maxdiff1 = np.max(np.abs(diff1))
 coords1 = list(zip(*np.where(np.abs(diff1) == maxdiff1)))
 
-tq_1_ops = get_operands_tq(coords1[0], img.to(torch.float64), tq_net[0], d2d_layer=False)
-fq_1_ops = get_operands_fq(coords1[0], img.to(torch.float32), fq_net[0], inq_layer=False)
+tq_1_ops = get_operands_tq(coords1[0], tq_x_in, tq_net[0], d2d_layer=False)
+fq_1_ops = get_operands_fq(coords1[0], fq_x_in, fq_net[0], inq_layer=False)
 
 tq_out2 = tq_net[1](tq_out1)
 
@@ -155,7 +167,7 @@ import torch.nn as nn
 net_cuda = net.to('cuda')
 
 tq_full_a = nn.Sequential(*tq_net[:16]).to('cuda')
-tq_full_b = nn.Sequential(*tq_net[16:]).to('cuda')
+tq_full_b = nn.Sequential(*tq_net[16:]).to('cuda')  # I need to flatten 3D tensor to 1D vector
 
 n_trials = 1000
 images_idxs = torch.randperm(len(valid_set))[:n_trials]
@@ -170,12 +182,23 @@ match_top5 = 0
 for i, idx in enumerate(images_idxs):
     x, y = valid_set[idx][0].unsqueeze(0), valid_set[idx][1]
 
-    net_out = net_cuda(x.to(torch.float32).to('cuda'))
+    fq_x = x.clone().to(torch.float32)
+
+    net_out = net_cuda(fq_x.to('cuda'))
     net_preds = torch.topk(net_out, 5)[1]
     net_top1 = int(y == net_preds[..., 0])
     net_top5 = int(y in net_preds[:, ])
 
-    tq_out_a = tq_full_a(x.to(torch.float64).to('cuda')).view(x.shape[0], 1, -1)
+    if is_input_uint8:
+        from problems.ImageNet.VGG.preprocess import _ImageNet
+        mean = np.array(_ImageNet['Normalize']['mean']) * 255.
+        std = np.array(_ImageNet['Normalize']['std']) * 255.
+        tq_x = (x.clone().permute(0, 2, 3, 1) * std + mean).clamp(min=0., max=255.).round().permute(0, 3, 1, 2)
+    else:
+        tq_x = x.clone()
+    tq_x = tq_x.to(torch.float64)
+
+    tq_out_a = tq_full_a(tq_x.to(torch.float64).to('cuda')).view(x.shape[0], 1, -1)
     tq_out = tq_full_b(tq_out_a)
     tq_preds = torch.topk(tq_out, 5)[1]
     tq_top1 = int(y == tq_preds[..., 0])

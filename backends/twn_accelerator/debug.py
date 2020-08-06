@@ -30,8 +30,6 @@ def get_operands_fq(coords, x_in, layer, n_in=0, m_in=0., inq_layer=False):
     b, c_out, i, j = coords
     B, C_in, H_in, W_in = x_in.shape
 
-    print(coords)
-
     nodes = list(layer.children())
     conv = [n for n in nodes if 'Conv' in n.__class__.__name__][0]
     bn   = [n for n in nodes if 'BatchNorm' in n.__class__.__name__][0]

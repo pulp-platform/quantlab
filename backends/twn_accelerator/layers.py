@@ -1,13 +1,14 @@
 import numpy as np
 import torch
 import torch.nn as nn
+import os
 
 from .quantops import STEActivationInteger
 from .weights import export_tw, import_tw
 from .gammabeta import export_gamma, import_gamma, export_beta, import_beta
 
 
-def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out):
+def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, input_uint8=False):
 
     def torch2numpy64(x):
         return x.detach().numpy().astype(np.float64)
@@ -22,14 +23,46 @@ def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out):
     sigma = np.sqrt(sigma + eps)  # sigma is the variance; at inference time, BatchNorm2d uses standard deviation:
                                   # https://pytorch.org/docs/stable/nn.html#batchnorm2d
 
+    C_out, C_in, K1, K2 = w.shape
+
+    w_temp = w
+
+    if input_uint8:
+        from problems.ImageNet.VGG.preprocess import _ImageNet
+        mean = np.array(_ImageNet['Normalize']['mean']) * 255.
+        std  = np.array(_ImageNet['Normalize']['std']) * 255.
+        w_temp = w_temp.transpose(0, 2, 3, 1)
+        w_bias = (w_temp * mean) / std
+        w_bias = w_bias.transpose(0, 3, 1, 2).reshape(C_out, -1).sum(axis=1)
+        w_temp = w_temp / std
+        w_temp = w_temp.transpose(0, 3, 1, 2)
+    else:
+        w_bias = np.zeros(C_out,)
+
     ex_out = (2 * m_out) / (n_out - 1)
 
-    w_temp = w.transpose(1, 2, 3, 0)
+    w_temp = w_temp.transpose(1, 2, 3, 0)
     w_temp = (w_temp * gamma) / (ex_out * sigma)
     weight = w_temp.transpose(3, 0, 1, 2)
 
+    weight = weight.transpose(0, 2, 3, 1)  # C_in is last dimension (design choice)
+    with open(os.path.join(export_dir, 'weight'), 'wb') as fp:
+        fp.write(weight.flatten().astype(np.float32))
+
+    with open(os.path.join(export_dir, 'weight'), 'rb') as fp:
+        buffer = np.frombuffer(fp.read(), dtype=np.float32)
+    weight = buffer.reshape(weight.shape).astype(np.float64)  # set again as collection of 3D tensors
+    weight = weight.transpose(0, 3, 1, 2)  # restore C_in in second position (to allow software simulation)
+
     # bias = (n_out - 1) * (((-mu * gamma) / (2 * m_out * sigma)) + (beta / (2 * m_out)) + 0.5)# + 0.5 using the `round` functional, not `floor`
-    bias = (((-mu * gamma) / sigma) + beta) / ex_out + 0.5
+    bias = ((((- w_bias - mu) * gamma) / sigma) + beta) / ex_out + 0.5
+
+    with open(os.path.join(export_dir, 'bias'), 'wb') as fp:
+        fp.write(bias.astype(np.float32))
+
+    with open(os.path.join(export_dir, 'bias'), 'rb') as fp:
+        buffer = np.frombuffer(fp.read(), dtype=np.float32)
+    bias = buffer.astype(np.float64)
 
     def numpy2torch64(x):
         return torch.from_numpy(x.astype(np.float64))
@@ -76,12 +109,8 @@ def fold_d2d_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, n_out
     gamma_t = import_gamma(gamma_t, 'gamma', export_dir=export_dir)
     gamma_t = gamma_t.reshape(-1, 1, 1, 1)
 
-    # export_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17)
-    # beta_t = import_beta(beta_t, 'beta', export_dir=export_dir)
-
-    quantum = 2**(-17)
-    beta_t /= quantum
-    beta_t = beta_t.astype(np.int64)
+    export_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=17)
+    beta_t = import_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=17)
 
     def numpy2torch64(x):
         return torch.from_numpy(x.astype(np.float64))
@@ -122,12 +151,22 @@ def fold_d2h_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta):
     export_tw(weight, 'weight', export_dir=export_dir)
     weight = import_tw(weight, 'weight', export_dir=export_dir)
 
-    # export_gamma(gamma_t, 'gamma', export_dir=export_dir, int_bits=10, frac_bits=17)
-    # gamma_t = import_gamma(gamma_t, 'gamma', export_dir=export_dir)
-    # gamma_t = gamma_t.reshape(-1, 1, 1, 1)
+    # export+import gammas
+    with open(os.path.join(export_dir, 'gamma'), 'wb') as fp:
+        fp.write(gamma_t.astype(np.float32))
 
-    # export_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17)
-    # beta_t = import_beta(beta_t, 'beta', export_dir=export_dir)
+    with open(os.path.join(export_dir, 'gamma'), 'rb') as fp:
+        buffer = np.frombuffer(fp.read(), dtype=np.float32)
+    gamma_t = buffer.astype(np.float64)
+    gamma_t = gamma_t.reshape(-1, 1, 1, 1)
+
+    # export+import betas
+    with open(os.path.join(export_dir, 'beta'), 'wb') as fp:
+        fp.write(beta_t.astype(np.float32))
+
+    with open(os.path.join(export_dir, 'beta'), 'rb') as fp:
+        buffer = np.frombuffer(fp.read(), dtype=np.float32)
+    beta_t = buffer.astype(np.float64)
 
     def numpy2torch64(x):
         return torch.from_numpy(x.astype(np.float64))
@@ -135,7 +174,7 @@ def fold_d2h_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta):
     return numpy2torch64(weight), numpy2torch64(gamma_t), numpy2torch64(beta_t)
 
 
-def convert_h2d(layer, export_dir):
+def convert_h2d(layer, export_dir, input_uint8=False):
 
     # parse layer into nodes
     conv_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'Conv2d']
@@ -150,7 +189,8 @@ def convert_h2d(layer, export_dir):
     weight, bias = fold_h2d_layer(export_dir,
                                   conv.weight,
                                   bn.eps, bn.running_mean, bn.running_var, bn.weight, bn.bias,
-                                  ste.num_levels, ste.abs_max_value)
+                                  ste.num_levels, ste.abs_max_value,
+                                  input_uint8=input_uint8)
 
     # create SW-emulated layer
     new_conv = nn.Conv2d(in_channels=conv.in_channels, out_channels=conv.out_channels, kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, bias=True)

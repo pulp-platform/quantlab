@@ -39,7 +39,7 @@ def parse_vgg(net):
     return layers
 
 
-def compile_vgg(net, output_dir=os.path.curdir):
+def compile_vgg(net, output_dir=os.path.curdir, input_uint8=False):
 
     layers = parse_vgg(net)
     output_dir = os.path.join(output_dir, 'VGG{}'.format(len(layers)))
@@ -55,7 +55,8 @@ def compile_vgg(net, output_dir=os.path.curdir):
             os.makedirs(export_dir, exist_ok=True)
 
             convert_fn = globals()['convert_' + type_]
-            tq_net.append(convert_fn(layer, export_dir=export_dir))
+            kwargs = {'input_uint8': input_uint8} if i == 0 else {}
+            tq_net.append(convert_fn(layer, export_dir=export_dir, **kwargs))
 
             fq_net.append(nn.Sequential(*[n[1] for n in layer[int(i != 0):]]))
 
