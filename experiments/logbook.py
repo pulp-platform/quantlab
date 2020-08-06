@@ -16,12 +16,12 @@ from torch.utils.tensorboard import SummaryWriter
 __MASTER_PROC_RANK__ = 0
 
 __MAX_EXPERIMENTS__ = 1000
-__ALIGN_EXP__ = math.ceil(math.log10(__MAX_EXPERIMENTS__))  # experiment ID string length (decimal literal)
-__MAX_SEED__ = 10000
-__MAX_EPOCHS__ = 10000
-__ALIGN_EPOCHS__ = math.ceil(math.log10(__MAX_EPOCHS__))  # checkpoint ID string length (decimal literal)
-__MAX_CV_FOLDS__ = 10
-__ALIGN_CV_FOLDS__ = math.ceil(math.log10(__MAX_CV_FOLDS__))  # cross-validation fold ID string length (decimal literal)
+__ALIGN_EXP__       = math.ceil(math.log10(__MAX_EXPERIMENTS__))  # experiment ID string length (decimal literal)
+__MAX_SEED__        = 10000
+__MAX_EPOCHS__      = 10000
+__ALIGN_EPOCHS__    = math.ceil(math.log10(__MAX_EPOCHS__))  # checkpoint ID string length (decimal literal)
+__MAX_CV_FOLDS__    = 10
+__ALIGN_CV_FOLDS__  = math.ceil(math.log10(__MAX_CV_FOLDS__))  # cross-validation fold ID string length (decimal literal)
 
 
 class Logbook(object):
