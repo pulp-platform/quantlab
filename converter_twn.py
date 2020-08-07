@@ -71,9 +71,28 @@ def revert_ste_postproc(x, ste_n, ste_m):
     return (x / ex).to(torch.float64).round()
 
 
-is_input_uint8 = False
+def convert_input_image(img, input_type):
+    """Rescale a normalised ImageNet data point to UINT8 or INT8 range."""
+    if not ('int' in input_type):
+        return img
+    else:
+        from problems.ImageNet.VGG.preprocess import _ImageNet
+        mean = np.array(_ImageNet['Normalize']['mean']) * 255.
+        std = np.array(_ImageNet['Normalize']['std']) * 255.
+
+        new_img = img.squeeze(0)
+        new_img = (new_img.permute(1, 2, 0) * std + mean).permute(2, 0, 1).clamp(min=0., max=255.).round()
+        new_img = new_img.unsqueeze(0)
+
+        if input_type == 'int8':  # signed integer
+            new_img -= 128.
+
+    return new_img
+
+
+input_type = 'uint8'
 output_dir = 'trialVGG'
-tq_net, fq_net = compile_vgg(net, output_dir=output_dir, input_uint8=is_input_uint8)
+tq_net, fq_net = compile_vgg(net, output_dir=output_dir, input_type=input_type)
 
 n_trials = 1
 match = 0
@@ -84,14 +103,7 @@ for i in range(n_trials):
     fq_x_in = img.clone().to(torch.float32)
     fq_x = fq_x_in.clone()
 
-    if is_input_uint8:
-        from problems.ImageNet.VGG.preprocess import _ImageNet
-        mean = np.array(_ImageNet['Normalize']['mean']) * 255.
-        std = np.array(_ImageNet['Normalize']['std']) * 255.
-        tq_x_in = (fq_x_in.permute(0, 2, 3, 1) * std + mean).clamp(min=0., max=255.).round().permute(0, 3, 1, 2)
-        tq_x_in = tq_x_in.to(torch.float64)
-    else:
-        tq_x_in = fq_x_in.clone().to(torch.float64)
+    tq_x_in = convert_input_image(fq_x_in.clone(), input_type)
     tq_x_in = tq_x_in.to(torch.float64)
     tq_x = tq_x_in.clone()
 
@@ -131,8 +143,6 @@ for i in range(n_trials):
 from backends.twn_accelerator.debug import get_operands_fq, get_operands_tq
 
 tq_out1 = tq_net[0](tq_x_in)
-
-fq_x = img.to(torch.float32)
 
 fq_out1 = fq_net[0](fq_x_in)
 n_out1 = fq_net[0][-1].num_levels
@@ -189,13 +199,7 @@ for i, idx in enumerate(images_idxs):
     net_top1 = int(y == net_preds[..., 0])
     net_top5 = int(y in net_preds[:, ])
 
-    if is_input_uint8:
-        from problems.ImageNet.VGG.preprocess import _ImageNet
-        mean = np.array(_ImageNet['Normalize']['mean']) * 255.
-        std = np.array(_ImageNet['Normalize']['std']) * 255.
-        tq_x = (x.clone().permute(0, 2, 3, 1) * std + mean).clamp(min=0., max=255.).round().permute(0, 3, 1, 2)
-    else:
-        tq_x = x.clone()
+    tq_x = convert_input_image(fq_x.clone(), input_type)
     tq_x = tq_x.to(torch.float64)
 
     tq_out_a = tq_full_a(tq_x.to(torch.float64).to('cuda')).view(x.shape[0], 1, -1)

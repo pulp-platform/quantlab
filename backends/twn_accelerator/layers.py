@@ -8,7 +8,7 @@ from .weights import export_tw, import_tw
 from .gammabeta import export_gamma, import_gamma, export_beta, import_beta
 
 
-def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, input_uint8=False):
+def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, input_type='float'):
 
     def torch2numpy64(x):
         return x.detach().numpy().astype(np.float64)
@@ -27,17 +27,19 @@ def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, inp
 
     w_temp = w
 
-    if input_uint8:
+    if input_type == 'float':
+        w_bias = np.zeros(C_out,)
+    else:
         from problems.ImageNet.VGG.preprocess import _ImageNet
         mean = np.array(_ImageNet['Normalize']['mean']) * 255.
-        std  = np.array(_ImageNet['Normalize']['std']) * 255.
+        std = np.array(_ImageNet['Normalize']['std']) * 255.
         w_temp = w_temp.transpose(0, 2, 3, 1)
+        w_temp = w_temp / std
         w_bias = (w_temp * mean) / std
         w_bias = w_bias.transpose(0, 3, 1, 2).reshape(C_out, -1).sum(axis=1)
-        w_temp = w_temp / std
+        if input_type == 'int8':
+            w_bias += 128 * w_temp.reshape(C_out, -1).sum(axis=1)
         w_temp = w_temp.transpose(0, 3, 1, 2)
-    else:
-        w_bias = np.zeros(C_out,)
 
     ex_out = (2 * m_out) / (n_out - 1)
 
@@ -109,8 +111,8 @@ def fold_d2d_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, n_out
     gamma_t = import_gamma(gamma_t, 'gamma', export_dir=export_dir)
     gamma_t = gamma_t.reshape(-1, 1, 1, 1)
 
-    export_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=17)
-    beta_t = import_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=17)
+    export_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
+    beta_t = import_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
 
     def numpy2torch64(x):
         return torch.from_numpy(x.astype(np.float64))
@@ -174,7 +176,7 @@ def fold_d2h_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta):
     return numpy2torch64(weight), numpy2torch64(gamma_t), numpy2torch64(beta_t)
 
 
-def convert_h2d(layer, export_dir, input_uint8=False):
+def convert_h2d(layer, export_dir, input_type='float'):
 
     # parse layer into nodes
     conv_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'Conv2d']
@@ -190,7 +192,7 @@ def convert_h2d(layer, export_dir, input_uint8=False):
                                   conv.weight,
                                   bn.eps, bn.running_mean, bn.running_var, bn.weight, bn.bias,
                                   ste.num_levels, ste.abs_max_value,
-                                  input_uint8=input_uint8)
+                                  input_type=input_type)
 
     # create SW-emulated layer
     new_conv = nn.Conv2d(in_channels=conv.in_channels, out_channels=conv.out_channels, kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, bias=True)
