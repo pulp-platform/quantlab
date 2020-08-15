@@ -3,6 +3,7 @@ import torch.nn as nn
 
 import quantlab.graphs.analyse as qa
 from .layers import convert_h2d, convert_d2d, convert_d2h, convert_h2h
+from .twn_accelerator import *
 
 
 def parse_vgg(net):
@@ -42,22 +43,40 @@ def parse_vgg(net):
 def compile_vgg(net, output_dir=os.path.curdir, input_type='float'):
 
     layers = parse_vgg(net)
-    output_dir = os.path.join(output_dir, 'VGG{}'.format(len(layers)))
+    net_name = 'VGG{}'.format(len(layers))
+    output_dir = os.path.join(output_dir, net_name)
+    c_out_dir = os.path.join(output_dir, "C_OUT")
+    # put the parameters in yet another subfolder so it can just be copied to SD card
+    output_dir = os.path.join(output_dir, net_name)
     os.makedirs(output_dir, exist_ok=True)
-
+    os.makedirs(c_out_dir, exist_ok=True)
     tq_net = []
     fq_net = []
+
+    #  Set up a metadata object for the whole network to collect all the information for each layer:
+    #  - layer parameters (kernel size, buffer sizes, etc)
+    #  - location of outputs
+    #  - location of parameter binaries (weights & BN params)
+    c_net = TWNAccelSequentialNet(name=net_name, out_dir=c_out_dir, init_dim=(224, 224))
+    params = TWNAccelParams(blk_size=48)
 
     for i, (type_, layer) in enumerate(layers):
         if i < 19:
 
-            export_dir = os.path.join(output_dir, 'layer{:0>2}_'.format(i+1) + type_)
+            name = net_name + '_layer{:0>2}_'.format(i+1) + type_
+            export_dir = os.path.join(output_dir, name)
             os.makedirs(export_dir, exist_ok=True)
-
             convert_fn = globals()['convert_' + type_]
             kwargs = {'input_type': input_type} if i == 0 else {}
             tq_net.append(convert_fn(layer, export_dir=export_dir, **kwargs))
-
+            # Here: append the current layer's metadata to the object created above
             fq_net.append(nn.Sequential(*[n[1] for n in layer[int(i != 0):]]))
+            if type_ in ['d2d', 'd2h']:
+                c_layer = TWNLayer(layer, name=name, params=params)
+                c_net.add_layer(c_layer)
 
+
+    # Export the embedded C code to set up and run the network!
+    # That's it!
+    c_net.render()
     return tq_net, fq_net

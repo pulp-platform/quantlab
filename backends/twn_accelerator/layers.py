@@ -3,10 +3,20 @@ import torch
 import torch.nn as nn
 import os
 
+from quantlab.graphs.analyse import Node
 from .quantops import STEActivationInteger
 from .weights import export_tw, import_tw
 from .gammabeta import export_gamma, import_gamma, export_beta, import_beta
 
+def node_is_module(n : Node, m):
+
+    if not isinstance(m, list):
+        assert isinstance(m, type)
+        m = [m]
+    return any(isinstance(n.module, t) for t in m)
+
+def layer_has_modules(l : list, m : list):
+    return any(node_is_module(n, m) for n in l)
 
 def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, input_type='float'):
 
