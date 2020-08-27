@@ -57,24 +57,22 @@ def compile_vgg(net, output_dir=os.path.curdir, input_type='float'):
     #  - layer parameters (kernel size, buffer sizes, etc)
     #  - location of outputs
     #  - location of parameter binaries (weights & BN params)
-    c_net = TWNAccelSequentialNet(name=net_name, out_dir=c_out_dir, init_dim=(224, 224))
+    c_net = TWNAccelSequentialNet(name=net_name, out_dir=c_out_dir, init_dim=(112, 112))
     params = TWNAccelParams(blk_size=48)
 
     for i, (type_, layer) in enumerate(layers):
         if i < 19:
-
             name = net_name + '_layer{:0>2}_'.format(i+1) + type_
             export_dir = os.path.join(output_dir, name)
             os.makedirs(export_dir, exist_ok=True)
             convert_fn = globals()['convert_' + type_]
-            kwargs = {'input_type': input_type} if i == 0 else {}
+            kwargs = {'input_type': input_type} if i == 0 else {'params':params} if type_ in ['d2d', 'd2h'] else {}
             tq_net.append(convert_fn(layer, export_dir=export_dir, **kwargs))
-            # Here: append the current layer's metadata to the object created above
+
             fq_net.append(nn.Sequential(*[n[1] for n in layer[int(i != 0):]]))
             if type_ in ['d2d', 'd2h']:
                 c_layer = TWNLayer(layer, name=name, params=params)
                 c_net.add_layer(c_layer)
-
 
     # Export the embedded C code to set up and run the network!
     # That's it!

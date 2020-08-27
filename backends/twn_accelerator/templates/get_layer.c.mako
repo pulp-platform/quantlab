@@ -7,8 +7,8 @@ import os
 #include "params.h"
 
 u8 ${l.weights_varname}[${l.weight_buf_size}];
-u8 ${l.beta_varname}[${l.n_out_blk} * CHANNELBLOCKSIZE];
-u32 * ${l.gamma_varname}[${l.n_out_blk} * CHANNELBLOCKSIZE];
+u8 ${l.beta_varname}[${l.n_out_blk} * OUT_CHAN_BLOCK_SIZE];
+u32 * ${l.gamma_varname}[${l.n_out_blk} * OUT_CHAN_BLOCK_SIZE];
 
 twn_layer_t ${l.layer_name} = {
     .relu = ${l.relu},
