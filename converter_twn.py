@@ -90,7 +90,7 @@ def convert_input_image(img, input_type):
     return new_img
 
 
-input_type = 'uint8'
+input_type = 'float'
 output_dir = 'trialVGG'
 tq_net, fq_net = compile_vgg(net, output_dir=output_dir, input_type=input_type)
 

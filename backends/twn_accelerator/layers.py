@@ -111,8 +111,8 @@ def fold_d2d_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, n_out
     gamma_t = import_gamma(gamma_t, 'gamma', export_dir=export_dir)
     gamma_t = gamma_t.reshape(-1, 1, 1, 1)
 
-    export_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
-    beta_t = import_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
+    export_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=17)
+    beta_t = import_beta(beta_t, 'beta', export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=17)
 
     def numpy2torch64(x):
         return torch.from_numpy(x.astype(np.float64))

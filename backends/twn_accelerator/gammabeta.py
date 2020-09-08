@@ -55,7 +55,7 @@ def export_beta(beta, beta_name, export_dir=os.path.curdir, int_bits=8, frac_bit
 
     # beta += 2 * np.random.binomial(1, 0.5, size=(len(beta),)) - 1  # probabilistic - random change
     # beta += np.random.binomial(1, probs)  # probabilistic - bias "correction"
-    beta += (probs >= 0.5).astype(np.int64)  # deterministic - rounding (minimise error probability under assumtion of uniform distribution of inputs)
+    # beta += (probs >= 0.5).astype(np.int64)  # deterministic - rounding (minimise error probability under assumtion of uniform distribution of inputs)
     # beta += (probs > 0.).astype(np.int64)  # deterministic - ceiling bias "correction"
 
     assert np.all(np.logical_and(np.abs(beta) <= (2**(int_bits+true_frac_bits) / 2), beta != (2**(int_bits+true_frac_bits) / 2)))  # each beta is a SIGNED integer with `int_bits` precision
