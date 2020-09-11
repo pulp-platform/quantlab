@@ -57,7 +57,7 @@ def compile_vgg(net, output_dir=os.path.curdir, input_type='float'):
     #  - layer parameters (kernel size, buffer sizes, etc)
     #  - location of outputs
     #  - location of parameter binaries (weights & BN params)
-    c_net = TWNAccelSequentialNet(name=net_name, out_dir=c_out_dir, init_dim=(112, 112))
+    c_net = TWNAccelSequentialNet(name=net_name, out_dir=c_out_dir, init_dim=(224, 224))
     params = TWNAccelParams(blk_size=48)
 
     for i, (type_, layer) in enumerate(layers):
