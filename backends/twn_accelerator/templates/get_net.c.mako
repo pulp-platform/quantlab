@@ -17,7 +17,8 @@ sequential_net_t ${n.name} = {
     .n_layers = ${n.n_layers},
     .buf_size = 0,
     .buf_a = NULL,
-    .buf_b = NULL
+    .buf_b = NULL,
+    .exec_cycles = 0
     };
 
 sequential_net_t * ${n.get_net_fn}(void) {
