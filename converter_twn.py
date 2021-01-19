@@ -5,10 +5,14 @@ import math
 import json
 import importlib
 import torch
+from torch import nn
 import numpy as np
 
+import quantlab.graphs as qg
+import quantlab.graphs.analyse as qa
+from quantlab.graphs.analyse import Node
+
 from backends.twn_accelerator.compiler_vgg import compile_vgg
-import shutil
 
 sys.path.insert(0, os.pardir)  # make QuantLab packages accessible
 
@@ -20,7 +24,7 @@ __MAX_EXPERIMENTS__  = 1000
 __ALIGN_EXP__        = math.ceil(math.log10(__MAX_EXPERIMENTS__))  # experiment ID string length (decimal literal)
 __MAX_CV_FOLDS__     = 10
 __ALIGN_CV_FOLDS__   = math.ceil(math.log10(__MAX_CV_FOLDS__))  # cross-validation fold ID string length (decimal literal)
-__EVAL__             = False # whether to check the accuracy of the exported/quantized net
+__EVAL__             = True # whether to check the accuracy of the exported/quantized net
 
 
 with open('backends/twn_accelerator/source.json') as fp:
@@ -60,10 +64,6 @@ for n in net.named_modules():
     if hasattr(n[1], 'started'):  # put STE nodes in "quantized mode"
         n[1].started = True
 
-if __EVAL__:
-    train_set, valid_set = logbook.lib.load_data_sets(logbook)
-
-
 # compile VGG
 def apply_ste_postproc(x, ste_n, ste_m):
     ex = (2 * ste_m) / (ste_n - 1)
@@ -81,8 +81,8 @@ def convert_input_image(img, input_type):
         return img
     else:
         from problems.ImageNet.VGG.preprocess import _ImageNet
-        mean = np.array(_ImageNet['Normalize']['mean']) * 255.
-        std = np.array(_ImageNet['Normalize']['std']) * 255.
+        mean = torch.tensor(_ImageNet['Normalize']['mean']) * 255.
+        std = torch.tensor(_ImageNet['Normalize']['std']) * 255.
 
         new_img = img.squeeze(0)
         new_img = (new_img.permute(1, 2, 0) * std + mean).permute(2, 0, 1).clamp(min=0., max=255.).round()
@@ -93,11 +93,69 @@ def convert_input_image(img, input_type):
 
     return new_img
 
-
-input_type = 'uint8'
+#valid values:
+# 'int8', 'uint8' or 'float'
+input_type = 'float'
 output_dir = 'trialVGG'
-tq_net, fq_net = compile_vgg(net, output_dir=output_dir, input_type=input_type)
+tq_net, fq_net, export_net, data_out_dir = compile_vgg(net, output_dir=output_dir, input_type=input_type)
+
+train_set, valid_set = logbook.lib.load_data_sets(logbook)
+# dump input and expected output of true-quantized net
+tq_x_in_fp32 = valid_set[0][0].unsqueeze(0).to(torch.float32)
+tq_x_in_fp32_conv = convert_input_image(tq_x_in_fp32, input_type)
+# convert to nhwc
+tq_x_in_fp32_conv_nhwc = tq_x_in_fp32.permute(0, 2, 3, 1)
+
+
+
+with open(os.path.join(data_out_dir, 'test_input'), 'wb') as fh:
+    for el in tq_x_in_fp32_conv_nhwc.numpy().flatten():
+        fh.write(el)
+
+
+# convert the lists of layers to sequential nets
+
+export_net_fp32 = nn.Sequential(*export_net).to(torch.float32)
+export_net_fp32.eval()
+
+with torch.no_grad():
+    exp_out = export_net_fp32(tq_x_in_fp32_conv)
+
+
+with open(os.path.join(data_out_dir, 'exp_output'), 'wb') as fh:
+    for el in exp_out.detach().numpy().flatten():
+        fh.write(el)
+
+
+
+# get all the layers out of the original net
+orig_layers_conv = [n.module for n in qa.list_nodes(net.adapter)]
+orig_layers_conv += [n.module for n in qa.list_nodes(net.features)]
+orig_layers_conv.append(net.avgpool)
+# need to add the flatten layer because it is added in compiler_vgg
+orig_layers_conv.append(nn.Flatten())
+orig_layers = orig_layers_conv + [n.module for n in qa.list_nodes(net.classifier)]
+
+# group the original network into the same blocks as fq_net
+fq_lens = [len(mod) for mod in fq_net]
+def get_sublists(l : list, lens : list):
+    assert len(l) == sum(lens), "sum of lengths must be equal to length of list"
+    out = []
+    idx = 0
+    for ll in lens:
+        out.append(l[idx:idx+ll])
+        idx += ll
+    return out
+
+orig_layers_seq = [nn.Sequential(*m) for m in get_sublists(orig_layers, fq_lens)]
+
+
 if __EVAL__:
+    def compare_subtensor(t1 : torch.Tensor, t2 : torch.Tensor):
+        # compare two tensors on their overlaps. returns sum of absolute differences.
+        assert len(t1.shape) == len(t2.shape), "tensors to compare must have the same number of dimensions"
+        overlap_shape = tuple(min(s1, s2) for s1, s2 in zip(t1.shape, t2.shape))
+        return torch.sum(torch.abs(t1[[slice(0, s) for s in overlap_shape]] - t2[[slice(0, s) for s in overlap_shape]]))
     n_trials = 1
     match = 0
     for i in range(n_trials):
@@ -105,27 +163,36 @@ if __EVAL__:
         img = valid_set[i][0].unsqueeze(0)
 
         fq_x_in = img.clone().to(torch.float32)
+
         fq_x = fq_x_in.clone()
 
-        tq_x_in = convert_input_image(fq_x_in.clone(), input_type)
-        tq_x_in = tq_x_in.to(torch.float64)
+        tq_x_in_fp32 = convert_input_image(fq_x_in.clone(), input_type)
+        tq_x_in = tq_x_in_fp32.to(torch.float64)
         tq_x = tq_x_in.clone()
+        orig_x = fq_x_in.clone()
 
         errors = []
-        for l, (tql, fql) in enumerate(zip(tq_net, fq_net)):
+        for l, (tql, fql, orig_l) in enumerate(zip(tq_net, fq_net, orig_layers_seq)):
 
             tql = tql.to(torch.float64)
             fql = fql.to(torch.float32)
+            tql.eval()
+            orig_l = orig_l.to(torch.float32)
 
             tq_x = tql(tq_x)
 
             fq_x = fql(fq_x)
 
+            orig_x = orig_l(orig_x)
+
+
             if l < 15:
                 ste = fql[-1]
                 fq_x_ck = revert_ste_postproc(fq_x, ste.num_levels, ste.abs_max_value)
-
+                orig_x_ck = revert_ste_postproc(orig_x, ste.num_levels, ste.abs_max_value)
                 diff = (tq_x - fq_x_ck).detach().numpy()
+                diff_orig = compare_subtensor(orig_x_ck, fq_x_ck)
+                print("difference between original net and fq net returned by compile_vgg in layer {}: {}".format(l, diff_orig))
                 diff_stats = np.histogram(diff, np.arange(-ste.num_levels, ste.num_levels))
                 errors.append((diff, diff_stats))
                 print("Layer {:0>2} - Percentage error: {:6.4f}%".format(l, 100 * (np.count_nonzero(diff) / diff.size)))
@@ -141,7 +208,6 @@ if __EVAL__:
         print("Image {} - TQNet: {}, FQNet: {}".format(i, tq_result.item(), fq_result.item()))
         match += int(tq_result.item()) == int(fq_result.item())
 
-    # shutil.rmtree(output_dir)
 
 
     from backends.twn_accelerator.debug import get_operands_fq, get_operands_tq

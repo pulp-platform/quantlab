@@ -2,8 +2,16 @@
 #ifndef ${l.header_macro}
 #define ${l.header_macro}
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "buf_drv.h"
 
 twn_layer_t * ${l.get_layer_fn}(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

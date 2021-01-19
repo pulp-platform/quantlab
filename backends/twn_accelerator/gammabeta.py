@@ -4,7 +4,7 @@ import shutil
 import math
 
 
-def export_gamma(gamma, gamma_name, export_dir=os.path.curdir, params, int_bits=10, frac_bits=17):
+def export_gamma(gamma, gamma_name, params, export_dir=os.path.curdir, int_bits=10, frac_bits=17):
     """
 
     :param gamma: numpy array, float 64 (double)
@@ -13,7 +13,7 @@ def export_gamma(gamma, gamma_name, export_dir=os.path.curdir, params, int_bits=
     """
     gamma_len = len(gamma)
     # zero pad gamma for export
-    gamma_padded = np.zeros(params.n_blks(gamma_len) * params.blk_size)
+    gamma_padded = np.zeros((params.ch_blks(gamma_len) * params.blk_size,1,1,1))
     gamma_padded[0:gamma_len] = gamma
     quantum = 2**(-frac_bits)
     gamma_padded /= quantum
@@ -21,7 +21,7 @@ def export_gamma(gamma, gamma_name, export_dir=os.path.curdir, params, int_bits=
 
     max_n_quanta = 2**(int_bits + frac_bits) - 1
     gamma_temp = gamma_padded & np.array(max_n_quanta)
-    assert np.all(gamma == gamma_temp), "{}/{}".format(np.sum(gamma != gamma_temp), len(gamma))  # each gamma is an UNSIGNED integer with maximum precision of 27 bits
+    assert np.all(gamma_padded == gamma_temp), "{}/{}".format(np.sum(gamma != gamma_temp), len(gamma))  # each gamma is an UNSIGNED integer with maximum precision of 27 bits
 
 
     with open(os.path.join(export_dir, gamma_name), 'wb') as fp:
@@ -32,7 +32,7 @@ def import_gamma(gamma, gamma_name, params, export_dir=os.path.curdir):
 
     gamma_len = len(gamma)
     # pad gamma for checking imported data
-    padded_len = params.n_blks(gamma_len) * params.blk_size
+    padded_len = params.ch_blks(gamma_len) * params.blk_size
     with open(os.path.join(export_dir, gamma_name), 'rb') as fp:
         buffer = np.frombuffer(fp.read(), dtype='<u4')
         assert padded_len == len(buffer)
@@ -47,7 +47,7 @@ def import_gamma(gamma, gamma_name, params, export_dir=os.path.curdir):
 def export_beta(beta, beta_name, params, export_dir=os.path.curdir, int_bits=8, frac_bits=17, true_frac_bits=17):
     # zero pad beta for export
     beta_len = len(beta)
-    beta_padded = np.zeros(params.n_blks(beta_len)*params.blk_size)
+    beta_padded = np.zeros(params.ch_blks(beta_len)*params.blk_size)
     beta_padded[0:beta_len] = beta
     beta = beta_padded
 
@@ -55,9 +55,6 @@ def export_beta(beta, beta_name, params, export_dir=os.path.curdir, int_bits=8, 
     quantum = 2**(-frac_bits)
     beta /= quantum
     beta = beta.astype(np.int64)
-
-
-
 
     assert true_frac_bits <= frac_bits
     # how many bytes do I need to store this parameter?
@@ -87,7 +84,7 @@ def import_beta(beta, beta_name, params, export_dir=os.path.curdir, int_bits=8, 
 
     assert true_frac_bits <= frac_bits
     beta_len = len(beta)
-    padded_len = params.blk_size * params.n_blks(beta_len)
+    padded_len = params.blk_size * params.ch_blks(beta_len)
 
 
     # how many bytes did I need to store this parameter?
@@ -112,6 +109,8 @@ if __name__ == '__main__':
     export_dir = 'gammabeta_test'
     os.makedirs(export_dir, exist_ok=True)
 
+    params = TWNAcceleratorParams(blk_size=48)
+
     gamma_bits = 27
     gamma_int_bits = 10
     frac_bits = gamma_bits - gamma_int_bits
@@ -126,7 +125,7 @@ if __name__ == '__main__':
 
         filename_gamma = '{}_gamma.bin'.format(n)
         gamma_old = np.random.randint(low=0, high=2**(gamma_int_bits + frac_bits), size=(n,)).astype(np.float64) * quantum
-        export_gamma(gamma_old, filename_gamma, export_dir=export_dir, int_bits=gamma_int_bits, frac_bits=frac_bits)
+        export_gamma(gamma_old, filename_gamma, params=params, export_dir=export_dir, int_bits=gamma_int_bits, frac_bits=frac_bits)
         assert os.path.getsize(os.path.join(export_dir, filename_gamma)) == 4 * len(gamma_old)
 
         gamma_new = np.zeros_like(gamma_old, dtype=np.float64)

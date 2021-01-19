@@ -6,6 +6,7 @@ import torch.nn as nn
 import backends
 
 from quantlab.algorithms.inq import INQConv2d, INQConv1d
+from quantlab.algorithms.ste import STEActivation
 from quantlab.graphs.analyse import Node
 from .layers import layer_has_modules
 from mako.template import Template
@@ -131,6 +132,18 @@ class TWNLayer:
         return conv_layer
 
     @property
+    def ste_nodes(self):
+        ste = [n for n in self.layer_nodes if isinstance(n.module, STEActivation)]
+        return ste
+    # there should be 2 STE layers in self.layer_nodes: one for the
+    # quantization of the input and one for the quantization of the output
+    def get_in_ste(self):
+        return self.ste_nodes[0].module
+
+    def get_out_ste(self):
+        return self.ste_nodes[1].module
+
+    @property
     def n_in_blk(self):
         conv_layer = self.get_conv_layer()
         if not conv_layer:
@@ -143,6 +156,14 @@ class TWNLayer:
         if not conv_layer:
             assert False, "No Conv Layer found - n_out_blk can't be determined!"
         return self.params.ch_blks(conv_layer.out_channels)
+
+    @property
+    def n_in_ch(self):
+        return self.params.blk_size*self.n_in_blk
+
+    @property
+    def n_out_ch(self):
+        return self.params.blk_size*self.n_out_blk
 
     @property
     def K(self):
@@ -159,8 +180,37 @@ class TWNLayer:
         return k[0]
 
     @property
+    def K_text(self):
+        if self.K == 1:
+            return "ONE"
+        if self.K == 3:
+            return "THREE"
+        if self.K == 5:
+            return "FIVE"
+        if self.K == 7:
+            return "SEVEN"
+        assert False, "Invalid Kernel Size: {}".format(self.K)
+
+    @property
     def weight_buf_size(self):
         return self.n_in_blk*self.n_out_blk*self.params.blk_size**2*self.K**2//4
+
+    @property
+    def weight_buf_shape(self):
+        return (self.n_out_blk*self.params.blk_size, self.K, self.K, self.n_in_blk*self.params.blk_size)
+
+    def get_out_shape(self, in_shape : tuple):
+        # returns HWC output shape given HWC input shape
+        assert len(in_shape) in [3, 4],  "in_shape must describe 3D tensor!"
+        out_shape = [in_shape[0], 0, 0, self.n_out_ch]
+        div = 1 if self.pool_type == "NO_POOL" and self.linebuf_order == "REGULAR" else 2
+        for k in range(2):
+            out_shape[k+1] = in_shape[k+1]//div
+        if len(in_shape) == 3:
+            out_shape = out_shape[1:]
+        return tuple(out_shape)
+
+
 
     @property
     def relu(self):

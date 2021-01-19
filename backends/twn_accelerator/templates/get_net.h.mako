@@ -2,8 +2,16 @@
 #ifndef ${n.header_macro}
 #define ${n.header_macro}
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sequential_net.h"
 
 sequential_net_t * ${n.get_net_fn}(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

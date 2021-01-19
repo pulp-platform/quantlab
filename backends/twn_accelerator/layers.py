@@ -2,11 +2,15 @@ import numpy as np
 import torch
 import torch.nn as nn
 import os
+from typing import Union
+from pathlib import Path
 
 from quantlab.graphs.analyse import Node
 from .quantops import STEActivationInteger
 from .weights import export_tw, import_tw
 from .gammabeta import export_gamma, import_gamma, export_beta, import_beta
+
+
 
 def node_is_module(n : Node, m):
 
@@ -15,8 +19,13 @@ def node_is_module(n : Node, m):
         m = [m]
     return any(isinstance(n.module, t) for t in m)
 
-def layer_has_modules(l : list, m : list):
+
+def layer_has_modules(l : Union[list, Node], m : list):
+    if not isinstance(l, list):
+        assert isinstance(l, Node), "Input to layer_has_modules must be Node or list of Nodes, not {}".format(l.__class__.__name__)
+        l = [l]
     return any(node_is_module(n, m) for n in l)
+
 
 def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, input_type='float'):
 
@@ -121,6 +130,7 @@ def fold_d2d_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, n_out
     gamma_t = import_gamma(gamma_t, 'gamma', params=params, export_dir=export_dir)
     gamma_t = gamma_t.reshape(-1, 1, 1, 1)
 
+
     export_beta(beta_t, 'beta', params=params, export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
     beta_t = import_beta(beta_t, 'beta', params=params, export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
 
@@ -150,35 +160,54 @@ def fold_d2h_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, param
     w_temp *= flip
     weight = w_temp.transpose(3, 0, 1, 2)
 
+    # quantum
     ex_in = (2 * m_in) / (n_in - 1)
 
-    gamma_t = (ex_in * gamma) / sigma
+    #whoa there hold up!!! this ain't right.
+    #gamma_t = (ex_in * gamma) / sigma
+    # as input and output quanta are assumed to be the same, gamma is not scaled.
+    # TODO change this for the case with a different "final"/output quantization
+    gamma_t = gamma / sigma
     gamma_t *= flip
     gamma_t = gamma_t.reshape(-1, 1, 1, 1)
 
     # w_sum = w.reshape((w.shape[0], -1)).sum(axis=1)
     # beta_t = (n_out - 1) * (((((-m_in * w_sum) - mu) * gamma / sigma) + beta) / (2 * m_out) + 0.5)# + 0.5 using the `round` functional, not `floor`
-    beta_t = ((-mu * gamma) / sigma) + beta
+    # beta_t = ((-mu * gamma) / sigma) + beta
+    # as we are still in the quantized representation, beta does need to be scaled
+    beta_t = (((-mu * gamma) / sigma) + beta) / ex_in + 0.5
 
     export_tw(weight, 'weight', export_dir=export_dir, T_in=params.blk_size, T_out=params.blk_size)
-    weight = import_tw(weight, 'weight', export_dir=export_dir, T_in=params.blk_size, T_out=params.blk_size)
+    # weight = import_tw(weight, 'weight', export_dir=export_dir, T_in=params.blk_size, T_out=params.blk_size)
 
+    # This needs changing/clarification:
+    # do we want to fold this BN into the next layer? if so, that needs to be
+    # done offline. Otherwise, export it regularly for the accelerator (what is done now in this
+    # hack version)
     # export+import gammas
-    with open(os.path.join(export_dir, 'gamma'), 'wb') as fp:
-        fp.write(gamma_t.astype(np.float32))
+    #with open(os.path.join(export_dir, 'gamma'), 'wb') as fp:
+    #    fp.write(gamma_t.astype(np.float32))
+    #
+    #with open(os.path.join(export_dir, 'gamma'), 'rb') as fp:
+    #    buffer = np.frombuffer(fp.read(), dtype=np.float32)
+    #gamma_t = buffer.astype(np.float64)
+    #gamma_t = gamma_t.reshape(-1, 1, 1, 1)
+    #
+    ## export+import betas
+    #
+    ##with open(os.path.join(export_dir, 'beta'), 'wb') as fp:
+    ##    fp.write(beta_t.astype(np.float32))
+    #
+    ##with open(os.path.join(export_dir, 'beta'), 'rb') as fp:
+    ##    buffer = np.frombuffer(fp.read(), dtype=np.float32)
+    #beta_t = buffer.astype(np.float64)
+    # FOR NOW JUST EXPORT AS IN d2d
+    export_gamma(gamma_t, 'gamma', params=params, export_dir=export_dir, int_bits=10, frac_bits=17)
+    #gamma_t = import_gamma(gamma_t, 'gamma', params=params, export_dir=export_dir)
+    #gamma_t = gamma_t.reshape(-1, 1, 1, 1)
 
-    with open(os.path.join(export_dir, 'gamma'), 'rb') as fp:
-        buffer = np.frombuffer(fp.read(), dtype=np.float32)
-    gamma_t = buffer.astype(np.float64)
-    gamma_t = gamma_t.reshape(-1, 1, 1, 1)
-
-    # export+import betas
-    with open(os.path.join(export_dir, 'beta'), 'wb') as fp:
-        fp.write(beta_t.astype(np.float32))
-
-    with open(os.path.join(export_dir, 'beta'), 'rb') as fp:
-        buffer = np.frombuffer(fp.read(), dtype=np.float32)
-    beta_t = buffer.astype(np.float64)
+    export_beta(beta_t, 'beta', params=params, export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
+    #beta_t = import_beta(beta_t, 'beta', params=params, export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
 
     def numpy2torch64(x):
         return torch.from_numpy(x.astype(np.float64))
@@ -208,12 +237,13 @@ def convert_h2d(layer, export_dir, input_type='float'):
     new_conv = nn.Conv2d(in_channels=conv.in_channels, out_channels=conv.out_channels, kernel_size=conv.kernel_size, stride=conv.stride, padding=conv.padding, bias=True)
     new_conv.weight.data = weight
     new_conv.bias.data = bias
+    new_relu = nn.ReLU()
     # new_ste = qa.ste.STEActivationInteger(num_levels=ste.num_levels, zero_level=((ste.num_levels - 1) / 2))
-    new_ste = STEActivationInteger(num_levels=ste.num_levels, is_input_integer=False)
+    new_ste = STEActivationInteger(num_levels=ste.num_levels, is_input_integer=False, clamp_min_to_zero=False)
 
-    nodes = [new_conv, new_ste]
+    nodes = [new_conv, new_relu, new_ste]
 
-    return nn.Sequential(*nodes)
+    return nodes
 
 
 def convert_d2d(layer, export_dir, params):
@@ -255,7 +285,7 @@ def convert_d2d(layer, export_dir, params):
     if maxpool_node:
         nodes += [nn.MaxPool2d(kernel_size=maxpool_node[0].kernel_size, stride=maxpool_node[0].kernel_size)]
 
-    return nn.Sequential(*nodes)
+    return nodes
 
 
 def convert_d2h(layer, export_dir, params):
@@ -266,6 +296,8 @@ def convert_d2h(layer, export_dir, params):
     bn_nodes     = [n[1] for n in layer if n[1].__class__.__name__ == 'BatchNorm2d']
     relu_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'ReLU']
     maxpool_node = [n[1] for n in layer if n[1].__class__.__name__ == 'MaxPool2d']
+    # for now, assume the output quantization is the same as the input quantization
+    # TODO: change this after training a new VGG
     assert len(ste_nodes)    == 1
     assert len(conv_nodes)   == 1
     assert len(bn_nodes)     == 1
@@ -294,11 +326,10 @@ def convert_d2h(layer, export_dir, params):
     if maxpool_node:
         nodes += [nn.MaxPool2d(kernel_size=maxpool_node[0].kernel_size, stride=maxpool_node[0].kernel_size)]
 
-    return nn.Sequential(*nodes)
+    return nodes
 
 
 def convert_h2h(layer, export_dir):
-
     # parse layer into nodes
     linear_nodes = [n[1] for n in layer if n[1].__class__.__name__ == 'Linear']
     relu_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'ReLU']
@@ -307,7 +338,9 @@ def convert_h2h(layer, export_dir):
 
     # create SW-emulated layer
     lin = linear_nodes[0]
-    new_linear = nn.Linear(in_features=lin.in_features, out_features=lin.out_features, bias=False if lin.bias is None else True)
+    wt = lin.weight.data.cpu().clone().detach()
+    bias = False if lin.bias is None else lin.bias.data.cpu().clone().detach()
+    new_linear = nn.Linear(in_features=lin.in_features, out_features=lin.out_features, bias=bias is not False)
     new_linear.weight.data = lin.weight
     new_linear.bias.data = lin.bias
 
@@ -315,4 +348,14 @@ def convert_h2h(layer, export_dir):
     if len(relu_nodes) > 1:
         nodes += [nn.ReLU(inplace=True)]
 
-    return nn.Sequential(*nodes)
+    # just dump the FC layer weights out.
+    Path(export_dir).mkdir(parents=True, exist_ok=True)
+    with open(os.path.join(export_dir, "weight"), "wb") as fh:
+        for el in wt.float().numpy().flatten():
+            fh.write(el)
+    if bias is not False:
+        with open(os.path.join(export_dir, "bias"), "wb") as fh:
+            for el in bias.float().numpy().flatten():
+                fh.write(el)
+
+    return nodes
