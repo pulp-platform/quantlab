@@ -345,7 +345,7 @@ def convert_h2h(layer, export_dir):
     new_linear.bias.data = lin.bias
 
     nodes = [new_linear]
-    if len(relu_nodes) > 1:
+    if len(relu_nodes) == 1:
         nodes += [nn.ReLU(inplace=True)]
 
     # just dump the FC layer weights out.
