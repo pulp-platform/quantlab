@@ -9,6 +9,7 @@ __all__ = [
     'rule_batchnorm_nodes',
     'rule_activation_nodes',
     'get_rules_multiple_blocks',
+    'Node'
 ]
 
 

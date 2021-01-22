@@ -1,5 +1,7 @@
 import quantlab.algorithms as qa
-
+import torch
+from torch import nn
+from torch.nn.parameter import Parameter
 
 class STEActivationInteger(qa.ste.STEActivation):
 
@@ -37,3 +39,36 @@ class STEActivationInteger(qa.ste.STEActivation):
             x = (x / 2**self.frac_bits).floor()
 
         return x.clamp(min=self.min, max=self.max).floor().detach()
+
+
+class QuantLayer(nn.Module):
+    # signed quantization to n bits
+    def __init__(self, scale, n_bits):
+        super(QuantLayer, self).__init__()
+        self.scale = torch.tensor(scale, dtype=torch.float)
+        self.n_bits = n_bits
+        self.max_abs = torch.tensor(2**(n_bits-1)-1, dtype=torch.float)
+        self.step = Parameter(self.scale/self.max_abs, requires_grad=False)
+
+    def forward(self, x):
+        x = torch.clamp(x, -self.scale.item(), self.scale.item())
+        unrounded = x/self.step
+        return torch.round(unrounded)
+
+class DequantLayer(nn.Module):
+    # reverse of QuantLayer
+    def __init__(self, scale, n_bits, validate=False):
+        super(DequantLayer, self).__init__()
+        self.scale = torch.tensor(scale, dtype=torch.float)
+        self.n_bits = n_bits
+        self.max_abs = torch.tensor(2**(n_bits-1)-1, dtype=torch.float)
+        self.step = Parameter(self.scale/self.max_abs, requires_grad=False)
+        self.validate = validate
+
+    def forward(self, x):
+        # check if x is really an integer
+        if self.validate:
+            assert torch.sum(x % 1.0 != 0) == 0, "Input to DequantLayer was not integer: {}".format(x)
+            assert torch.sum(torch.abs(x) > self.max_abs) == 0, "Some elements of x are larger than {}!".format(self.max_abs)
+        # don't clamp this
+        return x*self.step

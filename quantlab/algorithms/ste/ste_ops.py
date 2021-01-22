@@ -76,7 +76,7 @@ class STEActivation(torch.nn.Module):
     def forward(self, x):
         if self.monitoring:
             self.abs_max_value.data[0] = max(self.abs_max_value.item(), x.abs().max())
-            
+
         if self.started:
             x = x / self.abs_max_value.item()  # map from [-max, max] to [-1, 1]
             xclamp = x.clamp(-1, 1)
