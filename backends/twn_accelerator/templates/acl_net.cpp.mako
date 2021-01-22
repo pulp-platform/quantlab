@@ -96,12 +96,12 @@ void ${n.name}Net::run(void) {
 % for l in n.layers:
     % if l.__class__.__name__ == "ACLDequantLayer":
     // Need to invalidate buffer memory from cache because this data was written by the accelerator and needs to be read by core
-    Xil_DCacheInvalidateRange((int *)${l.inputs[0].name}.buffer(), ${l.inputs[0].tot_size}*sizeof(${l.inputs[0].c_type}));
+    Xil_DCacheInvalidateRange((INTPTR)${l.inputs[0].name}.buffer(), ${l.inputs[0].tot_size}*sizeof(${l.inputs[0].c_type}));
     % endif
     ${l.name}->run();
     % if l.__class__.__name__ == "ACLQuantLayer":
     // Need to flush buffer memory region from cache because this data was written by core and needs to be read by accelerator
-    Xil_DCacheFlushRange((int *)${l.outputs[0].name}.buffer(), ${l.outputs[0].tot_size}*sizeof(${l.outputs[0].c_type}));
+    Xil_DCacheFlushRange((INTPTR)${l.outputs[0].name}.buffer(), ${l.outputs[0].tot_size}*sizeof(${l.outputs[0].c_type}));
     % endif
 % endfor
 }
