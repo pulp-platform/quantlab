@@ -22,11 +22,12 @@ public:
     void read_params(void);
     void * get_dst_buf(void);
     void set_input(void * input_data);
+    void run(void);
 private:
 // layers
 % for l in n.layers:
     ##std::unique_ptr<${l.cpp_namespace}::${l.acl_type}> ${l.name};
-    std::shared_ptr<${l.qualified_type}> ${l.name};
+    std::unique_ptr<${l.qualified_type}> ${l.name};
 % endfor
 // parameter tensors and arrays
 % for t in n.parameters:

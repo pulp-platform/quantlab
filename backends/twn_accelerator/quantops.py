@@ -1,7 +1,7 @@
 import quantlab.algorithms as qa
 import torch
 from torch import nn
-
+from torch.nn.parameter import Parameter
 
 class STEActivationInteger(qa.ste.STEActivation):
 
@@ -48,10 +48,10 @@ class QuantLayer(nn.Module):
         self.scale = torch.tensor(scale, dtype=torch.float)
         self.n_bits = n_bits
         self.max_abs = torch.tensor(2**(n_bits-1)-1, dtype=torch.float)
-        self.step = self.scale/self.max_abs
+        self.step = Parameter(self.scale/self.max_abs, requires_grad=False)
 
     def forward(self, x):
-        x = torch.clamp(x, -self.scale, self.scale)
+        x = torch.clamp(x, -self.scale.item(), self.scale.item())
         unrounded = x/self.step
         return torch.round(unrounded)
 
@@ -62,8 +62,7 @@ class DequantLayer(nn.Module):
         self.scale = torch.tensor(scale, dtype=torch.float)
         self.n_bits = n_bits
         self.max_abs = torch.tensor(2**(n_bits-1)-1, dtype=torch.float)
-        self.step = self.scale/self.max_abs
-        self.step = self.step.to(torch.float)
+        self.step = Parameter(self.scale/self.max_abs, requires_grad=False)
         self.validate = validate
 
     def forward(self, x):

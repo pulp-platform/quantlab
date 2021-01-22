@@ -6,7 +6,7 @@ from typing import Union
 from pathlib import Path
 
 from quantlab.graphs.analyse import Node
-from .quantops import STEActivationInteger
+from .quantops import STEActivationInteger, QuantLayer
 from .weights import export_tw, import_tw
 from .gammabeta import export_gamma, import_gamma, export_beta, import_beta
 
@@ -63,7 +63,9 @@ def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, inp
     ex_out = (2 * m_out) / (n_out - 1)
 
     w_temp = w_temp.transpose(1, 2, 3, 0)
-    w_temp = (w_temp * gamma) / (ex_out * sigma)
+    # instead of folding the quantization into this layer, insert a QuantLayer
+    #w_temp = (w_temp * gamma) / (ex_out * sigma)
+    w_temp = (w_temp * gamma) / sigma
     weight = w_temp.transpose(3, 0, 1, 2)
 
     weight = weight.transpose(0, 2, 3, 1)  # C_in is last dimension (design choice)
@@ -76,7 +78,8 @@ def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, inp
     weight = weight.transpose(0, 3, 1, 2)  # restore C_in in second position (to allow software simulation)
 
     # bias = (n_out - 1) * (((-mu * gamma) / (2 * m_out * sigma)) + (beta / (2 * m_out)) + 0.5)# + 0.5 using the `round` functional, not `floor`
-    bias = ((((- w_bias - mu) * gamma) / sigma) + beta) / ex_out + 0.5
+    #bias = ((((- w_bias - mu) * gamma) / sigma) + beta) / ex_out + 0.5
+    bias = ((((- w_bias - mu) * gamma) / sigma) + beta)
 
     with open(os.path.join(export_dir, 'bias'), 'wb') as fp:
         fp.write(bias.astype(np.float32))
@@ -203,11 +206,12 @@ def fold_d2h_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, param
     #beta_t = buffer.astype(np.float64)
     # FOR NOW JUST EXPORT AS IN d2d
     export_gamma(gamma_t, 'gamma', params=params, export_dir=export_dir, int_bits=10, frac_bits=17)
-    #gamma_t = import_gamma(gamma_t, 'gamma', params=params, export_dir=export_dir)
-    #gamma_t = gamma_t.reshape(-1, 1, 1, 1)
+
+    gamma_t = import_gamma(gamma_t, 'gamma', params=params, export_dir=export_dir)
+    gamma_t = gamma_t.reshape(-1, 1, 1, 1)
 
     export_beta(beta_t, 'beta', params=params, export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
-    #beta_t = import_beta(beta_t, 'beta', params=params, export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
+    beta_t = import_beta(beta_t, 'beta', params=params, export_dir=export_dir, int_bits=8, frac_bits=17, true_frac_bits=0)
 
     def numpy2torch64(x):
         return torch.from_numpy(x.astype(np.float64))
@@ -239,9 +243,11 @@ def convert_h2d(layer, export_dir, input_type='float'):
     new_conv.bias.data = bias
     new_relu = nn.ReLU()
     # new_ste = qa.ste.STEActivationInteger(num_levels=ste.num_levels, zero_level=((ste.num_levels - 1) / 2))
-    new_ste = STEActivationInteger(num_levels=ste.num_levels, is_input_integer=False, clamp_min_to_zero=False)
+    #new_ste = STEActivationInteger(num_levels=ste.num_levels, is_input_integer=False, clamp_min_to_zero=False)
+    quant_module = QuantLayer(ste.abs_max_value, 8)
 
-    nodes = [new_conv, new_relu, new_ste]
+    #nodes = [new_conv, new_relu, new_ste]
+    nodes = [new_conv, new_relu, quant_module]
 
     return nodes
 
@@ -322,7 +328,9 @@ def convert_d2h(layer, export_dir, params):
     new_conv_fp.bias.data = beta_t
     new_relu = nn.ReLU(inplace=True)
 
-    nodes = [new_conv_tw, new_conv_fp, new_relu]
+    new_ste = STEActivationInteger(num_levels=ste.num_levels, is_input_integer=True)
+
+    nodes = [new_conv_tw, new_conv_fp, new_relu, new_ste]
     if maxpool_node:
         nodes += [nn.MaxPool2d(kernel_size=maxpool_node[0].kernel_size, stride=maxpool_node[0].kernel_size)]
 

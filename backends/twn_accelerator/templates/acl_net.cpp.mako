@@ -4,6 +4,7 @@
 #include "sd_card_drv.h"
 #include "arm_compute/runtime/NEON/NEFunctions.h"
 #include "twn_conv_function.h"
+#include <iostream>
 
 ${n.name}Net::${n.name}Net(${"twn_config_t * twnc, dma_config_t * dmac" if len(n.twn_layers) > 0 else ""})
 : ACLLinearNetBase(twnc, dmac)
@@ -14,8 +15,8 @@ void ${n.name}Net::setup(void) {
     setup_memory();
     // create layers
 % for l in n.layers:
-    ${l.name} = std::make_shared<${l.qualified_type}>(${l.constructor_args});
-    layers.push_back(${l.name});
+    ${l.name} = std::make_unique<${l.qualified_type}>(${l.constructor_args});
+##    layers.push_back(${l.name});
 ##    ${l.name} = std::make_unique<${l.qualified_type}>(${l.constructor_args});
 % endfor
 ##    // create tensors
@@ -72,8 +73,8 @@ void ${n.name}Net::read_params(void) {
     sd_file_to_buf((char *)"${l.weights_filename}", (void *)${l.layer_info.layer_name}.weight_buf, ${l.layer_info.weight_buf_size});
     sd_file_to_buf((char *)"${l.gamma_filename}", (void *)${l.layer_info.layer_name}.gamma_buf, ${l.layer_info.n_out_ch * 4});
     sd_file_to_buf((char *)"${l.beta_filename}", (void *)${l.layer_info.layer_name}.beta_buf, ${l.layer_info.n_out_ch});
-
 % endfor
+    Xil_DCacheInvalidate();
 }
 
 
@@ -86,4 +87,21 @@ void * ${n.name}Net::get_dst_buf(void) {
 
 void ${n.name}Net::set_input(void * input_data) {
   src.allocator()->import_memory(input_data);
+}
+
+void ${n.name}Net::run(void) {
+  ARM_COMPUTE_ERROR_ON(!params_done);
+  ARM_COMPUTE_ERROR_ON(!memory_done);
+  ARM_COMPUTE_ERROR_ON(!memory_acquired);
+% for l in n.layers:
+    % if l.__class__.__name__ == "ACLDequantLayer":
+    // Need to invalidate buffer memory from cache because this data was written by the accelerator and needs to be read by core
+    Xil_DCacheInvalidateRange((int *)${l.inputs[0].name}.buffer(), ${l.inputs[0].tot_size}*sizeof(${l.inputs[0].c_type}));
+    % endif
+    ${l.name}->run();
+    % if l.__class__.__name__ == "ACLQuantLayer":
+    // Need to flush buffer memory region from cache because this data was written by core and needs to be read by accelerator
+    Xil_DCacheFlushRange((int *)${l.outputs[0].name}.buffer(), ${l.outputs[0].tot_size}*sizeof(${l.outputs[0].c_type}));
+    % endif
+% endfor
 }
