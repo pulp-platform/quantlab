@@ -99,7 +99,7 @@ void ${n.name}Net::run(void) {
     Xil_DCacheInvalidateRange((INTPTR)${l.inputs[0].name}.buffer(), ${l.inputs[0].tot_size}*sizeof(${l.inputs[0].c_type}));
     % endif
     ${l.name}->run();
-    % if l.__class__.__name__ == "ACLQuantLayer":
+    % if l.__class__.__name__ in ["ACLQuantLayer", "ACLCastLayer"]:
     // Need to flush buffer memory region from cache because this data was written by core and needs to be read by accelerator
     Xil_DCacheFlushRange((INTPTR)${l.outputs[0].name}.buffer(), ${l.outputs[0].tot_size}*sizeof(${l.outputs[0].c_type}));
     % endif

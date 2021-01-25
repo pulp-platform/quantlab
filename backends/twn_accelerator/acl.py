@@ -319,7 +319,6 @@ class ACLQuantLayer(AbstractOperator):
         return "&{}, &{}".format(self.inputs[0].name, self.outputs[0].name)
 
 
-
 class ACLDequantLayer(AbstractOperator):
     def __init__(self, module : STEActivation, in_tensor : ACLTensor, name : str, is_last : bool = False):
         # only 255-step symmetric int8 quantization supported.
@@ -349,6 +348,41 @@ class ACLDequantLayer(AbstractOperator):
     @property
     def configure_args(self):
         return "&{}, &{}".format(self.inputs[0].name, self.outputs[0].name)
+
+class ACLCastLayer(AbstractOperator):
+    def __init__(self, in_tensor : ACLTensor, name : str, is_last : bool = False):
+        super(ACLCastLayer, self).__init__()
+        assert in_tensor.shape is not None and None not in in_tensor.shape
+
+        self.is_last = is_last
+        self.name = name
+
+        self.add_input(in_tensor)
+        if in_tensor.dtype == "float32":
+            out_dtype = "int8"
+        elif in_tensor.dtype == "int8":
+            out_dtype = "float32"
+        out_qp = QuantProperties(out_dtype)
+        out_name = name+"_out"
+        out_tensor = ACLTensor(None, out_name, in_tensor.shape, False, out_qp, None)
+        self.add_output(out_tensor)
+
+        self.acl_type = "NECast"
+        self.cpp_namespace = "arm_compute"
+        self.constructor_args = ""
+
+    @property
+    def qualified_type(self):
+        return self.cpp_namespace+"::"+self.acl_type
+
+    @property
+    def configure_args(self):
+        return "&{}, &{}, {}".format(self.inputs[0].name, self.outputs[0].name, "ConvertPolicy::SATURATE")
+
+
+
+
+
 
 
 class ACLTWNLayer(AbstractOperator):
@@ -444,7 +478,10 @@ class ACLNet(AbstractNet):
             elif isinstance(l, nn.MaxPool2d):
                 op = ACLMaxPool2d(l.module, in_tensor, name, is_last)
             elif isinstance(l, STEActivation):
-                op = ACLQuantLayer(l, in_tensor, name, is_last)
+                if l.abs_max_value.data.item() == 127.0:
+                    op = ACLCastLayer(in_tensor, name, is_last)
+                else:
+                    op = ACLQuantLayer(l, in_tensor, name, is_last)
         elif isinstance(l, list):
             l, out_tensor = self.parse_layer_list(l, in_tensor, name, is_last)
             assert len(l) == 0, "Only a single pass of parse_layer_list supported for now..."

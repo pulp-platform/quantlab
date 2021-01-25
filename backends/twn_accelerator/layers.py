@@ -64,8 +64,8 @@ def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, inp
 
     w_temp = w_temp.transpose(1, 2, 3, 0)
     # instead of folding the quantization into this layer, insert a QuantLayer
-    #w_temp = (w_temp * gamma) / (ex_out * sigma)
-    w_temp = (w_temp * gamma) / sigma
+    w_temp = (w_temp * gamma) / (ex_out * sigma)
+    # w_temp = (w_temp * gamma) / sigma
     weight = w_temp.transpose(3, 0, 1, 2)
 
     weight = weight.transpose(0, 2, 3, 1)  # C_in is last dimension (design choice)
@@ -78,8 +78,8 @@ def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, inp
     weight = weight.transpose(0, 3, 1, 2)  # restore C_in in second position (to allow software simulation)
 
     # bias = (n_out - 1) * (((-mu * gamma) / (2 * m_out * sigma)) + (beta / (2 * m_out)) + 0.5)# + 0.5 using the `round` functional, not `floor`
-    #bias = ((((- w_bias - mu) * gamma) / sigma) + beta) / ex_out + 0.5
-    bias = ((((- w_bias - mu) * gamma) / sigma) + beta)
+    bias = ((((- w_bias - mu) * gamma) / sigma) + beta) / ex_out + 0.5
+    #bias = ((((- w_bias - mu) * gamma) / sigma) + beta)
 
     with open(os.path.join(export_dir, 'bias'), 'wb') as fp:
         fp.write(bias.astype(np.float32))
@@ -243,11 +243,11 @@ def convert_h2d(layer, export_dir, input_type='float'):
     new_conv.bias.data = bias
     new_relu = nn.ReLU()
     # new_ste = qa.ste.STEActivationInteger(num_levels=ste.num_levels, zero_level=((ste.num_levels - 1) / 2))
-    #new_ste = STEActivationInteger(num_levels=ste.num_levels, is_input_integer=False, clamp_min_to_zero=False)
-    quant_module = QuantLayer(ste.abs_max_value, 8)
+    new_ste = STEActivationInteger(num_levels=ste.num_levels, is_input_integer=False, clamp_min_to_zero=False)
+    #quant_module = QuantLayer(ste.abs_max_value, 8)
 
-    #nodes = [new_conv, new_relu, new_ste]
-    nodes = [new_conv, new_relu, quant_module]
+    nodes = [new_conv, new_relu, new_ste]
+    #nodes = [new_conv, new_relu, quant_module]
 
     return nodes
 

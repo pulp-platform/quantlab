@@ -198,9 +198,11 @@ def compile_vgg(net, output_dir=os.path.curdir, input_type='float'):
                 converted_nodes = [Node("layer_{}".format(i+1), converted_layer[i]) for i in range(len(converted_layer)-1)]
                 interm_tensor = cpp_net.add_layer(converted_nodes, cpp_in_tensor, name, False)
                 # need to add the STE layer manually
-                ste = deepcopy(layer[3])
+                # abs_max_value = 127 produces a "Cast to int8" layer
+                ste = STEActivation(255)
+                ste.abs_max_value.data = torch.tensor(127.0)
                 # TODO parse QuantLayers correctly
-                interm_tensor = cpp_net.add_layer(ste, interm_tensor, name+"_quant", False)
+                interm_tensor = cpp_net.add_layer(ste, interm_tensor, name+"_cast", False)
 
             if type_ in ['d2d', 'd2h']:
                 c_layer = TWNLayer(layer, name=name, params=params)
