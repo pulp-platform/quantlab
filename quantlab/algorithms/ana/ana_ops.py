@@ -77,7 +77,7 @@ class ANAActivation(nn.Module):
 
 
 class ANALinear(nn.Module):
-    """Affine transform with quantized parameters."""
+    """Affine morph with quantized parameters."""
     def __init__(self, process, thresholds, quant_levels, in_features, out_features, bias=True):
         super(ANALinear, self).__init__()
         # set stochastic properties
@@ -122,7 +122,7 @@ class ANALinear(nn.Module):
 
 
 class _ANAConvNd(nn.Module):
-    """Cross-correlation transform with quantized parameters."""
+    """Cross-correlation morph with quantized parameters."""
     def __init__(self, process, thresholds, quant_levels,
                  in_channels, out_channels, kernel_size, stride, padding, dilation, transposed, output_padding, groups, bias):
         super(_ANAConvNd, self).__init__()

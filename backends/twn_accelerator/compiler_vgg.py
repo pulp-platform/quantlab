@@ -45,6 +45,7 @@ def parse_vgg(net):
 
     return layers
 
+
 def zero_pad_4d_tensor(t : torch.Tensor, new_dims : tuple):
     z = torch.zeros(new_dims, dtype=t.dtype)
     s = t.shape
@@ -134,7 +135,7 @@ def compile_vgg(net, output_dir=os.path.curdir, input_type='float'):
     #  - make input tensor
     #  - add layers correctly to acl net
     c_net = TWNAccelSequentialNet(name=net_name, out_dir=c_out_dir, init_dim=(224, 224))
-    params = TWNAccelParams(blk_size=48)
+    params = TWNAccelParams(chunk_size=48)
     cpp_net = ACLNet(name=net_name, cpp_out_folder=cpp_out_dir, param_out_folder=net_name, params=params)
     cpp_in_tensor = ACLTensor(None, 'src', (1,224,224,3), False, QuantProperties("float32"))
     for i, (type_, layer) in enumerate(layers):
@@ -227,7 +228,7 @@ def compile_vgg(net, output_dir=os.path.curdir, input_type='float'):
             if type_ == 'h2h':
                 # discard adaptiveAvgPool and dropout layers
                 layers_in = [l for l in layer if not layer_has_modules(l, [nn.Dropout, nn.AdaptiveAvgPool2d])]
-                interm_tensor = cpp_net.add_layer(layers_in, interm_tensor, name, i==18)
+                interm_tensor = cpp_net.add_layer(layers_in, interm_tensor, name, i == 18)
             export_net.append(nn.Sequential(*export_layer))
             fq_net.append(nn.Sequential(*[n[1] for n in layer[int(i != 0):]]))
             tq_net.append(nn.Sequential(*converted_layer))
