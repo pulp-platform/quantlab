@@ -13,7 +13,7 @@ def export_gamma(gamma, gamma_name, params, export_dir=os.path.curdir, int_bits=
     """
     gamma_len = len(gamma)
     # zero pad gamma for export
-    gamma_padded = np.zeros((params.ch_blks(gamma_len) * params.blk_size,1,1,1))
+    gamma_padded = np.zeros((params.n_chunks(gamma_len) * params.chunk_size,1,1,1))
     gamma_padded[0:gamma_len] = gamma
     quantum = 2**(-frac_bits)
     gamma_padded /= quantum
@@ -32,7 +32,7 @@ def import_gamma(gamma, gamma_name, params, export_dir=os.path.curdir):
 
     gamma_len = len(gamma)
     # pad gamma for checking imported data
-    padded_len = params.ch_blks(gamma_len) * params.blk_size
+    padded_len = params.n_chunks(gamma_len) * params.chunk_size
     with open(os.path.join(export_dir, gamma_name), 'rb') as fp:
         buffer = np.frombuffer(fp.read(), dtype='<u4')
         assert padded_len == len(buffer)
@@ -47,7 +47,7 @@ def import_gamma(gamma, gamma_name, params, export_dir=os.path.curdir):
 def export_beta(beta, beta_name, params, export_dir=os.path.curdir, int_bits=8, frac_bits=17, true_frac_bits=17):
     # zero pad beta for export
     beta_len = len(beta)
-    beta_padded = np.zeros(params.ch_blks(beta_len)*params.blk_size)
+    beta_padded = np.zeros(params.n_chunks(beta_len)*params.chunk_size)
     beta_padded[0:beta_len] = beta
     beta = beta_padded
 
@@ -70,7 +70,7 @@ def export_beta(beta, beta_name, params, export_dir=os.path.curdir, int_bits=8, 
 
     # beta += 2 * np.random.binomial(1, 0.5, size=(len(beta),)) - 1  # probabilistic - random change
     # beta += np.random.binomial(1, probs)  # probabilistic - bias "correction"
-    beta += (probs >= 0.5).astype(np.int64)  # deterministic - rounding (minimise error probability under assumtion of uniform distribution of inputs)
+    # beta += (probs >= 0.5).astype(np.int64)  # deterministic - rounding (minimise error probability under assumtion of uniform distribution of inputs)
     # beta += (probs > 0.).astype(np.int64)  # deterministic - ceiling bias "correction"
 
     assert np.all(np.logical_and(np.abs(beta) <= (2**(int_bits+true_frac_bits) / 2), beta != (2**(int_bits+true_frac_bits) / 2)))  # each beta is a SIGNED integer with `int_bits` precision
@@ -84,7 +84,7 @@ def import_beta(beta, beta_name, params, export_dir=os.path.curdir, int_bits=8, 
 
     assert true_frac_bits <= frac_bits
     beta_len = len(beta)
-    padded_len = params.blk_size * params.ch_blks(beta_len)
+    padded_len = params.chunk_size * params.n_chunks(beta_len)
 
 
     # how many bytes did I need to store this parameter?
