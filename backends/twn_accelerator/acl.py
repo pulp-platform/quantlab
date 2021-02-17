@@ -100,7 +100,7 @@ class ACLTensor(AbstractTensor):
 
 
 class ACLConv2d(AbstractOperator):
-    def __init__(self, nodes : Union[nn.Conv2d, Node, list], in_tensor : ACLTensor, name : str, is_last : bool = False, out_folder : str = "."):
+    def __init__(self, nodes : Union[nn.Conv2d, list], in_tensor : ACLTensor, name : str, is_last : bool = False, out_folder : str = "."):
         super(ACLConv2d, self).__init__()
         assert in_tensor.shape is not None and None not in in_tensor.shape, "Invalid shape for in_tensor!"
         self.name = name
@@ -108,15 +108,14 @@ class ACLConv2d(AbstractOperator):
         self.activate = False
         if isinstance(nodes, list):
             assert len(nodes) in [1, 2], "can only take lists of 1 or 2 modules!"
-            assert isinstance(nodes[0].module, nn.Conv2d), "first node in list must be Conv2d"
+            assert isinstance(nodes[0], nn.Conv2d), "first node in list must be Conv2d"
             if len(nodes) == 2:
-                assert isinstance(nodes[1].module, nn.ReLU), "second node must be ReLU!"
+                assert isinstance(nodes[1], nn.ReLU), "second node must be ReLU!"
                 self.activate = True
-            module = nodes[0].module
+            module = nodes[0]
         elif isinstance(nodes, nn.Conv2d):
             module = nodes
-        elif isinstance(nodes, Node):
-            module = nodes.module
+
 
         self.module = deepcopy(module).cpu()
         self.out_folder = os.path.join(out_folder, name)
@@ -174,7 +173,7 @@ class ACLConv2d(AbstractOperator):
 
 
 class ACLLinear(AbstractOperator):
-    def __init__(self, nodes : Union[nn.Linear, Node, list], in_tensor : ACLTensor, name : str, is_last : bool = False, out_folder : str = "."):
+    def __init__(self, nodes : Union[nn.Linear, list], in_tensor : ACLTensor, name : str, is_last : bool = False, out_folder : str = "."):
         super(ACLLinear, self).__init__()
 
 
@@ -185,13 +184,11 @@ class ACLLinear(AbstractOperator):
         self.activate = False
         if isinstance(nodes, nn.Linear):
             module = nodes
-        elif isinstance(nodes, Node):
-            module = nodes.module
         elif isinstance(nodes, list):
             assert len(nodes) in [1,2], "nodes list must have length 1 (linear layer only) or 2 (linear + relu)"
-            module = nodes[0].module
+            module = nodes[0]
             if len(nodes) == 2:
-                assert isinstance(nodes[1].module, nn.ReLU), "Second node must be ReLU"
+                assert isinstance(nodes[1], nn.ReLU), "Second node must be ReLU"
                 self.activate = True
 
         self.module = module
@@ -380,15 +377,10 @@ class ACLCastLayer(AbstractOperator):
         return "&{}, &{}, {}".format(self.inputs[0].name, self.outputs[0].name, "ConvertPolicy::SATURATE")
 
 
-
-
-
-
-
 class ACLTWNLayer(AbstractOperator):
     def __init__(self, nodes : list, in_tensor : ACLTensor, name : str, params : TWNAccelParams, is_last : bool = False, out_folder : str = "."):
         # TWN layer takes a bunch of nodes, not just a single module.
-        # this is because one ACLTWNLayer represents a "stack" of operations!
+        # this is because one ACLTWNLayer represents a "stack" of operations.
         super(ACLTWNLayer, self).__init__()
         self.is_last = is_last
         assert in_tensor.dtype == "int8", "Input to TWNLayer must be int8!"
@@ -466,17 +458,17 @@ class ACLNet(AbstractNet):
         self.code_fn = os.path.join(self.cpp_out_folder, self.name+"_net.cpp")
         self.twn_header_fn = os.path.join(self.cpp_out_folder, self.name+"_twn.h")
 
-    def add_layer(self, l : Union[Node, AbstractOperator, list], in_tensor : ACLTensor, name : str, is_last : bool = False):
+    def add_layer(self, l : Union[Node, nn.Module, AbstractOperator, list], in_tensor : ACLTensor, name : str, is_last : bool = False):
         op = None
         if isinstance(l, Node):
             l = l.module
         if isinstance(l, nn.Module):
             if isinstance(l, nn.Conv2d):
-                op = ACLConv2d(l.module, in_tensor, name, is_last, self.param_out_folder)
+                op = ACLConv2d(l, in_tensor, name, is_last, self.param_out_folder)
             elif isinstance(l, nn.Linear):
-                op = ACLLinear(l.module, in_tensor, name, is_last, self.param_out_folder)
+                op = ACLLinear(l, in_tensor, name, is_last, self.param_out_folder)
             elif isinstance(l, nn.MaxPool2d):
-                op = ACLMaxPool2d(l.module, in_tensor, name, is_last)
+                op = ACLMaxPool2d(l, in_tensor, name, is_last)
             elif isinstance(l, STEActivation):
                 if l.abs_max_value.data.item() == 127.0:
                     op = ACLCastLayer(in_tensor, name, is_last)
@@ -496,34 +488,36 @@ class ACLNet(AbstractNet):
         return out_tensor
 
     def parse_layer_list(self, l : list, in_tensor : ACLTensor, name : str, is_last : bool = False):
-        #if INQConv is in the list, assume we are dealing with a TWN layer
-        # TODO not nice!
-        if any(isinstance(n.module, INQConv2d) for n in l):
+
+        # take modules out of Nodes
+        l = [m.module if isinstance(m, Node) else m for m in l]
+        # if INQConv is in the list, assume we are dealing with a TWN layer
+        if any(isinstance(n, INQConv2d) for n in l):
             op = ACLTWNLayer(l, in_tensor, name, self.params, is_last, self.param_out_folder)
             super(ACLNet, self).add_layer(op)
             return [], op.outputs[0]
         def fused_relu(l : list):
-            return len(l) > 1 and isinstance(l[1].module, nn.ReLU)
+            return len(l) > 1 and isinstance(l[1], nn.ReLU)
 
-        if isinstance(l[0].module, nn.Conv2d):
+        if isinstance(l[0], nn.Conv2d):
             if fused_relu(l):
                 n = 2
             else:
                 n = 1
             layer = l[0:n]
             op = ACLConv2d(layer, in_tensor, name, is_last and len(l)==n, self.param_out_folder)
-        elif isinstance(l[0].module, nn.Linear):
+        elif isinstance(l[0], nn.Linear):
             if fused_relu(l):
                 n = 2
             else:
                 n = 1
             layer = l[0:n]
             op = ACLLinear(layer, in_tensor, name, is_last and len(l)==n, self.param_out_folder)
-        elif isinstance(l[0].module, nn.MaxPool2d):
+        elif isinstance(l[0], nn.MaxPool2d):
             n = 1
             layer = l[0]
             op = ACLMaxPool2d(layer, in_tensor, name, is_last and len(l)==n)
-        elif isinstance(l[0].module, nn.BatchNorm2d):
+        elif isinstance(l[0], nn.BatchNorm2d):
             assert(False), "Please fold & remove BatchNorm2d"
         else:
             raise TypeError("Unsupported layer: {}".format(type(l[0])))

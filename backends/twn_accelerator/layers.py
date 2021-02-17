@@ -12,17 +12,19 @@ from .gammabeta import export_gamma, import_gamma, export_beta, import_beta
 
 
 
-def node_is_module(n : Node, m):
+def node_is_module(n : Union[Node, nn.Module], m):
 
     if not isinstance(m, list):
         assert isinstance(m, type)
         m = [m]
-    return any(isinstance(n.module, t) for t in m)
+    if isinstance(n, Node):
+        n = n.module
+    return any(isinstance(n, t) for t in m)
 
 
-def layer_has_modules(l : Union[list, Node], m : list):
+def layer_has_modules(l : Union[list, Node, nn.Module], m : list):
     if not isinstance(l, list):
-        assert isinstance(l, Node), "Input to layer_has_modules must be Node or list of Nodes, not {}".format(l.__class__.__name__)
+        assert isinstance(l, Node) or isinstance(l, nn.Module), "Input to layer_has_modules must be Node/nn.Module or list of Nodes/nn.Modules, not {}".format(l.__class__.__name__)
         l = [l]
     return any(node_is_module(n, m) for n in l)
 
@@ -126,8 +128,8 @@ def fold_d2d_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, n_out
     # beta_t = (n_out - 1) * (((((-m_in * w_sum) - mu) * gamma / sigma) + beta) / (2 * m_out) + 0.5)# + 0.5 using the `round` functional, not `floor`
     beta_t = (((-mu * gamma) / sigma) + beta) / ex_out + 0.5
 
-    export_tw(weight, 'weight', export_dir=export_dir, T_in=params.blk_size, T_out=params.blk_size)
-    weight = import_tw(weight, 'weight', export_dir=export_dir, T_in=params.blk_size, T_out=params.blk_size)
+    export_tw(weight, 'weight', export_dir=export_dir, T_in=params.chunk_size, T_out=params.chunk_size)
+    weight = import_tw(weight, 'weight', export_dir=export_dir, T_in=params.chunk_size, T_out=params.chunk_size)
 
     export_gamma(gamma_t, 'gamma', params=params, export_dir=export_dir, int_bits=10, frac_bits=17)
     gamma_t = import_gamma(gamma_t, 'gamma', params=params, export_dir=export_dir)
@@ -180,8 +182,8 @@ def fold_d2h_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, param
     # as we are still in the quantized representation, beta does need to be scaled
     beta_t = (((-mu * gamma) / sigma) + beta) / ex_in + 0.5
 
-    export_tw(weight, 'weight', export_dir=export_dir, T_in=params.blk_size, T_out=params.blk_size)
-    # weight = import_tw(weight, 'weight', export_dir=export_dir, T_in=params.blk_size, T_out=params.blk_size)
+    export_tw(weight, 'weight', export_dir=export_dir, T_in=params.chunk_size, T_out=params.chunk_size)
+    # weight = import_tw(weight, 'weight', export_dir=export_dir, T_in=params.chunk_size, T_out=params.chunk_size)
 
     # This needs changing/clarification:
     # do we want to fold this BN into the next layer? if so, that needs to be
@@ -220,12 +222,13 @@ def fold_d2h_layer(export_dir, n_in, m_in, w, eps, mu, sigma, gamma, beta, param
 
 
 def convert_h2d(layer, export_dir, input_type='float'):
-
+    # if we get a list of 'Node's, convert to a list of 'nn.Module's
+    layer = [n.module if isinstance(n, Node) else n for n in layer]
     # parse layer into nodes
-    conv_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'Conv2d']
-    bn_nodes     = [n[1] for n in layer if n[1].__class__.__name__ == 'BatchNorm2d']
-    relu_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'ReLU']
-    ste_nodes    = [n[1] for n in layer if n[1].__class__.__name__ == 'STEActivation']
+    conv_nodes   = [n for n in layer if n.__class__.__name__ == 'Conv2d']
+    bn_nodes     = [n for n in layer if n.__class__.__name__ == 'BatchNorm2d']
+    relu_nodes   = [n for n in layer if n.__class__.__name__ == 'ReLU']
+    ste_nodes    = [n for n in layer if n.__class__.__name__ == 'STEActivation']
 
     # fold parameters
     conv = conv_nodes[0]
@@ -254,12 +257,14 @@ def convert_h2d(layer, export_dir, input_type='float'):
 
 def convert_d2d(layer, export_dir, params):
 
+    # if we get a list of 'Node's, convert to a list of 'nn.Module's
+    layer = [n.module if isinstance(n, Node) else n for n in layer]
     # parse layer into nodes
-    ste_nodes    = [n[1] for n in layer if n[1].__class__.__name__ == 'STEActivation']
-    conv_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'INQConv2d']
-    bn_nodes     = [n[1] for n in layer if n[1].__class__.__name__ == 'BatchNorm2d']
-    relu_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'ReLU']
-    maxpool_node = [n[1] for n in layer if n[1].__class__.__name__ == 'MaxPool2d']
+    ste_nodes    = [n for n in layer if n.__class__.__name__ == 'STEActivation']
+    conv_nodes   = [n for n in layer if n.__class__.__name__ == 'INQConv2d']
+    bn_nodes     = [n for n in layer if n.__class__.__name__ == 'BatchNorm2d']
+    relu_nodes   = [n for n in layer if n.__class__.__name__ == 'ReLU']
+    maxpool_node = [n for n in layer if n.__class__.__name__ == 'MaxPool2d']
     assert len(ste_nodes)    == 2
     assert len(conv_nodes)   == 1
     assert len(bn_nodes)     == 1
@@ -295,13 +300,14 @@ def convert_d2d(layer, export_dir, params):
 
 
 def convert_d2h(layer, export_dir, params):
-
+    # if we get a list of 'Node's, convert to a list of 'nn.Module's
+    layer = [n.module if isinstance(n, Node) else n for n in layer]
     # parse layer into nodes
-    ste_nodes    = [n[1] for n in layer if n[1].__class__.__name__ == 'STEActivation']
-    conv_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'INQConv2d']
-    bn_nodes     = [n[1] for n in layer if n[1].__class__.__name__ == 'BatchNorm2d']
-    relu_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'ReLU']
-    maxpool_node = [n[1] for n in layer if n[1].__class__.__name__ == 'MaxPool2d']
+    ste_nodes    = [n for n in layer if n.__class__.__name__ == 'STEActivation']
+    conv_nodes   = [n for n in layer if n.__class__.__name__ == 'INQConv2d']
+    bn_nodes     = [n for n in layer if n.__class__.__name__ == 'BatchNorm2d']
+    relu_nodes   = [n for n in layer if n.__class__.__name__ == 'ReLU']
+    maxpool_node = [n for n in layer if n.__class__.__name__ == 'MaxPool2d']
     # for now, assume the output quantization is the same as the input quantization
     # TODO: change this after training a new VGG
     assert len(ste_nodes)    == 1
@@ -338,9 +344,11 @@ def convert_d2h(layer, export_dir, params):
 
 
 def convert_h2h(layer, export_dir):
+    # if we get a list of 'Node's, convert to a list of 'nn.Module's
+    layer = [n.module if isinstance(n, Node) else n for n in layer]
     # parse layer into nodes
-    linear_nodes = [n[1] for n in layer if n[1].__class__.__name__ == 'Linear']
-    relu_nodes   = [n[1] for n in layer if n[1].__class__.__name__ == 'ReLU']
+    linear_nodes = [n for n in layer if n.__class__.__name__ == 'Linear']
+    relu_nodes   = [n for n in layer if n.__class__.__name__ == 'ReLU']
     assert len(linear_nodes) == 1
     assert len(relu_nodes)   <= 1
 

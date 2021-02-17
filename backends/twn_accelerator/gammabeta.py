@@ -109,7 +109,7 @@ if __name__ == '__main__':
     export_dir = 'gammabeta_test'
     os.makedirs(export_dir, exist_ok=True)
 
-    params = TWNAcceleratorParams(blk_size=48)
+    params = TWNAcceleratorParams(chunk_size=48)
 
     gamma_bits = 27
     gamma_int_bits = 10

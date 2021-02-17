@@ -97,6 +97,15 @@ def rule_activation_nodes(nodes_set):
             filtered_nodes_set.append(Node(n, m))
     return filtered_nodes_set
 
+def rule_dropout_nodes(nodes_set):
+    """Rule to select dropout nodes"""
+    filtered_nodes_set = []
+    for n, m in nodes_set:
+        cond = m.__class__.__name__ == 'Dropout'
+        if cond:
+            filtered_nodes_set.append(Node(n, m))
+    return filtered_nodes_set
+
 
 def rule_single_block(nodes_set, block_name):
     """Example built-in rule: select nodes by block (name prefix).

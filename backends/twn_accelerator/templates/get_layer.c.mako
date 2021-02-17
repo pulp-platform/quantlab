@@ -34,8 +34,8 @@ twn_layer_t * ${l.get_layer_fn}(void) {
   // read weights from SD card
   sd_file_to_buf("${os.path.join(n.name, l.weights_filename)}", ${l.weights_varname}, ${l.weight_buf_size});
   // read gamma from SD card
-  sd_file_to_buf("${os.path.join(n.name, l.gamma_filename)}", ${l.gamma_varname}, ${4*l.n_out_blk*accel_params.blk_size});
+  sd_file_to_buf("${os.path.join(n.name, l.gamma_filename)}", ${l.gamma_varname}, ${4*l.n_out_blk*accel_params.chunk_size});
   // read beta from sd card
-  sd_file_to_buf("${os.path.join(n.name, l.beta_filename)}", ${l.beta_varname}, ${l.n_out_blk*accel_params.blk_size});
+  sd_file_to_buf("${os.path.join(n.name, l.beta_filename)}", ${l.beta_varname}, ${l.n_out_blk*accel_params.chunk_size});
   return &${l.layer_name};
 }

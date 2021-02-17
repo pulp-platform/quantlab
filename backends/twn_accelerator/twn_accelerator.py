@@ -6,24 +6,29 @@ import torch.nn as nn
 import backends
 
 from quantlab.algorithms.inq import INQConv2d, INQConv1d
+from quantlab.algorithms.ste import STEActivation
 from quantlab.graphs.analyse import Node
 from .layers import layer_has_modules
 from mako.template import Template
 
 class TWNAccelParams:
-    def __init__(self, blk_size : int = 48):
-        self.blk_size = blk_size
+    def __init__(self, chunk_size : int = 48):
+        self.chunk_size = chunk_size
 
     # how many channel blocks are needed to store the number of channels
-    def ch_blks(self, n_ch : int):
-        return (n_ch-1)//self.blk_size+1
+    def n_chunks(self, n_ch : int):
+        return (n_ch-1)//self.chunk_size+1
+
+    # round up to nearest multiple of chunk_size
+    def chunked_channels(self, n_ch : int):
+        return self.n_chunks(n_ch) * self.chunk_size
 
 class TWNAccelSequentialNet:
     def __init__(self, name : str, out_dir : str, init_dim : tuple = None):
         self.name = name
         self.out_dir = out_dir
         self.layers = []
-        #holy hell this is ugly!! how do I make it butifel??
+        # this is not so beautiful...
         template_dir = os.path.join(os.path.dirname(backends.twn_accelerator.__file__), 'templates')
         self.get_layer_template = os.path.join(template_dir, 'get_layer')
         self.get_net_template = os.path.join(template_dir, 'get_net')
@@ -84,7 +89,7 @@ class TWNLayer:
     # for a specific TWN accelerator layer
     def __init__(self, layer_nodes : list, name : str, params : TWNAccelParams):
         self.layer_name = name
-        self.layer_nodes = layer_nodes
+        self.layer_nodes = [m.module if isinstance(m, Node) else m for m in layer_nodes]
         self.params = params
 
     @property
@@ -97,7 +102,7 @@ class TWNLayer:
         if not conv_layer:
             assert False, "No Conv Layer found - can't say if layer has stride two"
         assert conv_layer.stride in [(1,1), (2,2)], "Unsupported Stride: {}".format(conv_layer.stride)
-        stride_two = (conv_layer.stride == 2)
+        stride_two = (conv_layer.stride == (2,2))
         pooling = layer_has_modules(self.layer_nodes, [nn.MaxPool2d, nn.AvgPool2d])
         if pooling and stride_two:
             assert False, "Pooling and stride_two in the same layer currently not supported!"
@@ -119,12 +124,27 @@ class TWNLayer:
     def header_macro(self):
         return '_'+self.get_layer_header.replace('.', '_').upper()
 
+    @property
+    def ste_nodes(self):
+        ste = [n for n in self.layer_nodes if isinstance(n, STEActivation)]
+        return ste
+    # there should be 2 STE layers in self.layer_nodes: one for the
+    # quantization of the input and one for the quantization of the output
+    def get_in_ste(self):
+        return self.ste_nodes[0]
+
+    def get_out_ste(self):
+        return self.ste_nodes[1]
+
+
     def get_conv_layer(self):
         conv_layer = None
         n_conv_layers = 0
         for n in self.layer_nodes:
-            if isinstance(n.module, INQConv2d) or isinstance(n.module, INQConv1d):
-                conv_layer = n.module
+            if isinstance(n, Node):
+                n = n.module
+            if isinstance(n, INQConv2d) or isinstance(n, INQConv1d):
+                conv_layer = n
                 n_conv_layers += 1
         if n_conv_layers > 1:
             print("Warning: found more than 1 conv2d layer in get_conv_layer!")
@@ -135,14 +155,22 @@ class TWNLayer:
         conv_layer = self.get_conv_layer()
         if not conv_layer:
             assert False, "No Conv Layer found - n_in_blk can't be determined!"
-        return self.params.ch_blks(conv_layer.in_channels)
+        return self.params.n_chunks(conv_layer.in_channels)
 
     @property
     def n_out_blk(self):
         conv_layer = self.get_conv_layer()
         if not conv_layer:
             assert False, "No Conv Layer found - n_out_blk can't be determined!"
-        return self.params.ch_blks(conv_layer.out_channels)
+        return self.params.n_chunks(conv_layer.out_channels)
+
+    @property
+    def n_in_ch(self):
+        return self.params.chunk_size*self.n_in_blk
+
+    @property
+    def n_out_ch(self):
+        return self.params.chunk_size*self.n_out_blk
 
     @property
     def K(self):
@@ -158,13 +186,41 @@ class TWNLayer:
                 assert False, "Conv1d only supported with K=1!"
         return k[0]
 
+
+    @property
+    def K_text(self):
+        if self.K == 1:
+            return "ONE"
+        if self.K == 3:
+            return "THREE"
+        if self.K == 5:
+            return "FIVE"
+        if self.K == 7:
+            return "SEVEN"
+        assert False, "Invalid Kernel Size: {}".format(self.K)
+
     @property
     def weight_buf_size(self):
-        return self.n_in_blk*self.n_out_blk*self.params.blk_size**2*self.K**2//4
+        return self.n_in_blk*self.n_out_blk*self.params.chunk_size**2*self.K**2//4
+
+    @property
+    def weight_buf_shape(self):
+        return (self.n_out_blk*self.params.chunk_size, self.K, self.K, self.n_in_blk*self.params.chunk_size)
+
+    def get_out_shape(self, in_shape : tuple):
+        # returns HWC output shape given HWC input shape
+        assert len(in_shape) in [3, 4],  "in_shape must describe 3D tensor!"
+        out_shape = [in_shape[0], 0, 0, self.n_out_ch]
+        div = 1 if self.pool_type == "NO_POOL" and self.linebuf_order == "REGULAR" else 2
+        for k in range(2):
+            out_shape[k+1] = in_shape[k+1]//div
+        if len(in_shape) == 3:
+            out_shape = out_shape[1:]
+        return tuple(out_shape)
 
     @property
     def relu(self):
-        relu = layer_has_modules(self.layer_nodes, [nn.ReLU])
+        relu = layer_has_modules(self.layer_nodes, nn.ReLU)
         return "true" if relu else "false"
 
     @property
@@ -190,4 +246,3 @@ class TWNLayer:
     @property
     def gamma_varname(self):
         return self.layer_name + "_gamma"
-
