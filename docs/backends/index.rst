@@ -1,5 +1,5 @@
-``backends`` package
-====================
+``backends``
+============
 
 If you got here, you have hopefully trained your QNN successfully, and
 converted it to a valid true-quantized format. It's time to deploy your
