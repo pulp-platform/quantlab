@@ -1,3 +1,3 @@
-from . import algorithms, graphs, monitor
+from . import algorithms, graphs
 
-__all__ = ['algorithms', 'graphs', 'monitor']
+__all__ = ['algorithms', 'graphs']
