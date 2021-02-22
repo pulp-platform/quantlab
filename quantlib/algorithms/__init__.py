@@ -1,3 +1,9 @@
-from . import ste, inq, ana
+from . import ste
+from . import inq
+from . import ana
 
-__all__ = ['ste', 'inq', 'ana']
+__all__ = [
+    'ste',
+    'inq',
+    'ana',
+]

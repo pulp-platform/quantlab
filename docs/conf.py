@@ -21,11 +21,11 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'QuantLab'
-copyright = '2020, Matteo Spallanzani'
+copyright = '2021, Matteo Spallanzani'
 author = 'Matteo Spallanzani'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = '1.0'
 
 
 # -- General configuration ---------------------------------------------------
