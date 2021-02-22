@@ -336,7 +336,7 @@ def add_ste_tunnels(G):
     H = copy.deepcopy(G)
 
     import torch.nn as nn
-    from quantlab.algorithms.ste import STEActivation
+    from quantlib.algorithms.ste import STEActivation
 
     ste_modules = [n[0] for n in H.nodes.data() if isinstance(n[1]['pytorch'], STEActivation)]
 
@@ -432,7 +432,7 @@ def remove_tunnels(G):
 
 # exec(open('converter_twn.py').read())
 #
-# from quantlab.graphs.morph.analyse import Morpher, add_ste_tunnels, remove_tunnels
+# from quantlib.graphs.morph.analyse import Morpher, add_ste_tunnels, remove_tunnels
 #
 # netmorpher.rescope_opnodes()
 # P = netmorpher.get_opgraph(netmorpher.get_pytorch_graph())
@@ -533,7 +533,7 @@ class ScopeRule(Rule):
 # G.nodes['f']['label'] = 'diff'
 # import copy
 # P = copy.deepcopy(G)
-# from quantlab.graphs.morph.morpher import ScopeRule
+# from quantlib.graphs.morph.morpher import ScopeRule
 # rho = ScopeRule(G, set(['a', 'f']))
 # g = rho.discover(P)[0]
 # P = rho.apply(P, g, 'scope')

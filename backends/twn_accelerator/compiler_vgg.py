@@ -10,7 +10,7 @@ from .acl import ACLNet, ACLTensor, ACLDequantLayer
 from backends.abstract_net import QuantProperties
 from copy import deepcopy
 from .quantops import DequantLayer
-from quantlab.algorithms.ste import STEActivation
+from quantlib.algorithms.ste import STEActivation
 
 def zero_pad_4d_tensor(t : torch.Tensor, new_dims : tuple):
     z = torch.zeros(new_dims, dtype=t.dtype)

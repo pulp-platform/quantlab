@@ -1,7 +1,7 @@
 import torch.nn as nn
 from collections import OrderedDict
 
-import quantlab.algorithms as algo
+import quantlib.algorithms as algo
 from .analyse import list_nodes
 
 
