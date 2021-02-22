@@ -1,6 +1,5 @@
-
-``problems`` package
-====================
+``problems``
+============
 
 
 Needs and tools
@@ -66,9 +65,9 @@ an image classification model designed to solve the MNIST data set will likely
 not work on RGB images.
 
 According to this definition, QuantLab includes a ``problems`` package to
-structure exploratory data analysis functions, model development and metrics
+structure exploratory data analysis functions, model definition and metric
 definitions related to different data sets into separated (but coherent)
-units. Each of these units is called a **problem subpackage**, and is
+units. Each of these units is called a **problem sub-package**, and is
 structured as follows:
 
 * ``data`` folder: it contains (the pointers to) the folders containing the
@@ -81,7 +80,7 @@ structured as follows:
 * ``meter.py`` module: it defines the :py:object:`Meter` object implementing
   the data set-specific metrics and comparing the output of a network with the
   label provided by the data set (in the case of supervised learning tasks);
-* **topology subpackage(s)**: each of these Python packages contains multiple
+* **topology sub-package(s)**: each of these Python packages contains multiple
   modules, including network topology description, graph quantization recipes,
   pre- and post-processing functions (in particular, the post-processing
   functions should convert the output of the network to a data structure which

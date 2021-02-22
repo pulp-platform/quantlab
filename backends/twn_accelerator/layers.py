@@ -5,7 +5,7 @@ import os
 from typing import Union
 from pathlib import Path
 
-from quantlab.graphs.analyse import Node
+from quantlib.graphs.analyse import Node
 from .quantops import STEActivationInteger, QuantLayer
 from .weights import export_tw, import_tw
 from .gammabeta import export_gamma, import_gamma, export_beta, import_beta

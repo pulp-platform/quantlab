@@ -1,5 +1,5 @@
-import quantlab.graphs as qg
-import quantlab.algorithms as qa
+import quantlib.graphs as qg
+import quantlib.algorithms as qa
 
 
 __all__ = ['layers_ste_inq', 'layers_ste_inq_get_controllers']

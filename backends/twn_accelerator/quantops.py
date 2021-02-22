@@ -1,4 +1,4 @@
-import quantlab.algorithms as qa
+import quantlib.algorithms as qa
 import torch
 from torch import nn
 from torch.nn.parameter import Parameter
@@ -10,7 +10,7 @@ class STEActivationInteger(qa.ste.STEActivation):
 
         This object is meant to replace its fake-quantized counterpart which
         is used at training time (defined in the library module
-        `quantlab.algorithms.ste.ste_ops`) with a true-quantized version which
+        `quantlib.algorithms.ste.ste_ops`) with a true-quantized version which
         emulates the accelerators' integer arithmetic by embedding it in
         floating-point arithmetic.
 

@@ -16,9 +16,9 @@ from backends.abstract_net import AbstractNet, AbstractOperator, AbstractTensor,
 from .twn_accelerator import TWNAccelParams, TWNLayer
 from .layers import node_is_module
 
-from quantlab.algorithms.ste import STEActivation
-from quantlab.algorithms.inq import INQConv2d
-from quantlab.graphs import Node
+from quantlib.algorithms.ste import STEActivation
+from quantlib.algorithms.inq import INQConv2d
+from quantlib.graphs import Node
 
 
 # ASSUMPTIONS:

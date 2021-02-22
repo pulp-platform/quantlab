@@ -5,9 +5,9 @@ import torch.nn as nn
 
 import backends
 
-from quantlab.algorithms.inq import INQConv2d, INQConv1d
-from quantlab.algorithms.ste import STEActivation
-from quantlab.graphs.analyse import Node
+from quantlib.algorithms.inq import INQConv2d, INQConv1d
+from quantlib.algorithms.ste import STEActivation
+from quantlib.graphs.analyse import Node
 from .layers import layer_has_modules
 from mako.template import Template
 

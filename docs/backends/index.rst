@@ -1,10 +1,9 @@
-
 ``backends`` package
 ====================
 
-If you got here, you have hopefully trained your QNN successfully. It's time
-to deploy your solution to a target hardware platform which can execute your
-model!
+If you got here, you have hopefully trained your QNN successfully, and
+converted it to a valid true-quantized format. It's time to deploy your
+model to a target hardware platform which can execute it!
 
 Usually, the neural networks produced by QuantLab will have been trained using
 parallel floating-point hardware like GPUs, where the operations involving
@@ -39,12 +38,3 @@ hardware platform.
 .. warning:: Describe the example for the TWN accelerator: introduce
    accumulators, signed vs. unsigned operands (flip weights and gammas for
    negative gammas), probabilistic analysis of errors.
-
-
-TWN accelerator
----------------
-
-The following documentation is...
-
-.. automodule:: backends.twn_accelerator.quantops
-   :members: STEActivationInteger
