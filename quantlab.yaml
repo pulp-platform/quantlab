@@ -152,5 +152,5 @@ dependencies:
     - sphinxcontrib-qthelp==1.0.3
     - sphinxcontrib-serializinghtml==1.1.4
     - typing-extensions==3.7.4.3
-prefix: /home/spmatteo/anaconda3/envs/hrvd
+prefix: /home/spmatteo/anaconda3/envs/quantlab
 
