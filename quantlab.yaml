@@ -1,4 +1,4 @@
-name: hrvd
+name: quantlab
 channels:
   - pytorch
   - conda-forge
