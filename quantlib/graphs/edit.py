@@ -4,6 +4,8 @@ from collections import OrderedDict
 import quantlib.algorithms as algo
 from .analyse import list_nodes
 
+import importlib
+
 
 __all__ = [
     'add_after_conv2d_per_ch_affine',
@@ -94,3 +96,23 @@ def replace_linear_inq(net, nodes_set, num_levels, quant_init_method=None, quant
         assert(inq_node is not None)
         _replace_node(net, n, inq_node)
     return list_nodes(net)
+
+
+class Editor(object):
+
+    def __init__(self, problem, topology, config):
+        self.problem = problem
+        self.topology = topology
+        self.lib = importlib.import_module('.'.join(['problems', self.problem, self.topology]))
+        self.config = config
+        self.net = getattr(self.lib, self.config['network']['class'])(**self.config['network']['params'])
+        self.recipe = None
+
+    def analyse_net(self):
+        list_nodes(self.net)
+
+    def apply_recipe(self, recipe):
+        try:
+            importlib.reload(recipe)
+        except ModuleNotFoundError:
+            self.recipe = importlib.import_module(recipe)

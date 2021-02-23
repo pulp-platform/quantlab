@@ -117,7 +117,7 @@ class Logbook(object):
             'master_rank': __MASTER_PROC_RANK__
         }
         assert sw_cfg['local_size'] <= hw_cfg['n_cpus']  # maximum one process per core
-        assert hw_cfg['n_gpus'] <= hw_cfg['n_cpus']        # maximum one GPU per core
+        assert hw_cfg['n_gpus'] <= hw_cfg['n_cpus']      # maximum one GPU per core
         if hw_cfg['n_gpus'] > 0:
             assert sw_cfg['local_size'] <= hw_cfg['n_gpus']  # maximum one process per GPU
             torch.cuda.set_device(sw_cfg['local_rank'])      # if node is equipped with GPUs, each process should be pinned to one
@@ -306,11 +306,11 @@ class Logbook(object):
             if len(ckpt_list) != 0:
                 if load == 'best':  # used when evaluating performances
                     ckpt_file = os.path.join(self.dir_saves, 'best.ckpt')
-                elif load == 'last':  # used when restoring crashed experiments/resuming interrupted experiments
+                elif load == 'last':  # used when restoring crashed manager/resuming interrupted manager
                     ckpt_file = max([os.path.join(self.dir_saves, f) for f in ckpt_list], key=os.path.getctime)
                 else:
                     ckpt_file = None
-                # else:  # used in 'WHAT IF' experiments as an initial condition
+                # else:  # used in 'WHAT IF' manager as an initial condition
                 #     ckpt_id = str(load).rjust(__ALIGN_EPOCHS__, '0')
                 #     ckpt_name = 'epoch' + ckpt_id + '.ckpt'
                 #     ckpt_file = os.path.join(self.dir_saves, ckpt_name)

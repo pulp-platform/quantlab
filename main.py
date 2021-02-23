@@ -1,9 +1,9 @@
 import argparse
 import horovod.torch as hvd
 
-from experiments import Logbook
-from experiments import get_data, get_network, get_training
-from experiments import train, validate
+from manager import Logbook
+from manager import get_data, get_network, get_training
+from manager import train, validate
 
 
 # Command Line Interface
@@ -16,7 +16,7 @@ parser.add_argument('--ckpt_every', help='Frequency of checkpoints (in epochs)',
 args = parser.parse_args()
 
 # initialise Horovod
-hvd.init()
+hvd.init()  # why Horovod vs. PyTorch distributed data parallel (DDP)? https://github.com/horovod/horovod/issues/1973
 
 # create/retrieve experiment logbook
 logbook = Logbook(args.problem, args.topology, args.exp_id)
