@@ -7,6 +7,7 @@
         }
     },
     "data": {
+        "preprocess": "pipelinesA",
         "augment": true,
         "bs_train": 48,
         "bs_valid": 48
@@ -18,7 +19,7 @@
             "bn": true
         },
         "quantize": {
-            "routine": "features_ste_inq",
+            "recipe": "recipeA",
             "STE": {
                 "n_levels": 255,
                 "quant_start_epoch": 28
@@ -64,7 +65,7 @@
             "step_metric": "valid_metric"
         },
         "quantize": {
-            "routine": "features_ste_inq_get_controllers",
+            "recipe": "recipeA",
             "STE": {
                 "clear_optim_state_on_step": false
             },

@@ -145,12 +145,12 @@ class Logbook(object):
             with open(HARD_STORAGE, 'r') as fp:
                 d = json.load(fp)
                 # data
-                HARD_HOME_DATA = os.path.join(d['data'], 'Quant')
+                HARD_HOME_DATA = os.path.join(d['data'], 'QuantLab')
                 HARD_DIR_DATA = os.path.join(HARD_HOME_DATA, 'problems', self.problem, 'data')
                 if not os.path.isdir(HARD_DIR_DATA):
                     raise FileNotFoundError('{} hard directory (data) not found: {}'.format(self.problem, HARD_DIR_DATA))
                 # log
-                HARD_HOME_LOGS = os.path.join(d['logs'], 'Quant')
+                HARD_HOME_LOGS = os.path.join(d['logs'], 'QuantLab')
                 HARD_DIR_LOGS = os.path.join(HARD_HOME_LOGS, 'problems', self.problem, 'logs')
                 if not os.path.isdir(HARD_DIR_LOGS):
                     raise FileNotFoundError('{} hard directory (logs) not found: {}'.format(self.problem, HARD_DIR_LOGS))

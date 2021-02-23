@@ -1,11 +1,23 @@
+# DESCRIPTION
+#
+# This recipe will quantize just the layers under the 'features' scope.
+# In particular, it will apply the following algorithms:
+#   - STE to activation functions;
+#   - INQ to convolutional/linear layers.
+#
+# There will be just two controllers:
+#   - one for all the STE modules;
+#   - one for all the INQ modules.
+#
+
 import quantlib.graphs as qg
 import quantlib.algorithms as qa
 
 
-__all__ = ['features_ste_inq', 'features_ste_inq_get_controllers']
+__all__ = ['quantize', 'get_controllers']
 
 
-def features_ste_inq(config, net):
+def quantize(config, net):
 
     def get_features_conv_nodes(net):
 
@@ -32,7 +44,7 @@ def features_ste_inq(config, net):
     return net
 
 
-def features_ste_inq_get_controllers(config, net):
+def get_controllers(config, net):
 
     net_nodes = qg.analyse.list_nodes(net)
     rule = qg.analyse.get_rules_multiple_blocks(['features'])

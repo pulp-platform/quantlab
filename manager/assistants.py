@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 import horovod.torch as hvd
+import importlib  # for dependency injection
 
 import utils.lr_schedulers as lr_schedulers
 
@@ -51,8 +52,8 @@ def get_network(logbook):
 
     # quantize (if specified)
     if logbook.config['network']['quantize'] is not None:
-        quant_convert = getattr(logbook.lib, logbook.config['network']['quantize']['routine'])
-        net = quant_convert(logbook.config['network']['quantize'], net)
+        quantmod = importlib.import_module('.'.join(['', 'quantize', logbook.config['network']['quantize']['recipe']]), package=logbook.lib.__name__)
+        net = getattr(quantmod, 'quantize')(logbook.config['network']['quantize'], net)
 
     # move to proper device
     net = net.to(logbook.hw_cfg['device'])
@@ -83,8 +84,8 @@ def get_training(logbook, net):
 
     # quantization controllers (if specified)
     if logbook.config['training']['quantize']:
-        quant_controls = getattr(logbook.lib, logbook.config['training']['quantize']['routine'])
-        ctrls = quant_controls(logbook.config['training']['quantize'], net)
+        recipemod = importlib.import_module('.'.join(['', 'quantize', logbook.config['training']['quantize']['recipe']]), package=logbook.lib.__name__)
+        ctrls = getattr(recipemod, 'get_controllers')(logbook.config['training']['quantize'], net)
     else:
         ctrls = []
 

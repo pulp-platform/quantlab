@@ -1,7 +1,4 @@
-import os
 import torch
-import torchvision
-from torchvision.transforms import RandomResizedCrop, RandomHorizontalFlip, Resize, CenterCrop, ToTensor, Normalize, Compose
 
 
 _ImageNet = {
@@ -115,30 +112,3 @@ class Lighting(object):
             noise = torch.mul(self.eigvecs.type_as(img).clone(), noise).sum(1)
             img   = torch.add(img, noise.view(3, 1, 1).expand_as(img))
         return img
-
-
-def get_transforms(augment):
-    train_t = Compose([RandomResizedCrop(224),
-                       RandomHorizontalFlip(),
-                       ToTensor(),
-                       ColorJitter(),
-                       Lighting(_ImageNet['PCA']),
-                       Normalize(**_ImageNet['Normalize'])])
-    valid_t = Compose([Resize(256),
-                       CenterCrop(224),
-                       ToTensor(),
-                       Normalize(**_ImageNet['Normalize'])])
-    if not augment:
-        train_t = valid_t
-    transforms = {
-        'training':   train_t,
-        'validation': valid_t
-    }
-    return transforms
-
-
-def load_data_sets(logbook):
-    transforms = get_transforms(logbook.config['data']['augment'])
-    train_set  = torchvision.datasets.ImageFolder(os.path.join(logbook.dir_data, 'train'), transforms['training'])
-    valid_set  = torchvision.datasets.ImageFolder(os.path.join(os.path.realpath(logbook.dir_data), 'val'), transforms['validation'])
-    return train_set, valid_set
