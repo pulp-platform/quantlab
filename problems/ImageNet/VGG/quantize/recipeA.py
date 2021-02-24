@@ -19,26 +19,26 @@ __all__ = ['quantize', 'get_controllers']
 
 def quantize(config, net):
 
-    def get_features_conv_nodes(net):
+    def get_features_convlinear_nodes(net):
 
         net_nodes = qg.analyse.list_nodes(net, verbose=False)
 
-        rule1 = qg.analyse.get_rules_multiple_blocks(['features'])
+        rule1 = qg.analyse.get_scope_rules('features')
         features_nodes = qg.analyse.find_nodes(net_nodes, rule1, mix='or')
 
         rule2 = [qg.analyse.rule_linear_nodes]
-        conv_nodes = qg.analyse.find_nodes(features_nodes, rule2, mix='and')
+        convlinear_nodes = qg.analyse.find_nodes(features_nodes, rule2, mix='and')
 
-        return conv_nodes
+        return convlinear_nodes
 
     # add STE in front of convolutions
     ste_config = config['STE']
-    conv_nodes = get_features_conv_nodes(net)
-    qg.edit.add_before_linear_ste(net, conv_nodes, num_levels=ste_config['n_levels'], quant_start_epoch=ste_config['quant_start_epoch'])
+    convlinear_nodes = get_features_convlinear_nodes(net)
+    qg.edit.add_before_linear_ste(net, convlinear_nodes, num_levels=ste_config['n_levels'], quant_start_epoch=ste_config['quant_start_epoch'])
 
     # replace convolutions with INQ convolutions
     inq_config = config['INQ']
-    conv_nodes = get_features_conv_nodes(net)
+    conv_nodes = get_features_convlinear_nodes(net)
     qg.edit.replace_linear_inq(net, conv_nodes, num_levels=inq_config['n_levels'], quant_init_method=inq_config['quant_init_method'], quant_strategy=inq_config['quant_strategy'])
 
     return net
@@ -47,7 +47,7 @@ def quantize(config, net):
 def get_controllers(config, net):
 
     net_nodes = qg.analyse.list_nodes(net)
-    rule = qg.analyse.get_rules_multiple_blocks(['features'])
+    rule = qg.analyse.get_scope_rules('features')
     features_nodes = qg.analyse.find_nodes(net_nodes, rule, mix='or')
 
     # get STE controller

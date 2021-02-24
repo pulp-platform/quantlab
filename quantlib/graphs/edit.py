@@ -1,10 +1,10 @@
 import torch.nn as nn
 from collections import OrderedDict
-
-import quantlib.algorithms as algo
-from .analyse import list_nodes
-
 import importlib
+import copy
+
+import quantlib.algorithms as qa
+from .analyse import list_nodes
 
 
 __all__ = [
@@ -14,27 +14,37 @@ __all__ = [
 ]
 
 
-def _get_node(net, name):
-    """Return a handle on a specified node in the network's graph.
+def get_module(parent_module, target_name):
+    """Return a handle on a specified module in the network's graph.
 
-    This can be used to extract parameters for builder methods of quantized nodes."""
-    path_to_node = name.split('.', 1)
-    if len(path_to_node) == 1:
-        node = net._modules[path_to_node[0]]
+    For example, if the goal is to replace the target module with a quantized
+    counterpart, the retrieved module can be used to extract the structural
+    parameters that need to be passed to the constructor methods of quantized
+    modules (e.g., the kernel size for convolutional layers)."""
+
+    path_to_target = target_name.split('.', 1)
+
+    if len(path_to_target) == 1:
+        module = parent_module._modules[path_to_target[0]]
     else:
-        node = _get_node(net._modules[path_to_node[0]], path_to_node[1])
-    return node
+        module = get_module(parent_module._modules[path_to_target[0]], path_to_target[1])
+
+    return module
 
 
-def _replace_node(net, name, new_node):
-    """Replace a specified node in the network's graph with a quantized counterpart."""
-    path_to_node = name.split('.', 1)
-    if len(path_to_node) == 1:
+def replace_module(parent_module, target_name, new_module):
+    """Replace a specified sub-module with a given counterpart.
+
+    For example, this function can be used to replace full-precision PyTorch
+    modules with quantized counterparts defined in `quantlib.algorithms`."""
+
+    path_to_target = target_name.split('.', 1)
+
+    if len(path_to_target) == 1:
         # node = net._modules[path_to_node[0]]
-        net._modules[path_to_node[0]] = new_node
+        parent_module._modules[path_to_target[0]] = new_module
     else:
-        _replace_node(net._modules[path_to_node[0]], path_to_node[1], new_node)
-    return
+        replace_module(parent_module._modules[path_to_target[0]], path_to_target[1], new_module)
 
 
 def add_after_conv2d_per_ch_affine(net, nodes_set):
@@ -48,18 +58,18 @@ def add_after_conv2d_per_ch_affine(net, nodes_set):
             self.bias.data.fill_(0.)
 
     for n, _ in nodes_set:
-        m = _get_node(net, n)
+        m = get_module(net, n)
         if m.__class__.__name__ == 'Conv2d':# and m.bias is not None:  # if it does not have bias, there is a BN layer afterwards
             m.bias = None
             node = Affine(m.out_channels)
-            _replace_node(net, n, nn.Sequential(OrderedDict([('conv', m), ('affine', node)])))
+            replace_module(net, n, nn.Sequential(OrderedDict([('conv', m), ('affine', node)])))
 
 
 def add_before_linear_ste(net, nodes_set, num_levels, quant_start_epoch=0):
     for n, _ in nodes_set:
-        ste_node = algo.ste.STEActivation(num_levels=num_levels, quant_start_epoch=quant_start_epoch)
-        m = _get_node(net, n)
-        _replace_node(net, n, nn.Sequential(OrderedDict([('ste', ste_node), ('conv', m)])))
+        ste_node = qa.ste.STEActivation(num_levels=num_levels, quant_start_epoch=quant_start_epoch)
+        m = get_module(net, n)
+        replace_module(net, n, nn.Sequential(OrderedDict([('ste', ste_node), ('conv', m)])))
 
 
 def replace_linear_inq(net, nodes_set, num_levels, quant_init_method=None, quant_strategy='magnitude'):
@@ -67,15 +77,15 @@ def replace_linear_inq(net, nodes_set, num_levels, quant_init_method=None, quant
 
     Non-linear nodes are not a target for INQ, which was developed to train weight-only quantized networks."""
     for n, _ in nodes_set:
-        m = _get_node(net, n)
+        m = get_module(net, n)
         m_type = m.__class__.__name__
         inq_node = None
         if m_type == 'Linear':
             in_features = m.in_features
             out_features = m.out_features
             bias = m.bias
-            inq_node = algo.inq.INQLinear(in_features, out_features, bias=bias,
-                                          num_levels=num_levels, quant_init_method=quant_init_method, quant_strategy=quant_strategy)
+            inq_node = qa.inq.INQLinear(in_features, out_features, bias=bias,
+                                        num_levels=num_levels, quant_init_method=quant_init_method, quant_strategy=quant_strategy)
         elif m_type.startswith('Conv'):
             in_channels = m.in_channels
             out_channels = m.out_channels
@@ -86,15 +96,15 @@ def replace_linear_inq(net, nodes_set, num_levels, quant_init_method=None, quant
             groups = m.groups
             bias = m.bias
             if m_type == 'Conv1d':
-                inq_node = algo.inq.INQConv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias,
-                                              num_levels=num_levels, quant_init_method=quant_init_method, quant_strategy=quant_strategy)
+                inq_node = qa.inq.INQConv1d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias,
+                                            num_levels=num_levels, quant_init_method=quant_init_method, quant_strategy=quant_strategy)
             if m_type == 'Conv2d':
-                inq_node = algo.inq.INQConv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias,
-                                              num_levels=num_levels, quant_init_method=quant_init_method, quant_strategy=quant_strategy)
+                inq_node = qa.inq.INQConv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, groups=groups, bias=bias,
+                                            num_levels=num_levels, quant_init_method=quant_init_method, quant_strategy=quant_strategy)
             if m_type == 'Conv3d':
                 raise NotImplementedError
         assert(inq_node is not None)
-        _replace_node(net, n, inq_node)
+        replace_module(net, n, inq_node)
     return list_nodes(net)
 
 
@@ -104,15 +114,43 @@ class Editor(object):
         self.problem = problem
         self.topology = topology
         self.lib = importlib.import_module('.'.join(['problems', self.problem, self.topology]))
-        self.config = config
+        # self.config = config
+        self.config = {
+            'network': {
+                'class': 'VGG',
+                'params': {
+                    'config': 'VGG19',
+                    'bn': True
+                },
+                'quantize': {
+                    'recipe': 'recipeA',
+                    'params': {
+                        "STE": {
+                            "n_levels": 255,
+                            "quant_start_epoch": 28
+                        },
+                        "INQ": {
+                            "n_levels": 3,
+                            "quant_init_method": "uniform-l2-opt",
+                            "quant_strategy": "magnitude"
+                        }
+                    }
+                }
+            }
+        }
         self.net = getattr(self.lib, self.config['network']['class'])(**self.config['network']['params'])
         self.recipe = None
+        self.qnet = None
 
-    def analyse_net(self):
-        list_nodes(self.net)
+    @staticmethod
+    def show_net(net):
+        list_nodes(net, verbose=True)
 
-    def apply_recipe(self, recipe):
+    def apply_recipe(self):
+        self.qnet = getattr(self.recipe, 'quantize')(self.config['network']['quantize']['params'], copy.deepcopy(self.net))
+
+    def load_recipe(self):
         try:
-            importlib.reload(recipe)
-        except ModuleNotFoundError:
-            self.recipe = importlib.import_module(recipe)
+            importlib.reload(self.recipe)
+        except TypeError:
+            self.recipe = importlib.import_module('.'.join(['', 'quantize', self.config['network']['quantize']['recipe']]), package=self.lib.__name__)
