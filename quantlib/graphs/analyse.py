@@ -3,127 +3,149 @@ import torch.nn as nn
 
 
 __all__ = [
+    'Node',
     'list_nodes',
     'find_nodes',
     'rule_linear_nodes',
     'rule_batchnorm_nodes',
     'rule_activation_nodes',
-    'get_rules_multiple_blocks',
-    'Node'
+    'rule_dropout_nodes',
+    'get_scope_rules',
 ]
 
 
 Node = namedtuple('Node', 'name module')
 
 
-def list_nodes(net, name='', verbose=False):
-    """Take a PyTorch `nn.Module` and return a `list` of `Node`s.
-
-    WARNING: implicit operations in the graph (e.g., reused `nn.ReLU`s) will
-    not be listed!
-    """
+def list_nodes(module, parent_name='', verbose=False):
+    """List all the sub-modules of a PyTorch `nn.Module` as named `Node`s."""
+    # WARNING: implicit operations in the graph (e.g., reused `nn.ReLU`s) will not be listed!
     # TODO: integrate with explicit graph tracing/scripting ('TorchScript').
-    net_nodes = []
-    for n, m in net.named_children():
-        if list(m.children()) == []:
-            node = Node(name+n, m)
-            net_nodes.append(node)
-            if verbose:
-                print(node)
-        else:
-            m_nodes = list_nodes(m, name=name+n+'.')
-            net_nodes.extend(m_nodes)
-    return net_nodes
+
+    module_nodes = []
+
+    for name, child in module.named_children():
+        if len(list(child.children())) == 0:  # leaf PyTorch module
+            module_nodes.append(Node(parent_name + name, child))
+        else:  # recursive call
+            module_nodes.extend(list_nodes(child, parent_name=parent_name + name + '.'))
+
+    if verbose:
+        print(module.__class__.__name__)
+        print()
+        for i, node in enumerate(module_nodes):
+            print("{:4d} {:20s} {}".format(i, node.name, node.module))
+        print()
+
+    return module_nodes
 
 
-def find_nodes(net_nodes, criteria, mix):
-    """Find the set of nodes that satisfy user-defined conditions.
+def find_nodes(nodes, criteria, mix):
+    """Find the nodes that satisfy the specified criteria.
 
-    The user should define ''filtering'' `criteria` (a list of Python
-    functions) to identify a set of nodes in the network. Later, these nodes
-    could be replaced or complemented to support a specified quantization
-    algorithm.
-    The `criteria` can be mixed in two ways:
+    The user should define filtering `criteria` (a list of Python functions)
+    to identify a set of nodes in the network. The `criteria` can be mixed in
+    two ways:
+
      * conjunctively (`mix = 'or'`);
      * disjunctively (`mix = 'and'`).
+    """
 
-    Return `list` of `Node`s."""
-    nodes_set = []
+    assert isinstance(criteria, list)
+
+    filtered_nodes = []
+
     if mix == 'and':
-        nodes_set.extend(net_nodes)
-        for crit in criteria:
-            nodes_set = crit(nodes_set)
+        filtered_nodes.extend(nodes)
+        for criterion in criteria:
+            filtered_nodes = criterion(filtered_nodes)
+
     elif mix == 'or':
-        for crit in criteria:
-            nodes_set.extend(crit(net_nodes))
-    if len(nodes_set) == 0:
+        for criterion in criteria:
+            filtered_nodes.extend(criterion(nodes))
+
+    if len(filtered_nodes) == 0:
         print('No layers satisfying criteria was found!')
-    return nodes_set
+
+    return filtered_nodes
 
 
-def rule_linear_nodes(nodes_set):
-    """Example built-in rule: select nodes performing linear transformations.
+def rule_linear_nodes(nodes):
+    """Built-in rule: select nodes performing linear transformations."""
+    filtered_nodes = []
 
-    Return `list` of `Node`s."""
-    filtered_nodes_set = []
-    for n, m in nodes_set:
-        cond1 = m.__class__.__name__ in dir(nn.modules.linear) and m.__class__.__name__ != 'Identity'
-        cond2 = m.__class__.__name__ in dir(nn.modules.conv)
+    for n in nodes:
+        cond1 = n.module.__class__.__name__ in dir(nn.modules.linear) and n.module.__class__.__name__ != 'Identity'
+        cond2 = n.module.__class__.__name__ in dir(nn.modules.conv)
         if cond1 or cond2:
-            filtered_nodes_set.append(Node(n, m))
-    return filtered_nodes_set
+            filtered_nodes.append(n)
+
+    return filtered_nodes
 
 
-def rule_batchnorm_nodes(nodes_set):
-    """Example built-in rule: select nodes performing batch-normalisation transformations.
+def rule_batchnorm_nodes(nodes):
+    """Built-in rule: select nodes performing batch-normalisation transformations."""
+    filtered_nodes = []
 
-    Return `list` fo `Node`s."""
-    filtered_nodes_set = []
-    for n, m in nodes_set:
-        cond = m.__class__.__name__ in dir(nn.modules.batchnorm)
+    for n in nodes:
+        cond = n.module.__class__.__name__ in dir(nn.modules.batchnorm)
         if cond:
-            filtered_nodes_set.append(Node(n, m))
-    return filtered_nodes_set
+            filtered_nodes.append(n)
+
+    return filtered_nodes
 
 
-def rule_activation_nodes(nodes_set):
-    """Example built-in rule: select nodes performing non-linear transformations.
+def rule_activation_nodes(nodes):
+    """Built-in rule: select nodes performing non-linear transformations."""
+    filtered_nodes = []
 
-    Return `list` of `Node`s."""
-    filtered_nodes_set = []
-    for n, m in nodes_set:
-        cond = m.__class__.__name__ in dir(nn.modules.activation)
+    for n in nodes:
+        cond = n.module.__class__.__name__ in dir(nn.modules.activation)
         if cond:
-            filtered_nodes_set.append(Node(n, m))
-    return filtered_nodes_set
+            filtered_nodes.append(n)
 
-def rule_dropout_nodes(nodes_set):
-    """Rule to select dropout nodes"""
-    filtered_nodes_set = []
-    for n, m in nodes_set:
-        cond = m.__class__.__name__ == 'Dropout'
+    return filtered_nodes
+
+
+def rule_dropout_nodes(nodes):
+    """Built-in rule: select nodes performing dropout."""
+    filtered_nodes = []
+
+    for n in nodes:
+        cond = n.module.__class__.__name__ == 'Dropout'
         if cond:
-            filtered_nodes_set.append(Node(n, m))
-    return filtered_nodes_set
+            filtered_nodes.append(n)
+
+    return filtered_nodes
 
 
-def rule_single_block(nodes_set, block_name):
-    """Example built-in rule: select nodes by block (name prefix).
+def rule_scope_name(nodes, scope_name):
+    """Built-in rule: select nodes by scope name.
 
-    Return `list` of `Node`s."""
-    filtered_nodes_set = []
-    for n, m in nodes_set:
-        if n.startswith(block_name):  # block name is a prefix of node's name
-            filtered_nodes_set.append(Node(n, m))
-    return filtered_nodes_set
+    This method should be used in conjunction with informative naming of
+    PyTorch network modules.
+    """
+    filtered_nodes = []
+
+    for n in nodes:
+        if n.name.startswith(scope_name):  # I assume that the scope name is a prefix for the node's name
+            filtered_nodes.append(n)
+
+    return filtered_nodes
 
 
-def get_rules_multiple_blocks(block_names):
-    """Use lambda expressions and currying to instantiate multiple block selection rules.
+def get_scope_rules(scope_names):
+    """Instantiate (possibly multiple) selection rules based on scopes.
 
-    Return `list` of `Node`s."""
-    blocks_selector_rules = lambda block_name: lambda nodes_set: rule_single_block(nodes_set, block_name)
+    Return `list` of `function`s."""
+    if not isinstance(scope_names, list):
+        scope_names = [scope_names]
+
+    def scope_rules_generator(scope_name):
+        return lambda nodes: rule_scope_name(nodes, scope_name)
+
     rules = []
-    for bn in block_names:
-        rules.append(blocks_selector_rules(bn))
+    for scope in scope_names:
+        rules.append(scope_rules_generator(scope))
+
     return rules
