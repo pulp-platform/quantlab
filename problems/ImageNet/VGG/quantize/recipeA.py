@@ -32,12 +32,12 @@ def quantize(config, net):
         return convlinear_nodes
 
     # add STE in front of convolutions
-    ste_config = config['STE']
+    ste_config = config['params']['STE']
     convlinear_nodes = get_features_convlinear_nodes(net)
     qg.edit.add_before_linear_ste(net, convlinear_nodes, num_levels=ste_config['n_levels'], quant_start_epoch=ste_config['quant_start_epoch'])
 
     # replace convolutions with INQ convolutions
-    inq_config = config['INQ']
+    inq_config = config['params']['INQ']
     conv_nodes = get_features_convlinear_nodes(net)
     qg.edit.replace_linear_inq(net, conv_nodes, num_levels=inq_config['n_levels'], quant_init_method=inq_config['quant_init_method'], quant_strategy=inq_config['quant_strategy'])
 

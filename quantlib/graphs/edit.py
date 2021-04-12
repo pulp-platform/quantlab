@@ -5,6 +5,7 @@ import copy
 
 import quantlib.algorithms as qa
 from .analyse import list_nodes
+from .morph import ONNXGraph
 
 
 __all__ = [
@@ -19,8 +20,9 @@ def get_module(parent_module, target_name):
 
     For example, if the goal is to replace the target module with a quantized
     counterpart, the retrieved module can be used to extract the structural
-    parameters that need to be passed to the constructor methods of quantized
-    modules (e.g., the kernel size for convolutional layers)."""
+    parameters that need to be passed to the constructor method of the
+    quantized module (e.g., the kernel size for convolutional layers).
+    """
 
     path_to_target = target_name.split('.', 1)
 
@@ -33,10 +35,11 @@ def get_module(parent_module, target_name):
 
 
 def replace_module(parent_module, target_name, new_module):
-    """Replace a specified sub-module with a given counterpart.
+    """Replace a specified module with a given counterpart.
 
     For example, this function can be used to replace full-precision PyTorch
-    modules with quantized counterparts defined in `quantlib.algorithms`."""
+    modules with quantized counterparts defined in `quantlib.algorithms`.
+    """
 
     path_to_target = target_name.split('.', 1)
 
@@ -138,9 +141,18 @@ class Editor(object):
                 }
             }
         }
-        self.net = getattr(self.lib, self.config['network']['class'])(**self.config['network']['params'])
+        import torch
+        self.hw_cfg = dict()
+        self.hw_cfg['device'] = torch.cuda.current_device()
+        from manager.assistants import get_network
+        self.net = get_network(self)
+
+        for n in self.net.named_modules():  # TODO: started should ALWAYS be changed to 'started' when module is in 'eval' mode (otherwise tracing is fucked up!)
+            if hasattr(n[1], 'started'):  # put STE nodes in "quantized mode"
+                n[1].started = True
+
         self.recipe = None
-        self.qnet = None
+        self.onnx_graph = ONNXGraph(self.net, torch.ones((1, 3, 224, 224)).to(torch.cuda.current_device()))
 
     @staticmethod
     def show_net(net):
