@@ -1,21 +1,20 @@
 import torch
 import torch.onnx.utils
-import networkx as nx
-from networkx.algorithms import isomorphism
-
-import copy
 import re
 from packaging import version
+
+import networkx as nx
+import itertools
 
 
 __all__ = [
     'ONNXGraph',
-    'ScopeRule',
 ]
 
 
 __KERNEL_PARTITION__ = 0
 __MEMORY_PARTITION__ = 1
+__CONTXT_PARTITION__ = 2
 
 
 # necessary for PyTorch >= 1.4 (see https://github.com/pytorch/pytorch/issues/33463#issuecomment-606399944)
@@ -73,14 +72,14 @@ class scope_name_workaround(object):
 class QuantLabNode(object):
 
     def __init__(self, obj):
-        self.nodeobj = obj
+        self.nobj = obj
 
 
 class ONNXNode(QuantLabNode):
 
     def __init__(self, obj):
         super(ONNXNode, self).__init__(obj)
-        self.nodename = '/'.join([self.nodescope, self.nodetype])
+        self.nname = '/'.join([self.nscope, self.ntype])
 
     @staticmethod
     def onnx_scope_2_pytorch_scope(scope_name):
@@ -88,20 +87,20 @@ class ONNXNode(QuantLabNode):
         return '.'.join([mn[1:-1] for mn in module_name_parts])
 
     @property
-    def nodescope(self):
-        if isinstance(self.nodeobj, torch._C.Node):
-            nodescope = ONNXNode.onnx_scope_2_pytorch_scope(self.nodeobj.scopeName())
-        elif isinstance(self.nodeobj, torch._C.Value):
-            nodescope = self.nodeobj.debugName()
-        return nodescope
+    def nscope(self):
+        if isinstance(self.nobj, torch._C.Node):
+            nscope = ONNXNode.onnx_scope_2_pytorch_scope(self.nobj.scopeName())
+        elif isinstance(self.nobj, torch._C.Value):
+            nscope = self.nobj.debugName()
+        return nscope
 
     @property
-    def nodetype(self):
-        if isinstance(self.nodeobj, torch._C.Node):
-            nodetype = self.nodeobj.kind()
-        elif isinstance(self.nodeobj, torch._C.Value):
-            nodetype = '*'  # data nodes are untyped ('onnx::Tensor'?)
-        return nodetype
+    def ntype(self):
+        if isinstance(self.nobj, torch._C.Node):
+            ntype = self.nobj.kind()
+        elif isinstance(self.nobj, torch._C.Value):
+            ntype = '*'  # data nodes are untyped ('onnx::Tensor'?)
+        return ntype
 
 
 class ONNXGraph(object):
@@ -121,11 +120,11 @@ class ONNXGraph(object):
         # At this point, I have a handle on a `torch._C.Graph` object; its
         # components are `torch._C.Node` objects, which are abstractions for
         # operations; the "data pools" where operands (i.e., inputs) are read
-        # and results (i.e., outputs) are written are `torch._C.Value`
+        # from and results (i.e., outputs) are written to are `torch._C.Value`
         # objects. The definitions of these objects can be found in the file
-        # "torch/csrc/jit/ir/ir.h" in PyTorch's codebase
+        # "torch/csrc/jit/ir/ir.h" in PyTorch's codebase:
         #
-        #     (https://github.com/pytorch/pytorch)
+        #     https://github.com/pytorch/pytorch .
         #
         # More specifically, look for the following definitions:
         #  - 'struct Value';
@@ -139,64 +138,83 @@ class ONNXGraph(object):
         datanodes_dict = dict()
         arcs = list()
 
+        node_id_format = '{:06d}'
+
+        datanode_id_gen = itertools.count()
         datanodes_2_id_dict = dict()  # data nodes will be discovered: I do not know in advance who they are
-        def datanode_id_generator():
-            id = 0
-            while True:
-                yield str(id)
-                id += 1
-        datanode_id_gen = datanode_id_generator()
 
         for i_op, opnode in enumerate(self.jit_graph.nodes()):
 
             # populate kernel partition of the computational graph
-            opnode_id = 'O' + str(i_op)
+            opnode_id = 'O' + node_id_format.format(i_op)
             opnodes_dict[opnode_id] = ONNXNode(opnode)  # get_opnode_attributes(opnode)
 
             # populate memory partition of the computational graph
-            # I might encouter the same data node ('torch._C.Value') again in other iterations of the loop on op odes.
-            # I am trusting the fact that the object will have the same `debugName`;
-            # seems reasonable, if nobody touches the object in-between iterations.
+            # I might encouter the same data node ('torch._C.Value') again in
+            # other iterations of the loop on op nodes. I am trusting the fact
+            # that the object will have the same `debugName`; seems
+            # reasonable, if nobody (or nothing) touches the object in-between
+            # iterations.
             for in_datanode in opnode.inputs():
-                in_datanode_name = in_datanode.debugName()
+                datanode_name = in_datanode.debugName()
                 try:  # the data node has already been discovered
-                    datanode_id = datanodes_2_id_dict[in_datanode_name]
+                    datanode_id = datanodes_2_id_dict[datanode_name]
                 except KeyError:
-                    datanode_id = 'D' + next(datanode_id_gen)
-                    datanodes_2_id_dict[in_datanode_name] = datanode_id
+                    datanode_id = 'D' + node_id_format.format(next(datanode_id_gen))
+                    datanodes_2_id_dict[datanode_name] = datanode_id
                     datanodes_dict[datanode_id] = ONNXNode(in_datanode)  # get_datanode_attributes(in_datanode)
                 arcs.append((datanode_id, opnode_id))
 
             for out_datanode in opnode.outputs():
-                out_datanode_name = out_datanode.debugName()
+                datanode_name = out_datanode.debugName()
                 try:  # the data node has already been discovered
-                    datanode_id = datanodes_2_id_dict[out_datanode_name]
+                    datanode_id = datanodes_2_id_dict[datanode_name]
                 except KeyError:
-                    datanode_id = 'D' + next(datanode_id_gen)
-                    datanodes_2_id_dict[out_datanode_name] = datanode_id
+                    datanode_id = 'D' + node_id_format.format(next(datanode_id_gen))
+                    datanodes_2_id_dict[datanode_name] = datanode_id
                     datanodes_dict[datanode_id] = ONNXNode(out_datanode)  # get_datanode_attributes(out_datanode)
                 arcs.append((opnode_id, datanode_id))
 
-        self.graph = nx.DiGraph()
-        self.graph.add_nodes_from(list(opnodes_dict.keys()), bipartite=__KERNEL_PARTITION__)
-        self.graph.add_nodes_from(list(datanodes_dict.keys()), bipartite=__MEMORY_PARTITION__)
-        self.graph.add_edges_from(arcs)
+        self.nx_graph = nx.DiGraph()
+        self.nx_graph.add_nodes_from(list(opnodes_dict.keys()), bipartite=__KERNEL_PARTITION__)
+        self.nx_graph.add_nodes_from(list(datanodes_dict.keys()), bipartite=__MEMORY_PARTITION__)
+        self.nx_graph.add_edges_from(arcs)
 
         self.nodes_dict = {**opnodes_dict, **datanodes_dict}
 
-        nx.set_node_attributes(self.graph, {k: v.nodescope for k, v in self.nodes_dict.items()}, 'scope')
-        nx.set_node_attributes(self.graph, {k: v.nodetype for k, v in self.nodes_dict.items()}, 'type')
-        nx.set_node_attributes(self.graph, {k: v.nodename for k, v in self.nodes_dict.items()}, 'name')
+        nx.set_node_attributes(self.nx_graph, {k: v.nscope for k, v in self.nodes_dict.items()}, 'scope')
+        nx.set_node_attributes(self.nx_graph, {k: v.ntype for k, v in self.nodes_dict.items()}, 'type')
+        nx.set_node_attributes(self.nx_graph, {k: v.nname for k, v in self.nodes_dict.items()}, 'name')
 
-    # # assign labels to nodes (morphisms work on labelled graphs)
-    # node_2_jit = nx.get_node_attributes(self.computational_graph, 'jit')
-    # node_2_label = {k: v.kind() if (hasattr(v, 'kind') and callable(getattr(v, 'kind'))) else 'data' for k, v in node_2_jit.items()}
-    # nx.set_node_attributes(self.computational_graph, node_2_label, 'label')
-    # # Python interpreter short-circuits the evaluation of the 'and' clause:
-    # # if the node attribute does not have a reference to 'kind', 'callable' won't be checked; hence, there is no risk of errors begin raised
-    # # (https://docs.python.org/3/library/stdtypes.html#boolean-operations-and-or-not)
-    #
-    # # self.rescope_opnodes()
+    def rescope_opnodes(self, algorithms=None):
+
+        from .trace import load_traces_library
+        from .grrules import ManualRescopeRule, AutoRescopeRule
+
+        libtraces = load_traces_library(algorithms=algorithms)
+        librules = dict()
+        for mod_name, G in libtraces.items():
+            L = G
+            VK = {n for n in L.nodes if L.nodes[n]['partition'] == __CONTXT_PARTITION__}
+            K = L.subgraph(VK)
+            if mod_name == 'ViewFlattenNd':
+                librules[mod_name] = ManualRescopeRule(L, K)
+            else:
+                librules[mod_name] = AutoRescopeRule(L, K)
+
+        self.history = History()
+        self.history.push(self.nx_graph)
+        for mod_name, rho in librules.items():
+            if mod_name == 'ViewFlattenNd':
+                print("Applying ManualRescope GRR for modules of class {}...".format(mod_name))
+                for g in rho.seek(self.nx_graph):
+                    self.nx_graph = rho.apply(self.nx_graph, g, mod_name)
+                    self.history.push((rho, g, self.nx_graph))
+            else:
+                print("Applying AutoRescope GRR for modules of class {}...".format(mod_name))
+                for g in rho.seek(self.nx_graph):
+                    self.nx_graph = rho.apply(self.nx_graph, g)
+                    self.history.push((rho, g, self.nx_graph))
 
 
 # @staticmethod
@@ -246,41 +264,9 @@ class ONNXGraph(object):
 #     return T
 #
 
-def is_morphism(G, T, H_2_T):
-
-    # computational graphs are node-labelled graphs, where node types act as labels
-
-    for vH, vT in H_2_T.items():
-
-        is_same_partition = G.nodes[vH]['bipartite'] == T.nodes[vT]['bipartite']
-        is_same_type = G.nodes[vH]['type'] == T.nodes[vT]['type']
-        is_ok = is_same_partition and is_same_type
-
-        if not is_ok:
-            break
-
-    return is_ok
 
 
-def get_morphisms(G, T):
 
-    # T is the "template" graph to match. In principle, morphisms need not be isomorphisms:
-    # this is a restriction that I chose to simplify the work on QNNs conversion (it helps solving ambiguities).
-
-    matcher = isomorphism.DiGraphMatcher(G, T)
-    isomorphisms = list(matcher.subgraph_isomorphisms_iter())
-    # candidate matchings will be "induced subgraph" isomorphisms, not "spurious" monomorphisms
-    # (https://github.com/networkx/networkx/blob/master/networkx/algorithms/isomorphism/isomorphvf2.py)
-
-    # check the second morphism condition (label consistency)
-    morphisms = [g for g in isomorphisms if is_morphism(G, T, g)]
-
-    # remove duplicate morphisms
-    unique_VHs = {frozenset(g.keys()) for g in morphisms}
-    VH_2_morphism = {VH: [g for g in morphisms if frozenset(g.keys()) == VH] for VH in unique_VHs}
-
-    return [v[0] for v in VH_2_morphism.values()]
-#
 # def rescope_opnodes(self):
 #
 #     def get_subgraph_scope(G, morphism):
@@ -500,152 +486,6 @@ def get_morphisms(G, T):
 # # len(H2Dmorphisms)
 #
 #
-class Rule(object):
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def core(H_I):
-        pass
-
-    def discover(self, G):
-        pass
-
-    def apply(self):
-        pass
-
-
-class ManualRescopeRule(Rule):
-
-    def __init__(self, L, VK):
-
-        self.L = L
-        nx.relabel_nodes(self.L, {n: '/'.join(['L-term', n]) for n in set(self.L.nodes) if n not in VK}, copy=False)
-
-        nx.relabel_nodes(self.L, {n: '/'.join(['K-term', n]) for n in set(self.L.nodes) & VK}, copy=False)
-        self.K = self.L.subgraph({'/'.join(['K-term', n]) for n in VK})
-
-        self.L_K = self.L.subgraph(set(self.L.nodes).difference({'/'.join(['K-term', n]) for n in VK}))
-        K_2_L = [e for e in set(self.L.edges).difference(set(self.L_K.edges) | set(self.K.edges)) if e[0] in self.K.nodes]
-        L_2_K = [e for e in set(self.L.edges).difference(set(self.L_K.edges) | set(self.K.edges)) if e[1] in self.K.nodes]
-
-        self.R_K = nx.relabel_nodes(copy.copy(self.L_K), {n: n.replace('L-term', 'R-term') for n in self.L_K.nodes})
-        L_K_2_R_K_morph = get_morphisms(self.L_K, self.R_K)
-        assert len(L_K_2_R_K_morph) == 1
-        L_K_2_R_K = L_K_2_R_K_morph[0]
-        self.K_2_R = [(u, L_K_2_R_K[v]) for u, v in K_2_L]
-        self.R_2_K = [(L_K_2_R_K[u], v) for u, v in L_2_K]
-
-        self.S = nx.compose(self.L, self.R_K)
-        self.S.add_edges_from(self.K_2_R + self.R_2_K)
-
-    @staticmethod
-    def core(H_I, new_scope):
-        J_I = copy.copy(H_I)
-        nx.set_node_attributes(J_I, {n: new_scope for n in J_I.nodes if (J_I.nodes[n]['bipartite'] == __KERNEL_PARTITION__)}, 'scope')
-        return J_I
-
-    def discover(self, G):
-        return get_morphisms(G, self.L)
-
-    def _apply(self, G, g, new_scope):
-
-        H_I = G.subgraph({k for k, v in g.items() if v not in self.K.nodes})
-        J_I = self.core(H_I, new_scope)
-
-        J_I_2_R_K_morph = get_morphisms(J_I, self.R_K)
-        assert len(J_I_2_R_K_morph) == 1
-        J_I_2_R_K = J_I_2_R_K_morph[0]
-        R_K_2_J_I = {v: k for k, v in J_I_2_R_K.items()}
-
-        G = nx.compose(G, J_I)
-        VI = {k for k, v in g.items() if v in self.K.nodes}
-        for vI in VI:
-            vK = g[vI]
-            for e in [e for e in self.K_2_R if e[0] == vK]:
-                G.add_edge(vI, R_K_2_J_I[e[1]])
-            for e in [e for e in self.R_2_K if e[1] == vK]:
-                G.add_edge(R_K_2_J_I[e[0]], vI)
-
-        G.remove_nodes_from(H_I.nodes)
-
-        return G
-
-    def apply(self, G, gs, new_scope):
-        for i, g in enumerate(gs):
-            G = self._apply(G, g, new_scope + '_' + str(i))
-        return G
-
-
-class AutoRescopeRule(Rule):
-
-    def __init__(self, L, VK):
-
-        self.L = L
-        nx.relabel_nodes(self.L, {n: '/'.join(['L-term', n]) for n in set(self.L.nodes) if n not in VK}, copy=False)
-
-        nx.relabel_nodes(self.L, {n: '/'.join(['K-term', n]) for n in set(self.L.nodes) & VK}, copy=False)
-        self.K = self.L.subgraph({'/'.join(['K-term', n]) for n in VK})
-
-        self.L_K = self.L.subgraph(set(self.L.nodes).difference({'/'.join(['K-term', n]) for n in VK}))
-        K_2_L = [e for e in set(self.L.edges).difference(set(self.L_K.edges) | set(self.K.edges)) if e[0] in self.K.nodes]
-        L_2_K = [e for e in set(self.L.edges).difference(set(self.L_K.edges) | set(self.K.edges)) if e[1] in self.K.nodes]
-
-        self.R_K = nx.relabel_nodes(copy.copy(self.L_K), {n: n.replace('L-term', 'R-term') for n in self.L_K.nodes})
-        L_K_2_R_K_morph = get_morphisms(self.L_K, self.R_K)
-        assert len(L_K_2_R_K_morph) == 1
-        L_K_2_R_K = L_K_2_R_K_morph[0]
-        self.K_2_R = [(u, L_K_2_R_K[v]) for u, v in K_2_L]
-        self.R_2_K = [(L_K_2_R_K[u], v) for u, v in L_2_K]
-
-        self.S = nx.compose(self.L, self.R_K)
-        self.S.add_edges_from(self.K_2_R + self.R_2_K)
-
-    @staticmethod
-    def core(H_I):
-
-        # automatically detect the scope of the operations involved (should be unique!)
-        scopes = list(set(H_I.nodes[n]['scope'] for n in H_I.nodes if (H_I.nodes[n]['bipartite'] == __KERNEL_PARTITION__) and (H_I.nodes[n]['scope'] != '')))
-        assert len(scopes) == 1
-        new_scope = scopes[0]
-
-        J_I = copy.copy(H_I)
-        J_I = nx.relabel_nodes(J_I, {n: 'new_' + n for n in J_I.nodes})
-        nx.set_node_attributes(J_I, {n: new_scope for n in J_I.nodes if (J_I.nodes[n]['bipartite'] == __KERNEL_PARTITION__)}, 'scope')
-        return J_I
-
-    def discover(self, G):
-        return get_morphisms(G, self.L)
-
-    def _apply(self, G, g):
-
-        H_I = G.subgraph({k for k, v in g.items() if v not in self.K.nodes})
-        J_I = self.core(H_I)
-
-        J_I_2_R_K_morph = get_morphisms(J_I, self.R_K)
-        assert len(J_I_2_R_K_morph) == 1
-        J_I_2_R_K = J_I_2_R_K_morph[0]
-        R_K_2_J_I = {v: k for k, v in J_I_2_R_K.items()}
-
-        G = nx.compose(G, J_I)
-        VI = {k for k, v in g.items() if v in self.K.nodes}
-        for vI in VI:
-            vK = g[vI]
-            for e in [e for e in self.K_2_R if e[0] == vK]:
-                G.add_edge(vI, R_K_2_J_I[e[1]])
-            for e in [e for e in self.R_2_K if e[1] == vK]:
-                G.add_edge(R_K_2_J_I[e[0]], vI)
-
-        G.remove_nodes_from(H_I.nodes)
-
-        return G
-
-    def apply(self, G, gs):
-        for g in gs:
-            G = self._apply(G, g)
-        return G
-
 
 # # import networkx as nx
 # # G = nx.DiGraph()
@@ -660,3 +500,62 @@ class AutoRescopeRule(Rule):
 # # rho = ScopeRule(G, set(['a', 'f']))
 # # g = rho.discover(P)[0]
 # # P = rho.apply(P, g, 'scope')
+
+
+class History(object):
+
+    def __init__(self):
+        self._undo = list()
+        self._redo = list()
+
+    def show(self):
+        print("-- History --")
+        for i, item in enumerate(self._undo):
+            print(i, item)
+
+    def push(self, item):
+        self._undo.append(item)
+        self._redo = list()
+
+    def undo(self, n=1):
+        for i in range(0, n):
+            try:
+                self._redo.append(self._undo.pop())
+            except IndexError:
+                print("Tried to undo {} steps, but history contained just {}. 'Undo' stack has been cleared.".format(n, i))
+                break
+
+    def redo(self, n=1):
+        for i in range(0, n):
+            try:
+                self._undo.append(self._redo.pop())
+            except IndexError:
+                print("Tried to redo {} steps, but history contained just {}. 'Redo' stack has been cleared.".format(n, i))
+                break
+
+    def clear(self, force=False):
+
+        if not force:
+            confirmation = input("This action is not reversible. Are you sure that you want to delete all the history? [y/N]")
+            force = confirmation in ('y', 'Y')
+
+        if force:
+            self._undo = list()
+            self._redo = list()
+
+
+# 1. label the graph nodes
+# 2. define a rule which is based on the defined labelling (morphisms preserve labelling)
+# 3. 'discover' possible application points for the rules
+# 4. 'filter' the sequence of application points (NOT automatic)
+# 5. 'apply' the rule to the filtered sequence of application points
+#     - the pair (rule, application_points) is called a 'transform'
+# 6. 'generate_code' for the transformed graph
+# 7. 'import_network' from the transformed graph's file
+
+# [COMMENT 1] Steps 1 and 2 are usually designed in reversed order:
+#   - the user first thinks to the rule
+#   - then decides which "pieces" should be in the label
+# which "ingredients" did I use in the past to generate these labels? (my personal "database/record" of use cases)
+#   - ONNX op type
+#   - node name

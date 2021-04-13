@@ -87,7 +87,7 @@ class Logbook(object):
         # get experiment general information
         self.problem       = problem
         self.topology      = topology
-        self.lib           = importlib.import_module('.'.join(['problems', self.problem, self.topology]))
+        self.lib           = importlib.import_module('.'.join(['systems', self.problem, self.topology]))
         self.dir_data      = None
         self.dir_exp       = None
         self.config        = None
@@ -146,16 +146,16 @@ class Logbook(object):
                 d = json.load(fp)
                 # data
                 HARD_HOME_DATA = os.path.join(d['data'], 'QuantLab')
-                HARD_DIR_DATA = os.path.join(HARD_HOME_DATA, 'problems', self.problem, 'data')
+                HARD_DIR_DATA = os.path.join(HARD_HOME_DATA, 'systems', self.problem, 'data')
                 if not os.path.isdir(HARD_DIR_DATA):
                     raise FileNotFoundError('{} hard directory (data) not found: {}'.format(self.problem, HARD_DIR_DATA))
                 # log
                 HARD_HOME_LOGS = os.path.join(d['logs'], 'QuantLab')
-                HARD_DIR_LOGS = os.path.join(HARD_HOME_LOGS, 'problems', self.problem, 'logs')
+                HARD_DIR_LOGS = os.path.join(HARD_HOME_LOGS, 'systems', self.problem, 'logs')
                 if not os.path.isdir(HARD_DIR_LOGS):
                     raise FileNotFoundError('{} hard directory (logs) not found: {}'.format(self.problem, HARD_DIR_LOGS))
             # get pointers to SOFT SHARED resources (which are redirected to HARD ones using symlinks)
-            DIR_PROBLEM = os.path.join(QUANT_HOME, 'problems', self.problem)
+            DIR_PROBLEM = os.path.join(QUANT_HOME, 'systems', self.problem)
             dir_data = os.path.join(DIR_PROBLEM, 'data')
             if not os.path.isdir(dir_data):
                 os.symlink(HARD_DIR_DATA, dir_data)
@@ -262,7 +262,7 @@ class Logbook(object):
             self.writer = SummaryWriter(log_dir=self.dir_stats)
 
         # create logging instrumentation on every process
-        meter_module = importlib.import_module('.'.join(['problems', self.problem, 'meter']))
+        meter_module = importlib.import_module('.'.join(['systems', self.problem, 'meter']))
         self.meter   = getattr(meter_module, 'Meter')(self.lib.postprocess_pr, self.lib.postprocess_gt)
         self.metrics = {
             'train_loss':   torch.tensor(float('Inf')),

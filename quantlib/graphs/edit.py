@@ -116,7 +116,7 @@ class Editor(object):
     def __init__(self, problem, topology, config):
         self.problem = problem
         self.topology = topology
-        self.lib = importlib.import_module('.'.join(['problems', self.problem, self.topology]))
+        self.lib = importlib.import_module('.'.join(['systems', self.problem, self.topology]))
         # self.config = config
         self.config = {
             'network': {
@@ -146,13 +146,13 @@ class Editor(object):
         self.hw_cfg['device'] = torch.cuda.current_device()
         from manager.assistants import get_network
         self.net = get_network(self)
+        self.net.eval()
 
         for n in self.net.named_modules():  # TODO: started should ALWAYS be changed to 'started' when module is in 'eval' mode (otherwise tracing is fucked up!)
             if hasattr(n[1], 'started'):  # put STE nodes in "quantized mode"
                 n[1].started = True
 
         self.recipe = None
-        self.onnx_graph = ONNXGraph(self.net, torch.ones((1, 3, 224, 224)).to(torch.cuda.current_device()))
 
     @staticmethod
     def show_net(net):

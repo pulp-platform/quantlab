@@ -40,7 +40,7 @@ with open('backends/twn_accelerator/source.json') as fp:
 
 class MiniLogbook(object):
     def __init__(self, specs):
-        self.lib = importlib.import_module('.'.join(['problems', specs['problem'], specs['topology']]))
+        self.lib = importlib.import_module('.'.join(['systems', specs['problem'], specs['topology']]))
         self.dir_data = os.path.join(os.path.dirname(os.path.dirname(self.lib.__file__)), 'data')
         self.dir_exp = os.path.join(os.path.dirname(os.path.dirname(self.lib.__file__)),
                                                     'logs',
@@ -166,7 +166,7 @@ def convert_input_image(img, input_type):
     if not ('int' in input_type):
         return img
     else:
-        from problems.ImageNet.VGG.preprocess import _ImageNet
+        from systems.ImageNet.VGG.preprocess import _ImageNet
         mean = torch.tensor(_ImageNet['Normalize']['mean']) * 255.
         std = torch.tensor(_ImageNet['Normalize']['std']) * 255.
 

@@ -1,11 +1,13 @@
 from . import analyse
 from . import edit
 from . import morph
-from . import utils
+from . import grrules
+from .utils import draw_graph
 
 __all__ = [
     'analyse',
     'edit',
     'morph',
-    'utils',
+    'grrules',
+    'draw_graph',
 ]

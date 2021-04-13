@@ -51,7 +51,7 @@ def fold_h2d_layer(export_dir, w, eps, mu, sigma, gamma, beta, n_out, m_out, inp
     if input_type == 'float':
         w_bias = np.zeros(C_out,)
     else:
-        from problems.ImageNet.VGG.preprocess import _ImageNet
+        from systems.ImageNet.VGG.preprocess import _ImageNet
         mean = np.array(_ImageNet['Normalize']['mean']) * 255.
         std = np.array(_ImageNet['Normalize']['std']) * 255.
         w_temp = w_temp.transpose(0, 2, 3, 1)
