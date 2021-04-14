@@ -1,8 +1,7 @@
 import networkx as nx
 from networkx.algorithms import isomorphism
-import copy
 
-from quantlib.graphs.morph import __KERNEL_PARTITION__
+from quantlib.graphs.graphs import __KERNEL_PARTITION__
 
 
 __all__ = [
@@ -68,32 +67,25 @@ class Rule(object):
     rule yielding a transformed `nx.DiGraph`).
     """
     def __init__(self, L, K):
-        self.seeker = Seeker(L)  # if the L-term of the GRR is modified in the GRR constructor method, the seeker should be rebuilt too
-        pass
+        # self.seeker = None  # since the L-term of the GRR is usually defined or at least modified in the GRR constructor method, the seeker should be built at the end
+        raise NotImplementedError
 
     @staticmethod
     def core(HI):
-        # JI = core_transform(HI)
-        # return JI
-        pass
+        # transform H\I into J\I
+        raise NotImplementedError
+
+    def apply(self, G, g):
+        # identify interface I and non-interface H\I; transform H\I into J\I; glue J\I to I, then discard H\I
+        raise NotImplementedError
 
     def seek(self, G):
         return self.seeker.get_morphisms(G)
-
-    def apply(self, G, g):
-        # G = modify(G, g)
-        return G
-
-    def multiapply(self, G, gs):
-        # for g in gs:
-        #     self.apply(G, g)
-        return G
 
 
 class ManualRescopeRule(Rule):
 
     def __init__(self, L, K):
-        super(ManualRescopeRule, self).__init__(L, K)
 
         # define L-term
         self.L = L
@@ -105,23 +97,23 @@ class ManualRescopeRule(Rule):
 
         # get the graph L\K
         self.LK = self.L.subgraph(set(self.L.nodes).difference({n for n in set(self.L.nodes) if n.startswith('K-term')}))
-        # get the edges between the vertices of K and the vertices of L\K
-        E_K2LK2K = set(e for e in set(self.L.edges).difference(set(self.LK.edges) | set(self.K.edges)))
-        E_K2LK = set(e for e in E_K2LK2K if e[0] in self.K.nodes)
-        E_LK2K = set(e for e in E_K2LK2K if e[1] in self.K.nodes)
+        # get the arcs between the vertices of K and the vertices of L\K and viceversa
+        E_K2LK2K = {arc for arc in set(self.L.edges).difference(set(self.LK.edges) | set(self.K.edges))}
+        E_K2LK = {arc for arc in E_K2LK2K if arc[0] in self.K.nodes}
+        E_LK2K = {arc for arc in E_K2LK2K if arc[1] in self.K.nodes}
 
         # define the graph R\K -- rescoping rules implement one-to-one mappings
-        self.RK = nx.relabel_nodes(copy.copy(self.LK), {n: n.replace('L-term', 'R-term') for n in set(self.LK.nodes)})
+        self.RK = nx.relabel_nodes(self.LK, {n: n.replace('L-term', 'R-term') for n in set(self.LK.nodes)})  # a copy of `self.LK` is automatically created (check the docs for `nx.relabel_nodes`)
         # define the edges between the vertices of K and the vertices of R\K
         LK2RK_morphisms = Seeker(self.RK).get_morphisms(self.LK)
         assert len(LK2RK_morphisms) == 1
         g_LK2RK = LK2RK_morphisms[0]
-        E_K2RK = set((u, g_LK2RK[v]) for u, v in E_K2LK)
-        E_RK2K = set((g_LK2RK[u], v) for u, v in E_LK2K)
+        E_K2RK = {(u, g_LK2RK[v]) for u, v in E_K2LK}
+        E_RK2K = {(g_LK2RK[u], v) for u, v in E_LK2K}
         E_K2RK2K = E_K2RK | E_RK2K
         # disintegrate `E_K2RK` and `E_RK2K` along fibres to speed up rule application
-        self.F_K2RK = {vK: set(e for e in E_K2RK if e[0] == vK) for vK in self.K.nodes}
-        self.F_RK2K = {vK: set(e for e in E_RK2K if e[1] == vK) for vK in self.K.nodes}
+        self.F_K2RK = {vK: set(arc for arc in E_K2RK if arc[0] == vK) for vK in self.K.nodes}
+        self.F_RK2K = {vK: set(arc for arc in E_RK2K if arc[1] == vK) for vK in self.K.nodes}
 
         # glue together the graphs L\K and R\K along the vertices in K
         self.S = nx.compose(self.L, self.RK)
@@ -132,16 +124,20 @@ class ManualRescopeRule(Rule):
 
     @staticmethod
     def core(HI, new_scope):
-        JI = copy.copy(HI)  # rescoping rules implement one-to-one mappings
-        JI = nx.relabel_nodes(JI, {n: 'new_' + n for n in JI.nodes})
+
+        JI = nx.relabel_nodes(HI, {n: n.replace('__tmp__', '') for n in HI.nodes})  # a copy of `self.LK` is automatically created (check the docs for `nx.relabel_nodes`)
         nx.set_node_attributes(JI, {n: new_scope for n in JI.nodes if (JI.nodes[n]['bipartite'] == __KERNEL_PARTITION__)}, 'scope')
+
         return JI
 
     def apply(self, G, g, new_scope):
 
+        _g_tmp = {k: k + '__tmp__' for k, v in g.items() if v not in set(self.K.nodes)}
+        G = nx.relabel_nodes(G, _g_tmp)
+
         # generate replacement graph (`G.subgraph({v for v in g.values()})` is the match graph 'H')
         I = G.subgraph({k for k, v in g.items() if v in set(self.K.nodes)})
-        HI = G.subgraph({k for k, v in g.items() if v not in set(self.K.nodes)})
+        HI = G.subgraph({_g_tmp[k] for k, v in g.items() if v not in set(self.K.nodes)})
         JI = self.core(HI, new_scope)
 
         # get morphism '\mu_{(J \setminus I) \to (R \setminus K)}'
@@ -160,16 +156,10 @@ class ManualRescopeRule(Rule):
 
         return G
 
-    def multiapply(self, G, gs, new_scope):
-        for i, g in enumerate(gs):
-            G = self.apply(G, g, new_scope + '_' + str(i))
-        return G
-
 
 class AutoRescopeRule(Rule):
 
     def __init__(self, L, K):
-        super(AutoRescopeRule, self).__init__(L, K)
 
         # define L-term
         self.L = L
@@ -181,23 +171,23 @@ class AutoRescopeRule(Rule):
 
         # get the graph L\K
         self.LK = self.L.subgraph(set(self.L.nodes).difference({n for n in set(self.L.nodes) if n.startswith('K-term')}))
-        # get the edges between the vertices of K and the vertices of L\K
-        E_K2LK2K = set(e for e in set(self.L.edges).difference(set(self.LK.edges) | set(self.K.edges)))
-        E_K2LK = set(e for e in E_K2LK2K if e[0] in self.K.nodes)
-        E_LK2K = set(e for e in E_K2LK2K if e[1] in self.K.nodes)
+        # get the arcs between the vertices of K and the vertices of L\K and viceversa
+        E_K2LK2K = {arc for arc in set(self.L.edges).difference(set(self.LK.edges) | set(self.K.edges))}
+        E_K2LK = {arc for arc in E_K2LK2K if arc[0] in self.K.nodes}
+        E_LK2K = {arc for arc in E_K2LK2K if arc[1] in self.K.nodes}
 
         # define the graph R\K -- rescoping rules implement one-to-one mappings
-        self.RK = nx.relabel_nodes(copy.copy(self.LK), {n: n.replace('L-term', 'R-term') for n in set(self.LK.nodes)})
+        self.RK = nx.relabel_nodes(self.LK, {n: n.replace('L-term', 'R-term') for n in set(self.LK.nodes)})  # a copy of `self.LK` is automatically created (check the docs for `nx.relabel_nodes`)
         # define the edges between the vertices of K and the vertices of R\K
         LK2RK_morphisms = Seeker(self.RK).get_morphisms(self.LK)
         assert len(LK2RK_morphisms) == 1
         g_LK2RK = LK2RK_morphisms[0]
-        E_K2RK = set((u, g_LK2RK[v]) for u, v in E_K2LK)
-        E_RK2K = set((g_LK2RK[u], v) for u, v in E_LK2K)
+        E_K2RK = {(u, g_LK2RK[v]) for u, v in E_K2LK}
+        E_RK2K = {(g_LK2RK[u], v) for u, v in E_LK2K}
         E_K2RK2K = E_K2RK | E_RK2K
         # disintegrate `E_K2RK` and `E_RK2K` along fibres to speed up rule application
-        self.F_K2RK = {vK: set(e for e in E_K2RK if e[0] == vK) for vK in self.K.nodes}
-        self.F_RK2K = {vK: set(e for e in E_RK2K if e[1] == vK) for vK in self.K.nodes}
+        self.F_K2RK = {vK: set(arc for arc in E_K2RK if arc[0] == vK) for vK in self.K.nodes}
+        self.F_RK2K = {vK: set(arc for arc in E_RK2K if arc[1] == vK) for vK in self.K.nodes}
 
         # glue together the graphs L\K and R\K along the vertices in K
         self.S = nx.compose(self.L, self.RK)
@@ -210,7 +200,7 @@ class AutoRescopeRule(Rule):
     def core(HI):
 
         # automatically detect the scope of the operations involved (should be unique!)
-        scopes = set(HI.nodes[n]['scope'] for n in HI.nodes if (HI.nodes[n]['bipartite'] == __KERNEL_PARTITION__))
+        scopes = {HI.nodes[n]['scope'] for n in HI.nodes if (HI.nodes[n]['bipartite'] == __KERNEL_PARTITION__)}
         try:
             scopes.remove('')
         except KeyError:
@@ -218,17 +208,19 @@ class AutoRescopeRule(Rule):
         assert len(scopes) == 1  # up to now, quantlib's `nn.Module`s traces have included at least one correctly scoped operation...
         new_scope = list(scopes)[0]
 
-        JI = copy.copy(HI)
-        JI = nx.relabel_nodes(JI, {n: 'new_' + n for n in JI.nodes})
+        JI = nx.relabel_nodes(HI, {n: n.replace('__tmp__', '') for n in HI.nodes})  # a copy of `self.LK` is automatically created (check the docs for `nx.relabel_nodes`)
         nx.set_node_attributes(JI, {n: new_scope for n in JI.nodes if (JI.nodes[n]['bipartite'] == __KERNEL_PARTITION__)}, 'scope')
 
         return JI
 
     def apply(self, G, g):
 
+        _g_tmp = {k: k + '__tmp__' for k, v in g.items() if v not in set(self.K.nodes)}
+        G = nx.relabel_nodes(G, _g_tmp)
+
         # generate non-interface replacement graph (`G.subgraph({v for v in g.values()})` is the match graph 'H')
         I = G.subgraph({k for k, v in g.items() if v in set(self.K.nodes)})
-        HI = G.subgraph({k for k, v in g.items() if v not in set(self.K.nodes)})
+        HI = G.subgraph({_g_tmp[k] for k, v in g.items() if v not in set(self.K.nodes)})
         JI = self.core(HI)
 
         # get morphism '\mu_{(J \setminus I) \to (R \setminus K)}'
@@ -245,9 +237,4 @@ class AutoRescopeRule(Rule):
             G.add_edges_from({(g_RK2JI[vRK], vI) for (vRK, _) in self.F_RK2K[vK]})
         G.remove_nodes_from(HI.nodes)  # detach non-interface match graph
 
-        return G
-
-    def multiapply(self, G, gs):
-        for g in gs:
-            G = self.apply(G, g)
         return G

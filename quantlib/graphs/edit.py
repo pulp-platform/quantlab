@@ -5,7 +5,6 @@ import copy
 
 import quantlib.algorithms as qa
 from .analyse import list_nodes
-from .morph import ONNXGraph
 
 
 __all__ = [

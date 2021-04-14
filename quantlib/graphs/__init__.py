@@ -1,13 +1,13 @@
 from . import analyse
 from . import edit
-from . import morph
+from . import graphs
 from . import grrules
-from .utils import draw_graph
+from .utils import draw_graph, ViewFlattenNd
 
 __all__ = [
     'analyse',
     'edit',
-    'morph',
+    'graphs.py',
     'grrules',
     'draw_graph',
 ]

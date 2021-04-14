@@ -16,7 +16,7 @@ from quantlib.graphs.analyse import Node
 from backends.twn_accelerator.compiler_vgg import compile_vgg
 
 from quantlib.graphs import Morpher, ScopeRule
-from quantlib.graphs.morph import add_ste_tunnels, add_linear_tunnels, add_output_tunnel, remove_tunnels
+from quantlib.graphs.graphs import add_ste_tunnels, add_linear_tunnels, add_output_tunnel, remove_tunnels
 
 sys.path.insert(0, os.pardir)  # make QuantLab packages accessible
 sys.path.append('./pydevd-pycharm.egg')

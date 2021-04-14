@@ -48,7 +48,7 @@ class STEActivation(torch.nn.Module):
         super(STEActivation, self).__init__()
         assert(num_levels >= 2)
         self.num_levels = num_levels
-        self.abs_max_value = torch.nn.Parameter(torch.ones(1), requires_grad=False)
+        self.abs_max_value = torch.nn.Parameter(torch.Tensor([1.5]), requires_grad=False)
 
         assert(quant_start_epoch >= 0)
         self.quant_start_epoch = quant_start_epoch
