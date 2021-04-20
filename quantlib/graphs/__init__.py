@@ -1,13 +1,16 @@
 from . import analyse
 from . import edit
+from . import editor
 from . import graphs
 from . import grrules
-from .utils import draw_graph, ViewFlattenNd
+from . import traces
+from . import utils
 
 __all__ = [
     'analyse',
     'edit',
-    'graphs.py',
+    'editor',
+    'graphs',
     'grrules',
-    'draw_graph',
+    'utils',
 ]

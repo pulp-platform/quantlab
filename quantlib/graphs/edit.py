@@ -110,7 +110,7 @@ def replace_linear_inq(net, nodes_set, num_levels, quant_init_method=None, quant
     return list_nodes(net)
 
 
-class Editor(object):
+class Loader(object):
 
     def __init__(self, problem, topology, config):
         self.problem = problem
@@ -151,17 +151,17 @@ class Editor(object):
             if hasattr(n[1], 'started'):  # put STE nodes in "quantized mode"
                 n[1].started = True
 
-        self.recipe = None
+        # self.recipe = None
 
     @staticmethod
     def show_net(net):
         list_nodes(net, verbose=True)
 
-    def apply_recipe(self):
-        self.qnet = getattr(self.recipe, 'quantize')(self.config['network']['quantize']['params'], copy.deepcopy(self.net))
-
-    def load_recipe(self):
-        try:
-            importlib.reload(self.recipe)
-        except TypeError:
-            self.recipe = importlib.import_module('.'.join(['', 'quantize', self.config['network']['quantize']['recipe']]), package=self.lib.__name__)
+    # def apply_recipe(self):
+    #     self.qnet = getattr(self.recipe, 'quantize')(self.config['network']['quantize']['params'], copy.deepcopy(self.net))
+    #
+    # def load_recipe(self):
+    #     try:
+    #         importlib.reload(self.recipe)
+    #     except TypeError:
+    #         self.recipe = importlib.import_module('.'.join(['', 'quantize', self.config['network']['quantize']['recipe']]), package=self.lib.__name__)
