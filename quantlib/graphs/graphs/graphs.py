@@ -8,9 +8,6 @@ from networkx.algorithms import dag
 import quantlib.graphs.graphs
 
 
-__NODE_ID_FORMAT__ = '{:06d}'
-
-
 class scope_name_workaround(object):
     # this is a necessary "context manager" object for PyTorch >= 1.4
     # (see https://github.com/pytorch/pytorch/issues/33463#issuecomment-606399944)
@@ -105,7 +102,7 @@ class ONNXGraph(object):
         for i_op, opnode in enumerate(self.jit_graph.nodes()):
 
             # populate kernel partition of the computational graph
-            opnode_id = 'O' + __NODE_ID_FORMAT__.format(i_op)
+            opnode_id = 'O' + quantlib.graphs.graphs.__NODE_ID_FORMAT__.format(i_op)
             opnodes_dict[opnode_id] = quantlib.graphs.graphs.nodes.ONNXNode(opnode)
 
             # populate memory partition of the computational graph
@@ -119,7 +116,7 @@ class ONNXGraph(object):
                 try:  # the data node has already been discovered
                     datanode_id = datanode_2_onnx_id[datanode_name]
                 except KeyError:
-                    datanode_id = 'D' + __NODE_ID_FORMAT__.format(next(datanode_id_gen))
+                    datanode_id = 'D' + quantlib.graphs.graphs.__NODE_ID_FORMAT__.format(next(datanode_id_gen))
                     datanode_2_onnx_id[datanode_name] = datanode_id
                     datanodes_dict[datanode_id] = quantlib.graphs.graphs.nodes.ONNXNode(in_datanode)
                 arcs.append((datanode_id, opnode_id))
@@ -129,7 +126,7 @@ class ONNXGraph(object):
                 try:  # the data node has already been discovered
                     datanode_id = datanode_2_onnx_id[datanode_name]
                 except KeyError:
-                    datanode_id = 'D' + __NODE_ID_FORMAT__.format(next(datanode_id_gen))
+                    datanode_id = 'D' + quantlib.graphs.graphs.__NODE_ID_FORMAT__.format(next(datanode_id_gen))
                     datanode_2_onnx_id[datanode_name] = datanode_id
                     datanodes_dict[datanode_id] = quantlib.graphs.graphs.nodes.ONNXNode(out_datanode)  # get_datanode_attributes(out_datanode)
                 arcs.append((opnode_id, datanode_id))
@@ -137,26 +134,12 @@ class ONNXGraph(object):
         self.nx_graph = nx.DiGraph()
         self.nx_graph.add_nodes_from(set(opnodes_dict.keys()), bipartite=quantlib.graphs.graphs.__KERNEL_PARTITION__)
         self.nx_graph.add_nodes_from(set(datanodes_dict.keys()), bipartite=quantlib.graphs.graphs.__MEMORY_PARTITION__)
-        self.nx_graph.add_edges_from(arcs)
+        self.nx_graph.add_edges_from(set(arcs))
 
         self.nodes_dict = {**opnodes_dict, **datanodes_dict}
 
         nx.set_node_attributes(self.nx_graph, {k: v.ntype for k, v in self.nodes_dict.items()}, 'type')
         nx.set_node_attributes(self.nx_graph, {k: v.nscope for k, v in self.nodes_dict.items()}, 'scope')
-
-    # def rescope_opnodes(self, modules=None):
-    #
-    #     for mod_name, rho in librules.items():
-    #         if mod_name == 'ViewFlattenNd':
-    #             print("Applying ManualRescope GRR for `nn.Module`s of class {}...".format(mod_name))
-    #             for i, g in enumerate(rho.seek(self.nx_graph)):
-    #                 self.nx_graph = rho.apply(self.nx_graph, g, '.'.join([mod_name, str(i)]))
-    #                 self._history.push(Commit(rho, g, self.nx_graph, self.nodes_dict))
-    #         else:
-    #             print("Applying AutoRescope GRR for `nn.Module`s of class {}...".format(mod_name))
-    #             for g in rho.seek(self.nx_graph):
-    #                 self.nx_graph = rho.apply(self.nx_graph, g)
-    #                 self._history.push(Commit(rho, g, self.nx_graph, self.nodes_dict))
 
 
 class PyTorchGraph(object):

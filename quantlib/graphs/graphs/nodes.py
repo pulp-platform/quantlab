@@ -6,6 +6,8 @@ __KERNEL_PARTITION__ = 0
 __MEMORY_PARTITION__ = 1
 __CONTXT_PARTITION__ = 2
 
+__NODE_ID_FORMAT__ = '{:06d}'
+
 
 class QuantLabNode(object):
 

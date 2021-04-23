@@ -29,7 +29,7 @@ class History(object):
 
     def push(self, commit):
         self._undo.append(commit)
-        self._redo = []
+        self._redo.clear()
 
     def undo(self, n=1):
         for i in range(0, n):

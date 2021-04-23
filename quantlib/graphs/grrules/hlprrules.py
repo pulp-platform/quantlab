@@ -1,4 +1,5 @@
 import networkx as nx
+from networkx.classes.filters import show_nodes, hide_edges
 import itertools
 
 from .seeker import Seeker
@@ -16,7 +17,18 @@ __all__ = [
 
 
 class HelperRule(object):
+    """A GRR that prepares the graph for the 'core' editing.
 
+    This GRR inserts nodes into the computational graph that are propedeutics
+    to the application of other GRRs; or, after all the 'core' GRRs have been
+    applied, it can remove specific subgraphs that could be replaced by an
+    identity operation or by groups of identity operations, and are therefore
+    redundant for computational purposes.
+
+    This GRR still follows the algebraic approach to graph rewriting, but the
+    application points are computed 'on-the-fly'. In this sense, the rule
+    actually implements a vast (possibly infinite) set of GRRs.
+    """
     def __init__(self):
         raise NotImplementedError
 
@@ -41,7 +53,7 @@ class AddIONodeRule(HelperRule):
     def __init__(self, io):
 
         self._io = io  # either 'I' or 'O'
-        type = quantlib.graphs.graphs.HelperInput().__class__.__name__ if self._io == 'I' else quantlib.graphs.graphs.HelperOutput().__class__.__name__
+        type = quantlib.graphs.graphs.HelperInput.__name__ if self._io == 'I' else quantlib.graphs.graphs.HelperOutput.__name__
 
         self.RK = nx.DiGraph()
         self.RK.add_nodes_from(set([''.join(['R-term/', 'H', self._io])]), bipartite=quantlib.graphs.graphs.__KERNEL_PARTITION__, type=type)
@@ -50,15 +62,15 @@ class AddIONodeRule(HelperRule):
 
     def core(self):
 
-        vJI = ''.join(['H', self._io, '{:06d}'.format(next(self._counter))])
+        vJI = ''.join(['H', self._io, quantlib.graphs.graphs.__NODE_ID_FORMAT__.format(next(self._counter))])
         JI = nx.relabel_nodes(self.RK, {vRK: vJI for vRK in set(self.RK.nodes)}, copy=True)
 
         m = quantlib.graphs.graphs.HelperInput() if self._io == 'I' else quantlib.graphs.graphs.HelperOutput()
-        ptnode = quantlib.graphs.graphs.PyTorchNode(m)
+        vJI_2_ptnode = {vJI: quantlib.graphs.graphs.PyTorchNode(m)}
 
         nx.set_node_attributes(JI, {vJI: '' for vJI in set(JI.nodes) if (JI.nodes[vJI]['bipartite'] == quantlib.graphs.graphs.__KERNEL_PARTITION__)}, 'scope')
 
-        return JI, {vJI: ptnode}
+        return JI, vJI_2_ptnode
 
     def apply(self, G, nodes_dict, g):
 
@@ -114,8 +126,9 @@ class RemoveIONodeRule(HelperRule):
     def __init__(self, io):
 
         self._io = io  # either 'I' or 'O'
-        type = quantlib.graphs.graphs.HelperInput().__class__.__name__ if self._io == 'I' else quantlib.graphs.graphs.HelperOutput().__class__.__name__
+        type = quantlib.graphs.graphs.HelperInput.__name__ if self._io == 'I' else quantlib.graphs.graphs.HelperOutput.__name__
 
+        # the I/O operation will serve as an "anchor"; from it, I will be able to (implicitly) generate and apply the graph rewriting rule on-the-fly
         self.LK = nx.DiGraph()
         self.LK.add_nodes_from(set([''.join(['L-term/', 'H', self._io])]), bipartite=quantlib.graphs.graphs.__KERNEL_PARTITION__, type=type)
 
@@ -126,19 +139,38 @@ class RemoveIONodeRule(HelperRule):
 
     def apply(self, G, nodes_dict, g):
 
+        # create new containers
         G = G.copy()
+        nodes_dict = {**nodes_dict}
+
+        # characterise the match (sub-)graph H\I
         VHI = set(g.keys())
         HI = G.subgraph(VHI)
-        G.remove_nodes_from(set(HI.nodes))
 
-        nodes_dict = {**nodes_dict}  # copy the dictionary
+        # delete the I/O nodes
+        G.remove_nodes_from(set(HI.nodes))
         for n in set(HI.nodes):
             del nodes_dict[n]
 
         return G, nodes_dict
 
     def seek(self, G, nodes_dict):
+
+        def is_valid_application_point(g):
+
+            VJI = set(g.keys())
+            assert len(VJI) == 1
+
+            if self._io == 'I':
+                is_ok = len(set(G.predecessors(next(iter(VJI))))) == 0  # an input node does not read the output of any other node
+            elif self._io == 'O':
+                is_ok = len(set(G.successors(next(iter(VJI))))) == 0  # an output node's output won't be read by any node
+
+            return is_ok
+
         gs = self.seeker.get_morphisms(G)
+        gs = list(filter(is_valid_application_point, gs))
+
         return gs
 
 
@@ -161,54 +193,119 @@ class RemoveOutputNodeRule(RemoveIONodeRule):
 class AddPrecisionTunnelRule(HelperRule):
 
     def __init__(self, type):
-        # a "precision tunnel" will be added after nodes of type 'type'
+        """Insert a 'precision tunnel' after idempotent operations.
 
-        self.KA = nx.DiGraph()
-        self.KA.add_nodes_from(set([''.join(['K-term/', 'HPTin'])]), bipartite=quantlib.graphs.graphs.__KERNEL_PARTITION__, type=type)
+        Imagine having a function composition :math:`o \circ f \circ i`,
+        which needs to be transformed into a second composition
+        :math:`h \circ g`. Suppose that the information required to compute
+         :math:`h` is contained in :math:`o` and (partly) in :math:`f`, i.e.,
+        there exists a transformation :math:`T_{h} \,|\, h = T_{h}(o, f)`;
+        similarly, the information required to compute :math:`g` is contained
+        (partly) in :math:`f` and in :math:`i`, i.e., there exists a transform
+        :math:`T_{g} \,|\, g = T_{g}(f, i)`. We assume that :math:`T_{h}` and
+        :math:`T_{g}` can be applied in any order, but must be executed
+        sequentially; also, we assume that after the application of a
+        transform its inputs will be destroyed. We see then that there is no
+        valid order, since each of them will destroy :math:`f`, preventing the
+        application of the second transformation.
 
-        self.seeker = Seeker(self.KA)
+        If we suppose that :math:`f` is idempotent (i.e., it is such that
+        :math:`f \circ f = f`), we can rewrite the original term as
+        :math:`o \circ f \circ f \circ i` before applying the transformation
+        rules :math:`T_{h}` and :math:`T_{g}`. In this case, we can derive the
+        desired form :math:`T_{h}(o, f) \circ T_{g}(f, i)` without any issue.
 
-    def core(self, H, VIin, eps):
+        In particular, we focus on the case where :math:`f` is a quantization
+        operator, i.e., an activation function of the form
+        :math:`f = e \circ r_{p} \circ e^{-1}`, where :math:`r_{p}` is a
+        rounding operation at precision :math:`p`, and :math:`e` is an
+        element-wise multiplication by a positive number (possibly represented
+        in floating point). We assume that the 'anchor' of each application
+        point (i.e., the quantization operator :math:`f`) will receive data
+        from just one operation :math:`i`, but its outputs will be read by a
+        positive number of operations :math:`o^{(k)}, k = 0, \dots, K-1`, for
+        some positive integer :math:`K`. Then, we can rewrite each sequence
+        :math:`o^{(k)} \circ f \circ i` as
+        :math:`o^{(k)} \circ e \circ r_{p} \circ e^{-1} \circ e \circ r_{p} \circ e^{-1} \circ i`.
+        In this way, we will be able to apply :math:`T_{h}` :math:`K` times,
+        returning :math:`h^{(k)} = T_{h}(o^{(k)}, f)`, and :math:`T_{g}` just
+        once, returning :math:`g = T_{g}(f, i)`.
+        """
 
-        vH_2_vJI = {**{vH: vH.replace('O', 'HPTin') for vH in set(H.nodes).intersection(VIin)}, **{vH: vH.replace('O', 'HPTout') for vH in set(H.nodes).difference(VIin)}}
-        JI = nx.relabel_nodes(H, vH_2_vJI, copy=True)
-        nx.set_node_attributes(JI, {vJI: None for vJI in set(JI.nodes) if (JI.nodes[vJI]['bipartite'] == quantlib.graphs.graphs.__KERNEL_PARTITION__)}, 'type')
+        # the idempotent operation will serve as an "anchor"; from it, I will be able to (implicitly) generate and apply the graph rewriting rule on-the-fly
+        self.Kin = nx.DiGraph()
+        self.Kin.add_nodes_from(set([''.join(['K-term/', 'HPTin'])]), bipartite=quantlib.graphs.graphs.__KERNEL_PARTITION__, type=type)
 
-        vJI_2_m = {vJI: quantlib.graphs.graphs.HelperInputPrecisionTunnel(eps) if vJI.startswith('HPTin') else quantlib.graphs.graphs.HelperOutputPrecisionTunnel(eps) for vJI in set(JI.nodes)}  # TODO: what about data nodes?
-        vJI_2_ptnode = {vJI: quantlib.graphs.graphs.PyTorchNode(m) for vJI, m in vJI_2_m.items()}
+        self.seeker = Seeker(self.Kin)
 
-        nx.set_node_attributes(JI, {k: v.ntype for k, v in vJI_2_ptnode.items()}, 'type')
+    def core(self, H, Iin, Iout, eps, nodes_dict):
+
+        # `HelperPrecisionTunnel` nodes are meant to serve as 'stubs' when applying full-fledged GRRs;
+        # this graph will ensure the correct connectivity between the 'pieces' of the full graph that will be derived by applying full-fledged GRRs
+        vH_2_vJI_PTin = {vH: vH.replace('O', 'HPTin') for vH in set(H.nodes).intersection(set(Iin.nodes))}
+        vH_2_vJI_PTout = {vH: vH.replace('O', 'HPTout') for vH in set(H.nodes).intersection(set(Iout.nodes))}
+        JI = nx.relabel_nodes(H, {**vH_2_vJI_PTin, **vH_2_vJI_PTout}, copy=True)
+        nx.set_node_attributes(JI, {vJI: quantlib.graphs.graphs.HelperInputPrecisionTunnel.__name__ for vJI in set(vH_2_vJI_PTin.values())}, 'type')
+        nx.set_node_attributes(JI, {vJI: quantlib.graphs.graphs.HelperOutputPrecisionTunnel.__name__ for vJI in set(vH_2_vJI_PTout.values())}, 'type')
+
+        # replicate the "anchor" idempotent operation along each connection
+        vJI_PTout_2_vJI_PTclone = {vJI: vJI.replace('HPTout', 'HPTclone') for vJI in set(vH_2_vJI_PTout.values())}
+        for u, v in vJI_PTout_2_vJI_PTclone.items():
+            Iin_clone = nx.relabel_nodes(H.subgraph(Iin), {next(iter(set(Iin.nodes))): v}, copy=True)
+            JI = nx.compose(JI, Iin_clone)
+            JI.add_edge(u, v)
+
         nx.set_node_attributes(JI, {vJI: '' for vJI in set(JI.nodes) if (JI.nodes[vJI]['bipartite'] == quantlib.graphs.graphs.__KERNEL_PARTITION__)}, 'scope')
 
-        return vH_2_vJI, JI, vJI_2_ptnode
+        # compute the connections of the new nodes to the old nodes
+        E_I2JI = {(vI, vJI) for vI, vJI in vH_2_vJI_PTin.items()}
+        vJI_PTclone_2_vJI_PTout = {v: k for k, v in vJI_PTout_2_vJI_PTclone.items()}
+        vJI_PTout_2_vH = {v: k for k, v in vH_2_vJI_PTout.items()}
+        E_JI2I = {(vJI, vJI_PTout_2_vH[vJI_PTclone_2_vJI_PTout[vJI]]) for vJI in set(vJI_PTclone_2_vJI_PTout.keys())}
+
+        # register the technical specs of the new ops
+        vJI_2_ptnode = {}
+        for vJI in set(JI.nodes):
+            if JI.nodes[vJI]['type'] == quantlib.graphs.graphs.HelperInputPrecisionTunnel.__name__:
+                ptnode = quantlib.graphs.graphs.PyTorchNode(quantlib.graphs.graphs.HelperInputPrecisionTunnel(eps))
+            elif JI.nodes[vJI]['type'] == quantlib.graphs.graphs.HelperOutputPrecisionTunnel.__name__:
+                ptnode = quantlib.graphs.graphs.PyTorchNode(quantlib.graphs.graphs.HelperOutputPrecisionTunnel(eps))
+            else:
+                ptnode = nodes_dict[next(iter(set(Iin.nodes)))]  # since the idempotent operation already exists, I just need a pointer to it
+            vJI_2_ptnode[vJI] = ptnode
+
+        return JI, vJI_2_ptnode, E_I2JI, E_JI2I
 
     def apply(self, G, nodes_dict, g):
 
+        # create new containers
         G = G.copy()
+        nodes_dict = {**nodes_dict}
 
-        # find interface nodes
+        # compute the match graph H on-the-fly
         VIin = set(g.keys())
-        VIout = set(itertools.chain.from_iterable([set(G.successors(vI)) for vI in VIin]))
+        VIout = set(G.successors(next(iter(VIin))))
         VI = VIin | VIout
-
-        # compute interface graph
         VH = VI
         H = G.subgraph(VH)
-        # I = nx.subgraph_view(G, filter_node=show_nodes(VI), filter_edge=hide_edges(set(H.edges)))
+        I = nx.subgraph_view(G, filter_node=show_nodes(VI), filter_edge=hide_edges(set(H.edges)))
+        Iin = I.subgraph(VIin)
+        Iout = I.subgraph(VIout)
 
-        # create precision tunnel
-        eps = nodes_dict[next(iter(VIin))].nobj.abs_max_value.item()  # TODO: only `STEActivation` nodes have `abs_max_value` attribute! try to homogenise this in the future
-        vH_2_vJI, JI, vJI_2_ptnode = self.core(H, VIin, eps)
+        # create the precision tunnel
+        n = nodes_dict[next(iter(VIin))].nobj.num_levels
+        m = nodes_dict[next(iter(VIin))].nobj.abs_max_value.item()  # TODO: only `STEActivation` nodes have `abs_max_value` attribute! try to homogenise this in the future
+        eps = (2 * m) / (n - 1)
+        JI, vJI_2_ptnode, E_I2JI, E_JI2I = self.core(H, Iin, Iout, eps, nodes_dict)
 
-        # link J\I to I, then delete (H) \ (I)
+        # link the substitute (sub-)graph J\I to the interface (sub-)graph I
         G = nx.compose(G, JI)
-        E_I2JI = {(u, v) for u, v in vH_2_vJI.items() if u in VIin}
-        E_JI2I = {(v, u) for u, v in vH_2_vJI.items() if u in VIout}
         E_I2JI2I = E_I2JI | E_JI2I
         G.add_edges_from(E_I2JI2I)
-        G.remove_edges_from(set(H.edges))
+        nodes_dict.update(vJI_2_ptnode)
 
-        nodes_dict = {**nodes_dict, **vJI_2_ptnode}
+        # delete H \ I (this it is NOT the match (sub-)graph H\I, but the difference between the match graph H and the interface (sub-)graph I)
+        G.remove_edges_from(set(H.edges))
 
         return G, nodes_dict
 
@@ -217,12 +314,10 @@ class AddPrecisionTunnelRule(HelperRule):
         def is_valid_application_point(g):
 
             VIin = set(g.keys())
-            VIout = set(itertools.chain.from_iterable([set(G.successors(vI)) for vI in VIin]))
-            is_ok = len(VIout) > 0  # adding a precision tunnel is justified just in case the node has at least one output
+            assert len(VIin) == 1
+            VIout = set(G.successors(next(iter(VIin))))
 
-            for vI in VIout:
-                is_ok = set(G.predecessors(vI)).issubset(VIin)  # if an output node receives inputs also from another node, am I sure that I can remove the tunnel? better safe than sorry...
-
+            is_ok = len(VIout) > 0  # adding a precision tunnel makes sense just in case the node has at least one output
             return is_ok
 
         gs = self.seeker.get_morphisms(G)
@@ -234,28 +329,46 @@ class AddPrecisionTunnelRule(HelperRule):
 class RemovePrecisionTunnelRule(HelperRule):
 
     def __init__(self):
+        """Delete the `HelperPrecisionTunnel` nodes in the graph.
 
-        self.LA = nx.DiGraph()
-        self.LA.add_nodes_from(set([''.join(['L-term/', 'HPTin'])]), bipartite=quantlib.graphs.graphs.__KERNEL_PARTITION__, type=quantlib.graphs.graphs.HelperInputPrecisionTunnel(1.0).__class__.__name__)
+        This GRR is not mean to act as a full inverse of the
+        `AddPrecisionTunnelRule` GRR. It will only remove nodes whose
+        corresponding `nn.Module`s are of type `HelperPrecisionTunnel`; it
+        will not take care of 'reabsorbing' the copies of the idempotent
+        operations generated by applications of the `AddPrecisionTunnelRule`.
+        In fact, this GRR assumes that all those copies will be consumed by
+        full-fledged GRRs. Since `HelperPrecisionTunnel` modules are meant to
+        serve as 'stubs' when applying full-fledged GRRs, this rule should be
+        applied only after all such copies will have been absorbed. In
+        summary, this GRR is meant to 'clean up' the computational graph once
+        all the 'core' GRRs will have been applied.
+        """
 
-        self.seeker = Seeker(self.LA)
+        # the input to the precision tunnel will serve as an "anchor"; once I locate such a node, I will be able to (implicitly) generate and apply the graph rewriting rule on-the-fly
+        self.LK = nx.DiGraph()
+        self.LK.add_nodes_from(set([''.join(['L-term/', 'HPTin'])]), bipartite=quantlib.graphs.graphs.__KERNEL_PARTITION__, type=quantlib.graphs.graphs.HelperInputPrecisionTunnel(1.0).__class__.__name__)
+
+        self.seeker = Seeker(self.LK)
 
     def apply(self, G, nodes_dict, g):
 
+        # create new containers
         G = G.copy()
-
-        VHin = set(g.keys())
-        VHout = set(G.successors(next(iter(VHin))))
-        VH = VHin | VHout
-
-        VIin = set(G.predecessors(next(iter(VHin))))
-        VIout = set(itertools.chain.from_iterable([set(G.successors(vH)) for vH in VHout]))
-
-        G.add_edges_from(list(itertools.product(VIin, VIout)))
-        G.remove_nodes_from(VH)
-
         nodes_dict = {**nodes_dict}
-        for n in VH:
+
+        # characterise the match graph H
+        VHIin = set(g.keys())
+        VHIout = set(G.successors(next(iter(VHIin))))
+        VHI = VHIin | VHIout
+        VIin = set(G.predecessors(next(iter(VHIin))))
+        VIout = set(itertools.chain.from_iterable([set(G.successors(vH)) for vH in VHIout]))
+
+        # add J \ I; (this it is NOT the substitute (sub-)graph J\I, but the difference between the substitute graph J and the interface (sub-)graph I)
+        G.add_edges_from(list(itertools.product(VIin, VIout)))
+
+        # delete the 'precision tunnel' nodes
+        G.remove_nodes_from(VHI)
+        for n in VHI:
             del nodes_dict[n]
 
         return G, nodes_dict
@@ -267,16 +380,10 @@ class RemovePrecisionTunnelRule(HelperRule):
             VHin = set(g.keys())
             assert len(VHin) == 1
             VHout = set(G.successors(next(iter(VHin))))
-
-            # this GRR is meant to be the "inverse" of the 'AddPrecisionTunnel' GRR
-            # no other GRRs except for these two should be allowed to add/remove `HelperPrecisionTunnel` nodes
-            assert all([G.nodes[vH]['type'] == quantlib.graphs.graphs.HelperOutputPrecisionTunnel(1.0).__class__.__name__ for vH in VHout])
+            assert all([G.nodes[vH]['type'] == quantlib.graphs.graphs.HelperOutputPrecisionTunnel.__name__ for vH in VHout])
 
             epss_in = {nodes_dict[next(iter(VHin))].nobj.eps_in}
             epss_out = {nodes_dict[vH].nobj.eps_out for vH in VHout}
-
-            print(epss_in, epss_out, set(g.keys()))
-
             is_ok = len(epss_in | epss_out) == 1  # all the output quanta must agree with the input quantum
 
             return is_ok

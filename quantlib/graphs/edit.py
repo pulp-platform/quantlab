@@ -142,9 +142,11 @@ class Loader(object):
         }
         import torch
         self.hw_cfg = dict()
-        self.hw_cfg['device'] = torch.cuda.current_device()
+        self.hw_cfg['device'] = torch.device('cpu')
         from manager.assistants import get_network
         self.net = get_network(self)
+        ckpt = torch.load('/usr/scratch2/vilan2/spmatteo/QuantLab/problems/ImageNet/logs/exp023/fold0/saves/epoch0090.ckpt', map_location='cpu')
+        self.net.load_state_dict(ckpt['network'])
         self.net.eval()
 
         for n in self.net.named_modules():  # TODO: started should ALWAYS be changed to 'started' when module is in 'eval' mode (otherwise tracing is fucked up!)
