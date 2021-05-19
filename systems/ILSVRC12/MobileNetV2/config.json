@@ -1,0 +1,66 @@
+{
+    "description": {},
+    "data": {
+        "dataset": {
+            "transforms": {
+                "function": "get_transform_a",
+                "kwargs": {}
+            },
+            "cv": {}
+        },
+        "dataloader": {
+            "bs": {
+                "train": 256,
+                "valid": 256
+            }
+        }
+    },
+    "network": {
+        "class": "MobileNetV2",
+        "kwargs": {
+            "config": "standard",
+            "capacity": 1.0
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "SGD",
+                "kwargs": {
+                    "lr": 0.045,
+                    "momentum": 0.9,
+                    "weight_decay": 4e-05
+                }
+            },
+            "lr_sched": {
+                "class": "StepLR",
+                "kwargs": {
+                    "step_size": 1,
+                    "gamma": 0.98
+                }
+            }
+        },
+        "n_epochs": 100
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+                {"class": "DistributionOutputFeaturesNorm",         "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
+                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientNorm",       "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
+                {"class": "MeanUpdateNormWeightNormRatio",          "kwargs": {"name": "pilot.0", "start": 0, "period": 100}}
+            ]
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    },
+    "experiment": {}
+}

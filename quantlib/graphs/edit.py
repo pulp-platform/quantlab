@@ -145,7 +145,7 @@ class Loader(object):
         self.hw_cfg['device'] = torch.device('cpu')
         from manager.assistants import get_network
         self.net = get_network(self)
-        ckpt = torch.load('/usr/scratch2/vilan2/spmatteo/QuantLab/problems/ImageNet/logs/exp023/fold0/saves/epoch0090.ckpt', map_location='cpu')
+        ckpt = torch.load('/usr/scratch2/vilan2/spmatteo/QuantLab/problems/ILSVRC12/logs/exp023/fold0/saves/epoch0090.ckpt', map_location='cpu')
         self.net.load_state_dict(ckpt['network'])
         self.net.eval()
 

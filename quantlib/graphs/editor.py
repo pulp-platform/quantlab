@@ -50,8 +50,8 @@ class History(object):
     def clear(self, force=False):
 
         if not force:
-            confirmation = input("This action is not reversible. Are you sure that you want to delete all the history? [y/N]")
-            force = confirmation.lower() == 'y'
+            confirmation = input("This action is not reversible. Are you sure that you want to delete all the history? [yes/NO]")
+            force = confirmation.lower() == 'yes'
 
         if force:
             self._undo.clear()
@@ -71,7 +71,7 @@ class Editor(object):
         nodes_dict = {k: v for k, v in self.qlgraph.nodes_dict.items() if k in G.nodes}
 
         self._history = History(G, nodes_dict)
-        self._in_session = False  # puts a lock on the history by preventing editing actions
+        self._in_session = False  # put a lock on the history by preventing editing actions
         self._rho = None  # current GRR
         self._graphviz = graphviz
         self._cache_dir = None
@@ -176,20 +176,3 @@ class Editor(object):
 # which "ingredients" did I use in the past to generate these labels? (my personal "database/record" of use cases)
 #   - ONNX op type
 #   - node scope
-
-
-# # exec(open('converter_twn.py').read())
-# #
-# # import networkx as nx
-# #
-# # H2Dtemplate = Q.subgraph(nx.ancestors(Q, 'features.0.ste.tunnel.0'))
-# # D2Dtemplate = Q.subgraph(set(nx.descendants(Q, 'features.0.ste.tunnel.0')) & set(nx.ancestors(Q, 'features.4.ste.tunnel.0')))
-# # [D2Dtemplate.nodes[n]['pytorch'] for n in nx.algorithms.dag.topological_sort(D2Dtemplate)]
-# # # [STEActivation(), INQConv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False), BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), ReLU(inplace=True), MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False), STEActivation()]
-# # D2Dtemplate2 = Q.subgraph(set(nx.descendants(Q, 'features.4.ste.tunnel.0')) & set(nx.ancestors(Q, 'features.7.ste.tunnel.0')))
-# # [D2Dtemplate2.nodes[n]['pytorch'] for n in nx.algorithms.dag.topological_sort(D2Dtemplate2)]
-# # # [STEActivation(), INQConv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False), BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), ReLU(inplace=True), STEActivation()]
-# # H2Dmorphisms = Morpher.get_morphisms(Q, H2Dtemplate, 'pytorch')
-# # len(H2Dmorphisms)
-#
-#

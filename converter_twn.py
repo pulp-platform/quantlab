@@ -162,11 +162,11 @@ def revert_ste_postproc(x, ste_n, ste_m):
 
 
 def convert_input_image(img, input_type):
-    """Rescale a normalised ImageNet data point to UINT8 or INT8 range."""
+    """Rescale a normalised ILSVRC12 data point to UINT8 or INT8 range."""
     if not ('int' in input_type):
         return img
     else:
-        from systems.ImageNet.VGG.preprocess import _ImageNet
+        from systems.ILSVRC12.VGG.preprocess import _ImageNet
         mean = torch.tensor(_ImageNet['Normalize']['mean']) * 255.
         std = torch.tensor(_ImageNet['Normalize']['std']) * 255.
 

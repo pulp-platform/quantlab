@@ -4,7 +4,7 @@ import quantlib.graphs as qg
 from backends.twn_accelerator.grrules import FoldSTEINQConvBNSTETypeARule, FoldSTEINQConvBNSTETypeBRule, FoldConvBNSTERule, FoldSTEINQConvBNRule
 
 
-loader = qg.edit.Loader('ImageNet', 'VGG', {})
+loader = qg.edit.Loader('ILSVRC12', 'VGG', {})
 
 onnxg = qg.graphs.ONNXGraph(loader.net, torch.ones(1, 3, 224, 224).to('cpu'))
 onnxe = qg.editor.Editor(onnxg)

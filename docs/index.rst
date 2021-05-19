@@ -22,9 +22,10 @@ From coherent problem containerisation, through the organisation of experimental
    :maxdepth: 2
    :caption: Contents:
 
+   systems/index
+   manager/index
    quantlib/index
    backends/index
-   problems/index
 
 Indices and tables
 ==================
@@ -32,3 +33,4 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
