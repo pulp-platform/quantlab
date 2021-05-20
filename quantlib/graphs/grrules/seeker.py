@@ -33,15 +33,30 @@ class Seeker(object):
         #
         #     https://github.com/networkx/networkx/blob/master/networkx/algorithms/isomorphism/isomorphvf2.py .
         #
+        
+        # G is the whole network graph, T is the template to be matched
         matcher = isomorphism.DiGraphMatcher(G, self.T)
+        
+        # Return list of all occurences of the non-attributed template
+        # This means only the number of nodes + interconnections are matched
         isomorphisms = list(matcher.subgraph_isomorphisms_iter())
 
         # check the second morphism condition (label consistency)
+        # This checks that node types / classes (technically, string labels representing the class name) are as in the template
         morphisms = [g for g in isomorphisms if Seeker.is_morphism(self.T, G, g)]
 
         # remove duplicate morphisms
+        # SCHEREMO: Check this a bit carefully
+        # SPMATTEO: Check what is filtered, pipe to logs
         unique_VHs = set(frozenset(g.keys()) for g in morphisms)
         VHs_2_morphisms = {VH: [g for g in morphisms if frozenset(g.keys()) == VH] for VH in unique_VHs}
         morphisms = [v[0] for v in VHs_2_morphisms.values()]
 
+        # List of dictionaries, mapping node identifiers to node identifiers
+        # Node identifier as in the networkx package
+        
+        # We map the node identifiers that are absolute/unique to the original graph G
+        # to node identifiers that are a bsolute/unique to the template graph self.T
+        # This assures there is no ambiguity in the mapping (<- This is the assumption here)
+        
         return morphisms
