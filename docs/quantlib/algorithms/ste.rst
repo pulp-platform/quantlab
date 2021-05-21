@@ -1,4 +1,4 @@
-Straight-Through Estimator (STE)
+Straight-through estimator (STE)
 ================================
 
 .. automodule:: quantlib.algorithms.ste.ste_ops

@@ -6,6 +6,7 @@ import random
 
 from .logsmanager import LogsManager
 from manager.assistants import QuantLabLibrary
+from manager.meter import WriterStub
 
 import manager.assistants
 from typing import Union
@@ -91,7 +92,7 @@ class Logbook(object):
     def create_config(self,
                       target_loss: str, ckpt_period: int,
                       n_folds: int, cv_seed: int,
-                      # fix_sampler: bool, sampler_seed: int,
+                      fix_sampler: bool, sampler_seed: int,
                       fix_network: bool, network_seed: int) -> None:
         """Create a private experimental unit configuration from a public one.
 
@@ -134,7 +135,7 @@ class Logbook(object):
         """
 
         assert cv_seed      < _MAX_SEED
-        # assert sampler_seed < _MAX_SEED
+        assert sampler_seed < _MAX_SEED
         assert network_seed < _MAX_SEED
 
         # load shared configuration
@@ -143,15 +144,15 @@ class Logbook(object):
             self.config = json.load(fp)
 
         # add experiment-specific details
-        self.config['experiment']                       = {}
-        self.config['experiment']['target_loss']        = target_loss
-        self.config['experiment']['ckpt_period']        = ckpt_period
+        self.config['experiment']                = {}
+        self.config['experiment']['target_loss'] = target_loss
+        self.config['experiment']['ckpt_period'] = ckpt_period
 
-        self.config['data']['dataset']['cv']            = {}
-        self.config['data']['dataset']['cv']['n_folds'] = n_folds
-        self.config['data']['dataset']['cv']['seed']    = cv_seed if cv_seed >= 0 else random.randint(0, _MAX_SEED)
+        self.config['data']['cv']            = {}
+        self.config['data']['cv']['n_folds'] = n_folds
+        self.config['data']['cv']['seed']    = cv_seed if cv_seed >= 0 else random.randint(0, _MAX_SEED)
 
-        # self.config['data']['sampler']                  = {}
+        # self.config['data']['train']['sampler'] = {}
         # # if fix_sampler:
         # #     if sampler_seed >= 0:
         # #         sampler_seeds = [sampler_seed] * n_folds
@@ -161,7 +162,7 @@ class Logbook(object):
         # #     sampler_seeds = [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
         # self.config['data']['sampler']['seeds']         = [sampler_seed if sampler_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds if fix_sampler else [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
 
-        self.config['network']['seeds']                 = [network_seed if network_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds if fix_network else [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
+        self.config['network']['seeds'] = [network_seed if network_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds if fix_network else [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
 
         # TODO: validate configuration using JSON Schema (Python package ``jsonschema``)
 
@@ -170,8 +171,8 @@ class Logbook(object):
     def path_data(self) -> str:
         return os.path.join(self._path_qlhome, 'systems', self.problem, 'data')
 
-    def send_datamessage(self) -> manager.assistants.DataMessage:
-        return manager.assistants.DataMessage(self.path_data, self.config['data'], self._tlib)
+    def send_datamessage(self, partition: str) -> manager.assistants.DataMessage:
+        return manager.assistants.DataMessage(self.path_data, self.config['data']['cv'], self.config['data'][partition], self._tlib)
 
     def send_networkmessage(self) -> manager.assistants.NetworkMessage:
         return manager.assistants.NetworkMessage(self.config['network'], self._tlib)
@@ -179,13 +180,20 @@ class Logbook(object):
     def send_trainingmessage(self) -> manager.assistants.TrainingMessage:
         return manager.assistants.TrainingMessage(self.config['training'], self._tlib)
 
-    def send_metermessage(self) -> manager.assistants.MeterMessage:
-        return manager.assistants.MeterMessage(self.n_epochs, self.config['meters'], self._tlib, self._plib)
+    def send_metermessage(self, partition: str) -> manager.assistants.MeterMessage:
+
+        writerstub_epoch = self.logs_manager.writerstub_epoch if self.logs_manager is not None else WriterStub()
+        if partition == 'train':
+            writerstub_step = self.logs_manager.writerstub_step_train if self.logs_manager is not None else WriterStub()
+        else:
+            writerstub_step = self.logs_manager.writerstub_step_valid if self.logs_manager is not None else WriterStub()
+
+        return manager.assistants.MeterMessage(self.n_epochs, self.config['meters'][partition], self._tlib, self._plib, writerstub_epoch=writerstub_epoch, writerstub_step=writerstub_step)
 
     # === PROPERTIES OF THE EXPERIMENTAL RUN'S TRAINING FLOW ===
     @property
     def n_folds(self) -> int:
-        return self.config['data']['dataset']['cv']['n_folds']
+        return self.config['data']['cv']['n_folds']
 
     @property
     def n_epochs(self) -> int:

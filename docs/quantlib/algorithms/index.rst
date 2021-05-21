@@ -1,3 +1,5 @@
+.. _quantlib-algorithms-package:
+
 ``algorithms``
 ==============
 

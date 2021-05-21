@@ -144,6 +144,9 @@ class LogsManager(object):
     def fold_id(self) -> int:
         return self._fold_id
 
+    def set_fold_id(self, fold_id: int) -> None:
+        self._fold_id = fold_id
+
     def discover_fold_id(self) -> None:
         """Discover the most recently updated cross-validation fold.
 
@@ -254,10 +257,10 @@ class LogsManager(object):
 
         ckpt['qnt_ctrls']              = [qc.state_dict() for qc in qnt_ctrls]
 
-        ckpt['meter_train'] = {}
-        ckpt['meter_train']['best_loss']  = meter_train.best_loss
-        ckpt['meter_valid'] = {}
-        ckpt['meter_valid']['best_loss'] = meter_valid.best_loss
+        ckpt['train_meter'] = {}
+        ckpt['train_meter']['best_loss']  = meter_train.best_loss
+        ckpt['valid_meter'] = {}
+        ckpt['valid_meter']['best_loss'] = meter_valid.best_loss
 
         ckpt_filename = os.path.join(self._path_saves, 'best.ckpt' if is_best else _FORMAT_CKPT_FILE.format(epoch_id))
         torch.save(ckpt, ckpt_filename)
@@ -270,8 +273,8 @@ class LogsManager(object):
                         opt: torch.optim.Optimizer,
                         lr_sched: Union[torch.optim.lr_scheduler._LRScheduler, None],
                         qnt_ctrls: List[None],
-                        meter_train,
-                        meter_valid,
+                        train_meter: Union[object, None] = None,  # `object` is of type `manager.meter.Meter`
+                        valid_meter: Union[object, None] = None,  # `object` is of type `manager.meter.Meter`
                         ckpt_id: Union[int, None] = None) -> int:
 
         ckpts_list = os.listdir(self._path_saves)
@@ -297,8 +300,10 @@ class LogsManager(object):
             for c, sd in zip(qnt_ctrls, ckpt['qnt_ctrls']):
                 c.load_state_dict(sd)
 
-            meter_train.best_loss = ckpt['meter_train']['best_loss']
-            meter_valid.best_loss = ckpt['meter_valid']['best_loss']
+            if train_meter is not None:
+                train_meter.best_loss = ckpt['train_meter']['best_loss']
+            if valid_meter is not None:
+                valid_meter.best_loss = ckpt['valid_meter']['best_loss']
 
             message = manager.QUANTLAB_PREFIX + "Checkpoint found: <{}>.".format(ckpt_filename)
 

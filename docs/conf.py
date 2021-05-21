@@ -21,7 +21,7 @@ import sphinx_rtd_theme
 # -- Project information -----------------------------------------------------
 
 project = 'QuantLab'
-copyright = '2021, Matteo Spallanzani'
+copyright = '2021, ETH Zürich'
 author = 'Matteo Spallanzani'
 
 # The full version, including alpha/beta/rc tags

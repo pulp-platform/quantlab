@@ -12,15 +12,15 @@ class Meter(object):
 
     def __init__(self, n_epochs: int, n_batches: int) -> None:
 
-        self._profiling_statistic = None
+        self._n_epochs    = n_epochs
+        self._n_batches   = n_batches
+        self._global_step = None
+
         self._loss_statistic      = None
         self._task_statistic      = None
         self._lr_statistic        = None
         self._tensor_statistics   = []
-
-        self._n_epochs    = n_epochs
-        self._n_batches   = n_batches
-        self._global_step = None
+        self._profiling_statistic = None
 
         self._best_loss = float('inf')
         self._is_best   = None
@@ -43,17 +43,16 @@ class Meter(object):
 
     def register_statistic(self, s: TimeStatistic) -> None:
 
-        if isinstance(s, ProfilingStatistic):
-            self._profiling_statistic = s
-        elif isinstance(s, LossStatistic):
+        if isinstance(s, LossStatistic):
             self._loss_statistic = s
         elif isinstance(s, TaskStatistic):
             self._task_statistic = s
         elif isinstance(s, LearningRateStatistic):
             self._lr_statistic = s
-        else:
-            assert isinstance(s, InstantaneousStatistic)
+        elif isinstance(s, InstantaneousStatistic) and not isinstance(s, ProfilingStatistic):
             self._tensor_statistics.append(s)
+        elif isinstance(s, ProfilingStatistic):
+            self._profiling_statistic = s
 
     def step(self, epoch_id: int, batch_id: int) -> None:
         self._global_step = epoch_id * self.n_batches + batch_id

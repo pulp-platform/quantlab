@@ -12,7 +12,7 @@ def configure(args):
 
     logbook.create_config(args.target_loss, args.ckpt_period,
                           args.n_folds, args.cv_seed,
-                          # args.fix_sampler, args.sampler_seed,
+                          args.fix_sampler, args.sampler_seed,
                           args.fix_network, args.network_seed)
 
     logbook.boot_logs_manager()

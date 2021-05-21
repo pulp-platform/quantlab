@@ -138,4 +138,8 @@ class NetworkAssistant(object):
         if platform.is_nndataparallel_run:
             net = nn.DataParallel(net)  # single-node, single-process, multi-GPU run
 
+        # master-workers synchronisation point: if the network has been initialised from file, then the master should communicate the network parameters to the workers
+        if platform.is_multiproc_horovod_run:
+            platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
+
         return net

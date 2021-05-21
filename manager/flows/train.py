@@ -31,7 +31,7 @@ def train(args: argparse.Namespace):
 
        * import the software abstractions (classes, functions)
          required to assemble the learning system from the
-         :ref:`systems` package;
+         :ref:`systems <systems-package>` package;
        * load the parameters required to instantiate the software
          components of the learning system from the experimental
          unit's private logs folder, that is stored on disk;
@@ -102,8 +102,10 @@ def train(args: argparse.Namespace):
 
     # prepare assistants
     # data
-    dataassistant = DataAssistant()
-    dataassistant.recv_datamessage(logbook.send_datamessage())
+    traindataassistant = DataAssistant('train')
+    traindataassistant.recv_datamessage(logbook.send_datamessage('train'))
+    validdataassistant = DataAssistant('valid')
+    validdataassistant.recv_datamessage(logbook.send_datamessage('valid'))
     # network
     networkassistant = NetworkAssistant()
     networkassistant.recv_networkmessage(logbook.send_networkmessage())
@@ -111,8 +113,10 @@ def train(args: argparse.Namespace):
     trainingassistant = TrainingAssistant()
     trainingassistant.recv_trainingmessage(logbook.send_trainingmessage())
     # meters
-    meterassistant = MeterAssistant()
-    meterassistant.recv_metermessage(logbook.send_metermessage())
+    trainmeterassistant = MeterAssistant('train')
+    trainmeterassistant.recv_metermessage(logbook.send_metermessage('train'))
+    validmeterassistant = MeterAssistant('valid')
+    validmeterassistant.recv_metermessage(logbook.send_metermessage('valid'))
 
     # determine the status of cross-validation
     # [recovery] master-workers synchronisation point: find the fold ID by inspecting the experimental unit's logs folder
@@ -135,19 +139,23 @@ def train(args: argparse.Namespace):
         if (not platform.is_horovod_run) or platform.is_master:
             logbook.logs_manager.setup_fold_logs(fold_id=fold_id)
 
-        # prepare the entities for the current fold
+        # prepare the system components for the current fold
         # data
-        train_loader, valid_loader = dataassistant.prepare(platform, fold_id)
+        train_loader = traindataassistant.prepare(platform, fold_id)
+        valid_loader = validdataassistant.prepare(platform, fold_id)
         # network
-        net                        = networkassistant.prepare(platform, fold_id)
+        net          = networkassistant.prepare(platform, fold_id)
         # training
-        loss_fn, gd, qnt_ctrls     = trainingassistant.prepare(platform, net)
+        loss_fn      = trainingassistant.prepare_loss()
+        gd           = trainingassistant.prepare_gd(platform, net)
+        qnt_ctrls    = trainingassistant.prepare_qnt_ctrls(net)
         # meters
-        meter_train, meter_valid   = meterassistant.prepare(platform, logbook.logs_manager, len(train_loader), len(valid_loader), net, gd.opt)
+        train_meter  = trainmeterassistant.prepare(platform, len(train_loader), net, gd.opt)
+        valid_meter  = validmeterassistant.prepare(platform, len(valid_loader), net)
 
         # [recovery] master-workers synchronisation point: load the latest checkpoint from disk
         if (not platform.is_horovod_run) or platform.is_master:
-            start_epoch_id = logbook.logs_manager.load_checkpoint(net, gd.opt, gd.lr_sched, qnt_ctrls, meter_train, meter_valid)
+            start_epoch_id = logbook.logs_manager.load_checkpoint(net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter=train_meter, valid_meter=valid_meter)
         if platform.is_horovod_run:
             start_epoch_id = platform.hvd.broadcast_object(start_epoch_id, root_rank=platform.master_rank, name='start_epoch_id')
             platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
@@ -160,8 +168,8 @@ def train(args: argparse.Namespace):
                 sd_c = platform.hvd.broadcast_object(c.state_dict(), root_rank=platform.master_rank, name='sd_c_{}'.format(i))
                 if not platform.is_master:
                     c.load_state_dict(sd_c)
-            meter_train.best_loss = platform.hvd.broadcast_object(meter_train.best_loss, root_rank=platform.master_rank, name='meter_train_best_loss')
-            meter_valid.best_loss = platform.hvd.broadcast_object(meter_valid.best_loss, root_rank=platform.master_rank, name='meter_valid_best_loss')
+            train_meter.best_loss = platform.hvd.broadcast_object(train_meter.best_loss, root_rank=platform.master_rank, name='train_meter_best_loss')
+            valid_meter.best_loss = platform.hvd.broadcast_object(valid_meter.best_loss, root_rank=platform.master_rank, name='valid_meter_best_loss')
 
         # if no checkpoint has been found, the epoch ID is set to -1
         # [recovery] if a checkpoint has been found, its epoch ID marks a completed epoch; the training should resume from the following epoch
@@ -193,9 +201,9 @@ def train(args: argparse.Namespace):
             for batch_id, (x, ygt) in enumerate(train_loader):
 
                 # event: forward pass is beginning
-                meter_train.step(epoch_id, batch_id)
-                meter_train.start_observing()
-                meter_train.tic()
+                train_meter.step(epoch_id, batch_id)
+                train_meter.start_observing()
+                train_meter.tic()
 
                 # processing (forward pass)
                 x   = x.to(platform.device)
@@ -206,7 +214,7 @@ def train(args: argparse.Namespace):
                 loss = loss_fn(ypr, ygt)
 
                 # event: forward pass has ended; backward pass is beginning
-                meter_train.update(ygt, ypr, loss)
+                train_meter.update(ygt, ypr, loss)
 
                 # training (backward pass)
                 gd.opt.zero_grad()  # clear gradients
@@ -214,11 +222,11 @@ def train(args: argparse.Namespace):
                 gd.opt.step()       # gradient descent
 
                 # event: backward pass has ended
-                meter_train.toc(ygt)
-                meter_train.stop_observing()
+                train_meter.toc(ygt)
+                train_meter.stop_observing()
 
             # === TRAINING STEP: END ===
-            meter_train.check_improvement()
+            train_meter.check_improvement()
 
             # === VALIDATION STEP: START ===
             net.eval()
@@ -236,9 +244,9 @@ def train(args: argparse.Namespace):
                 for batch_id, (x, ygt) in enumerate(valid_loader):
 
                     # event: forward pass is beginning
-                    meter_valid.step(epoch_id, batch_id)
-                    meter_valid.start_observing()
-                    meter_valid.tic()
+                    valid_meter.step(epoch_id, batch_id)
+                    valid_meter.start_observing()
+                    valid_meter.tic()
 
                     # processing (forward pass)
                     x   = x.to(platform.device)
@@ -249,12 +257,12 @@ def train(args: argparse.Namespace):
                     loss = loss_fn(ypr, ygt)
 
                     # event: forward pass has ended
-                    meter_valid.update(ygt, ypr, loss)
-                    meter_valid.toc(ygt)
-                    meter_valid.stop_observing()
+                    valid_meter.update(ygt, ypr, loss)
+                    valid_meter.toc(ygt)
+                    valid_meter.stop_observing()
 
             # === VALIDATION STEP: END ===
-            meter_valid.check_improvement()
+            valid_meter.check_improvement()
 
             # === EPOCH EPILOGUE ===
 
@@ -264,18 +272,18 @@ def train(args: argparse.Namespace):
 
             # has the target metric improved during the current epoch?
             if logbook.target_loss == 'train':
-                is_best = meter_train.is_best
+                is_best = train_meter.is_best
             elif logbook.target_loss == 'valid':
-                is_best = meter_valid.is_best
+                is_best = valid_meter.is_best
 
             # master-only point: store checkpoint to disk if this is a checkpoint epoch or the target metric has improved during the current epoch
             if (not platform.is_horovod_run) or platform.is_master:
                 if epoch_id % logbook.config['experiment']['ckpt_period'] == 0:  # checkpoint epoch; note that the first epoch is always a checkpoint epoch
-                    logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, meter_train, meter_valid)
-                if epoch_id == meter_train.n_epochs:
-                    logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, meter_train, meter_valid)  # this is the last epoch
+                    logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter, valid_meter)
+                if epoch_id == logbook.n_epochs:
+                    logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter, valid_meter)  # this is the last epoch
                 if is_best:  # the target metric has improved during this epoch
-                    logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, meter_train, meter_valid, is_best=is_best)
+                    logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter, valid_meter, is_best=is_best)
 
             # === EPOCH: END ===
 

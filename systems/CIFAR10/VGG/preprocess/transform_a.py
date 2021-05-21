@@ -6,15 +6,16 @@ from torchvision.transforms import ToTensor              # structural transforms
 from systems.CIFAR10.utils.transforms import CIFAR10Normalize  # public CIFAR-10 transforms
 
 
-def get_transform_a(train: bool, augment: bool = True) -> Compose:
+class TransformA(Compose):
 
-    if train and augment:
-        transform = Compose([RandomCrop(32, padding=4),
-                             RandomHorizontalFlip(),
-                             ToTensor(),
-                             CIFAR10Normalize()])
-    else:
-        transform = Compose([ToTensor(),
-                             CIFAR10Normalize()])
+    def __init__(self, augment: bool):
 
-    return transform
+        transforms = []
+        if augment:
+            transforms.append(RandomCrop(32, padding=4))
+            transforms.append(RandomHorizontalFlip())
+
+        transforms.append(ToTensor())
+        transforms.append(CIFAR10Normalize())
+
+        super(TransformA, self).__init__(transforms)

@@ -1,3 +1,5 @@
+.. _manager-flows-package:
+
 ``flows``
 =========
 

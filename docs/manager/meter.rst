@@ -1,3 +1,5 @@
+.. _manager-meter-package:
+
 ``meter``
 =========
 

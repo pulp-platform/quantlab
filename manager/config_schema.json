@@ -1,0 +1,403 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "",
+  "title": "QuantLab experiment configuration",
+  "description": "A configuration for a QuantLab experimental unit",
+  "type": "object",
+  "properties": {
+
+    "description": {
+      "description": "A natural language description of the experimental unit and its purpose",
+      "type": "string"
+    },
+
+    "data": {
+      "description": "The functional descriptions required to assemble ``torch.utils.data.DataLoader``s",
+      "type": "object",
+      "properties": {
+
+        "dataset": {
+          "description": "The specifications to assemble ``torch.utils.data.Dataset``s",
+          "type": "object",
+          "properties": {
+
+            "transforms": {
+              "description": "The specifications of the Python function that builds the ``torchvision.transforms.Compose`` data transformation pipelines that are to be plugged into ``torch.utils.Dataset``s",
+              "type": "object",
+              "properties": {
+
+                "function": {
+                  "description": "The name of the Python function",
+                  "type": "string"
+                },
+
+                "kwargs": {
+                  "description": "The keyword arguments for the Python function",
+                  "type": "object",
+                  "properties": {}
+                }
+
+              },
+              "required": ["function"]
+            },
+
+            "cv": {
+              "description": "The details for cross-validation",
+              "type": "object",
+              "properties": {
+
+                "seed": {
+                  "description": "The value to seed the algorithm that splits the training set into multiple folds (ensures consistency of splits between different computational runs)",
+                  "type": "integer"
+                },
+
+                "n_folds": {
+                  "description": "The number of cross-validation folds",
+                  "type": "integer"
+                }
+
+              }
+            }
+
+          },
+          "required": ["transforms"]
+        },
+
+        "dataloader": {
+          "description": "The arguments to instantiate ``torch.utils.data.DataLoader``s",
+          "type": "object",
+          "properties": {
+
+            "bs": {
+              "description": "The batch sizes",
+              "type": "object",
+              "properties": {
+
+                "train": {
+                  "description": "The batch size for training data points",
+                  "type": "integer"
+                },
+
+                "valid": {
+                  "description": "The batch size for validation data points",
+                  "type": "integer"
+                }
+
+              },
+              "required": ["train", "valid"]
+            }
+
+          },
+          "required": ["bs"]
+        }
+
+      },
+      "required": ["dataset", "dataloader"]
+    },
+
+    "network": {
+      "description": "The class, its constructor method's arguments, and additional functions (quantization, initialisation) to assemble the target ``torch.nn.Module``",
+      "type": "object",
+      "properties": {
+
+        "class": {
+          "description": "The class of the DNN topology",
+          "type": "string"
+        },
+
+        "kwargs": {
+          "description": "The arguments for the DNN topology's constructor method",
+          "type": "object",
+          "properties": {}
+        },
+
+        "quantize": {
+          "description": "The specifications of the Python function required to transform a floating-point DNN topology into a quantized one",
+          "type": "object",
+          "properties": {
+
+            "function": {
+              "description": "The name of the Python function",
+              "type": "string"
+            },
+
+            "kwargs": {
+              "description": "The keyword arguments for the Python function",
+              "type": "object",
+              "properties": {}
+            }
+
+          },
+          "required": ["function"]
+        },
+
+        "initialise": {
+          "description": "The specifications of the Python function required to initialise the parameters of the DNN topology",
+          "type": "object",
+          "properties": {
+
+            "function": {
+              "description": "The name of the Python function",
+              "type": "string"
+            },
+
+            "kwargs": {
+              "description": "The keyword arguments for the Python function",
+              "type": "object",
+              "properties": {}
+            }
+
+          },
+          "required": ["function"]
+        }
+
+      },
+      "required": ["class"]
+    },
+
+    "training": {
+      "description": "The functional specifications of the loss function, the gradient descent algorithm and (optionally) the quantization controllers",
+      "type": "object",
+      "properties": {
+
+        "loss_fn": {
+          "description": "The class of the loss operation and its constructor method's arguments",
+          "type": "object",
+          "properties": {
+
+            "class": {
+              "description": "The class of the loss operation",
+              "type": "string"
+            },
+
+            "kwargs": {
+              "description": "The arguments for the loss operations's constructor method",
+              "type": "object",
+              "properties": {}
+            }
+
+          },
+          "required": ["class"]
+        },
+
+        "gd": {
+          "description": "The functional specifications of the gradient descent algorithm",
+          "type": "object",
+          "properties": {
+
+            "opt": {
+              "description": "The class of the ``torch.optim.Optimizer`` and its constructor method's arguments",
+              "type": "object",
+              "properties": {
+
+                "class": {
+                  "description": "The class of the optimizer",
+                  "type": "string"
+                },
+
+                "kwargs": {
+                  "description": "The arguments for the optimizer's constructor method",
+                  "type": "object",
+                  "properties": {}
+                }
+
+              },
+              "required": ["class", "kwargs"]
+            },
+
+            "lr_sched": {
+              "description": "The class of the ``torch.optim.lr_scheduler._LRScheduler`` and its constructor method's arguments",
+              "type": "object",
+              "properties": {
+
+                "class": {
+                  "description": "The class of the learning rate scheduler",
+                  "type": "string"
+                },
+
+                "kwargs": {
+                  "description": "The arguments for the learning rate scheduler's constructor method",
+                  "type": "object",
+                  "properties": {}
+                }
+
+              },
+              "required": ["class", "kwargs"]
+            }
+
+          },
+          "required": ["opt"]
+        },
+
+        "quantize": {
+          "description": "The specifications of the Python function required to attach quantization controllers to a QNN",
+          "type": "object",
+          "properties": {
+
+            "function": {
+              "description": "The name of the Python function",
+              "type": "string"
+            },
+
+            "kwargs": {
+              "description": "The keyword arguments for the Python function",
+              "type": "object",
+              "properties": {}
+            }
+
+          },
+          "required": ["function"]
+        }
+
+      },
+      "required": ["loss_fn", "gd"]
+    },
+
+    "meters": {
+      "description": "The configuration of the ``manager.meter.Meter``s that will be attached to the system",
+      "type": "object",
+      "properties": {
+
+        "train": {
+          "description": "The functional specifications of the ``manager.meter.statistic.Statistic``s that will be attached to the system at training time",
+          "type": "object",
+          "properties": {
+
+            "compute_profiling_statistic": {
+              "description": "Whether to compute the profiling statistic (data points/s) at training time or not",
+              "type": "boolean"
+            },
+
+            "compute_task_statistic": {
+              "description": "Whether to compute the task statistic at training time or not",
+              "type": "boolean"
+            },
+
+            "tensor_statistics": {
+              "descriptions": "The functional descriptions of the statistics computed over ``torch.Tensor`` objects at training time",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+
+                  "class": {
+                    "description": "The class of the ``manager.meter.statistic.Statistic``",
+                    "type": "string"
+                  },
+
+                  "kwargs": {
+                    "description": "The arguments for the statistic's constructor method",
+                    "type": "object",
+                    "properties": {
+
+                      "name": {
+                        "description": "The symbolic name of the ``torch.nn.Module`` that the statistic should observe",
+                        "type": "string"
+                      },
+
+                      "start": {
+                        "description": "The time step at which the statistic should begin observations",
+                        "type": "integer"
+                      },
+
+                      "period": {
+                        "description": "The distance (in steps) between one observation of the statistic and the following",
+                        "type": "integer"
+                      }
+
+                    },
+                    "required": ["name", "start", "period"]
+                  }
+
+                },
+                "required": ["class", "kwargs"]
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+
+          },
+          "required": ["compute_profiling_statistic", "compute_task_statistic"]
+        },
+
+        "valid": {
+          "description": "The functional specifications of the ``manager.meter.statistic.Statistic``s that will be attached to the system at validation time",
+          "type": "object",
+          "properties": {
+
+            "compute_profiling_statistic": {
+              "description": "Whether to compute the profiling statistic (data points/s) at validation time or not",
+              "type": "boolean"
+            },
+
+            "tensor_statistics": {
+              "descriptions": "The functional descriptions of the statistics computed over ``torch.Tensor`` objects at validation time",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+
+                  "class": {
+                    "description": "The class of the ``manager.meter.statistic.Statistic``",
+                    "type": "string"
+                  },
+
+                  "kwargs": {
+                    "description": "The arguments for the statistic's constructor method",
+                    "type": "object",
+                    "properties": {
+
+                      "name": {
+                        "description": "The symbolic name of the ``torch.nn.Module`` that the statistic should observe",
+                        "type": "string"
+                      },
+
+                      "start": {
+                        "description": "The time step at which the statistic should begin observations",
+                        "type": "integer"
+                      },
+
+                      "period": {
+                        "description": "The distance (in steps) between one observation of the statistic and the following",
+                        "type": "integer"
+                      }
+
+                    },
+                    "required": ["name", "start", "period"]
+                  }
+
+                },
+                "required": ["class", "kwargs"]
+              },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+
+          },
+          "required": ["compute_profiling_statistic"]
+        }
+
+      },
+      "required": ["train", "valid"]
+    },
+
+    "experiment": {
+      "description": "Additional details to further specify how to perform the experimental run",
+      "type": "object",
+      "properties": {
+
+        "target_loss": {
+          "description": "The loss function to observe when looking for the best model",
+          "type": "string"
+        },
+
+        "ckpt_period": {
+          "description": "The difference (in epochs) between one checkpoint and the next one during training runs",
+          "type": "integer"
+        }
+      }
+    }
+
+  },
+  "required": ["data", "network", "training", "meters"]
+}

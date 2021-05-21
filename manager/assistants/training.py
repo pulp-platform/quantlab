@@ -4,7 +4,7 @@ import torch
 
 from .library import QuantLabLibrary
 from manager.platform import PlatformManager
-from typing import Union, List, Tuple
+from typing import Union, List
 
 
 GradientDescent = namedtuple('GradientDescent', ['opt', 'lr_sched'])  # an update algorithm for gradient descent consists of two parts: computing the updates given the gradients and (possibly) dynamically updating the step length hyper-parameter
@@ -108,11 +108,11 @@ class TrainingAssistant(object):
             self._qnt_ctrls_fun    = getattr(qnt_library, trainingmessage.config['quantize']['function'])
             self._qnt_ctrls_kwargs = trainingmessage.config['quantize']['kwargs']
 
-    def get_loss(self) -> torch.nn.Module:
+    def prepare_loss(self) -> torch.nn.Module:
         loss_fn = self._loss_fn_class(**self._loss_fn_kwargs)
         return loss_fn
 
-    def get_gd(self, platform: PlatformManager, net: torch.nn.Module) -> GradientDescent:
+    def prepare_gd(self, platform: PlatformManager, net: torch.nn.Module) -> GradientDescent:
 
         opt = self._opt_class(net.parameters(), **self._opt_kwargs)
         if platform.is_horovod_run:
@@ -123,34 +123,34 @@ class TrainingAssistant(object):
         gd = GradientDescent(opt=opt, lr_sched=lr_sched)
         return gd
 
-    def get_qnt_ctrls(self, net: torch.nn.Module) -> Union[List[object], List]:  # TODO: return list of QuantLab ``Controller``s
+    def prepare_qnt_ctrls(self, net: torch.nn.Module) -> Union[List[object], List]:  # TODO: return list of QuantLab ``Controller``s
         qnt_ctrls = self._qnt_ctrls_fun(net, **self._qnt_ctrls_kwargs) if self._qnt_ctrls_fun is not None else []
         return qnt_ctrls
 
-    def prepare(self, platform: PlatformManager, net: torch.nn.Module) -> Tuple[torch.nn.Module, GradientDescent, Union[List[object], List]]:
-        """Create the objects required to perform optimisation.
-
-        Args:
-            platform: the entity that registers the engineering aspects of the
-                computation: hardware specifications, OS details, MPI
-                configuration (via Horovod).
-            net: the target deep neural network.
-
-        Returns:
-            (tuple):
-
-                loss_fn: the loss function.
-                gd: the gradient descent algorithm; its functions are
-                    computing the actual updates and (possibly) dynamically
-                     updating the step length parameter (i.e., the learning
-                     rate).
-                qnt_ctrls: the controllers for the hyper-parameters that
-                    govern the quantization algorithms.
-
-        """
-
-        loss_fn   = self.get_loss()
-        gd        = self.get_gd(platform, net)
-        qnt_ctrls = self.get_qnt_ctrls(net)
-
-        return loss_fn, gd, qnt_ctrls
+    # def prepare(self, platform: PlatformManager, net: torch.nn.Module) -> Tuple[torch.nn.Module, GradientDescent, Union[List[object], List]]:
+    #     """Create the objects required to perform optimisation.
+    #
+    #     Args:
+    #         platform: the entity that registers the engineering aspects of the
+    #             computation: hardware specifications, OS details, MPI
+    #             configuration (via Horovod).
+    #         net: the target deep neural network.
+    #
+    #     Returns:
+    #         (tuple):
+    #
+    #             loss_fn: the loss function.
+    #             gd: the gradient descent algorithm; its functions are
+    #                 computing the actual updates and (possibly) dynamically
+    #                  updating the step length parameter (i.e., the learning
+    #                  rate).
+    #             qnt_ctrls: the controllers for the hyper-parameters that
+    #                 govern the quantization algorithms.
+    #
+    #     """
+    #
+    #     loss_fn   = self.prepare_loss()
+    #     gd        = self.prepare_gd(platform, net)
+    #     qnt_ctrls = self.prepare_qnt_ctrls(net)
+    #
+    #     return loss_fn, gd, qnt_ctrls

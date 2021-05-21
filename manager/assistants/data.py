@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 import torch
 import torch.utils.data
-import itertools
-
-from typing import Tuple, List, Callable
 
 from .library import QuantLabLibrary
 from manager.platform import PlatformManager
@@ -17,7 +14,7 @@ __all__ = [
 
 class DataMessage(object):
 
-    def __init__(self, path_data: str, config: dict, library: QuantLabLibrary) -> None:
+    def __init__(self, path_data: str, cv_config: dict, data_config: dict, library: QuantLabLibrary) -> None:
         """Describe how to build :obj:`torch.utils.data.DataLoader`s.
 
         An object of this class implements the server-side of a *dependency
@@ -33,17 +30,22 @@ class DataMessage(object):
 
         """
 
-        self._path_data = path_data
-        self._config    = config
-        self._library   = library
+        self._path_data   = path_data
+        self._cv_config   = cv_config
+        self._data_config = data_config
+        self._library     = library
 
     @property
     def path_data(self):
         return self._path_data
 
     @property
-    def config(self):
-        return self._config
+    def cv_config(self):
+        return self._cv_config
+
+    @property
+    def data_config(self):
+        return self._data_config
 
     @property
     def library(self):
@@ -52,7 +54,7 @@ class DataMessage(object):
 
 class DataAssistant(object):
 
-    def __init__(self):
+    def __init__(self, partition: str):
         """The entity that assembles :obj:`torch.utils.data.DataLoader`s.
 
         An object of this class implements the client-side of a *dependency
@@ -132,51 +134,52 @@ class DataAssistant(object):
         provide an overridable default cross-validation splitting function
         that the user can replace with a custom splitting function.
 
+        Arguments:
+            partition: whether this assistant will be in charge of creating
+                the training, validation or test ``DataLoader``.
+
         Attributes:
             _transform_fun(Callable[..., torch.Tensor]): the function
                 implementing the pre-processing of a data point, possibly
                 including its label.
             _transform_kwargs (dict): the keyword arguments that specify how
                 to instantiate the data-preprocessing function.
-            _path_data (str): the path to the problem's data set (both
-                training and validation/test points).
-            _dataset_load_fun (Callable[[str, Callable[..., torch.Tensor], bool], torch.utils.data.Dataset]):
+            _load_data_set_fun (Callable[[str, Callable[..., torch.Tensor], bool], torch.utils.data.Dataset]):
                 the function to create ``Dataset``s; it should be passed the
                 path to the data files, the transform function, and whether to
                 create the training or the validation/test ``Dataset``.
-            _seed (int): the seed for PyTorch's random number generator; this
-                is meant to ensure consistency of the splits in case they need
-                to be recomputed (e.g., after an experiment crashes or is
-                interrupted).
+            _path_data (str): the path to the problem's database (training,
+                validation and test points).
             _n_folds (int): the number of cross-validation folds of the
                 current experimental unit.
             _fold_id (int): the identifier of the current cross-validation
                 fold.
-            _dataset_cv_split_fun(Callable[[torch.utils.data.Dataset, int, int, int], Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]):
-                the function performing the split of the indices of the data
-                points.
-            _bs_train (int): the size of the training ``DataLoader``'s batch.
-            _bs_valid (int): the size of the validation/test ``DataLoader``'s
-                batch.
-
+            _cv_seed (int): the seed for PyTorch's random number generator;
+                this is meant to ensure consistency of the splits in case they
+                need to be recomputed (e.g., after an experiment crashes or is
+                interrupted).
+            _bs (int): the size of the ``DataLoader``'s batch.
         """
 
+        self._partition = partition
+
         # ingredients for dataset creation
-        # transform
-        self._transform_fun    = None
-        self._transform_kwargs = None
-        # dataset
-        self._path_data        = None
-        self._dataset_load_fun = None
+        self._load_data_set_fun = None
+        # database
+        self._path_data         = None
         # cross-validation
-        self._n_folds              = None
-        self._fold_id              = None
-        self._cv_seed              = None
-        self._dataset_cv_split_fun = None
+        self._n_folds           = None
+        self._fold_id           = None
+        self._cv_seed           = None
+        # transform
+        self._transform_class   = None
+        self._transform_kwargs  = None
+
+        # ingredients for sampler creation
+        self._sampler_seeds = None
 
         # ingredients for dataloader creation
-        self._bs_train = None
-        self._bs_valid = None
+        self._bs = None
 
     def recv_datamessage(self, datamessage: DataMessage) -> None:
         """Resolve the functional dependencies for the assembly.
@@ -188,122 +191,54 @@ class DataAssistant(object):
 
         """
 
-        # ``Dataset`` - pre-processing functions (mandatory)
-        self._transform_fun    = getattr(datamessage.library.module, datamessage.config['dataset']['transforms']['function'])
-        self._transform_kwargs = datamessage.config['dataset']['transforms']['kwargs']
-
         # ``Dataset`` - import function (mandatory)
-        self._path_data        = datamessage.path_data
-        self._dataset_load_fun = getattr(datamessage.library.module, 'dataset_load')  # the `dataset_load` function MUST be implemented by EACH topology sub-package
+        self._load_data_set_fun = getattr(datamessage.library.module, 'load_data_set')  # the `load_data_set` function MUST be implemented by EACH topology sub-package
+        self._path_data         = datamessage.path_data
 
         # ``Dataset`` - cross-validation details (mandatory, but ``dataset_cv_split_fun`` is optional)
-        self._n_folds              = datamessage.config['dataset']['cv']['n_folds']
-        self._cv_seed              = datamessage.config['dataset']['cv']['seed']
-        self._dataset_cv_split_fun = getattr(datamessage.library.module, 'dataset_cv_split') if hasattr(datamessage.library.module, 'dataset_cv_split') else self.default_dataset_cv_split
+        self._n_folds = datamessage.cv_config['n_folds']
+        self._cv_seed = datamessage.cv_config['seed']
 
-        # # ``Sampler`` - seed
-        # self._sampler_seeds = datamessage.config['sampler']['seeds']
+        # ``Dataset`` - pre-processing functions (mandatory)
+        self._transform_class  = getattr(datamessage.library.module, datamessage.data_config['dataset']['transform']['class'])
+        self._transform_kwargs = datamessage.data_config['dataset']['transform']['kwargs']
+
+        # ``Sampler`` - seed
+        try:
+            self._sampler_seeds = datamessage.data_config['sampler']['seeds']
+        except KeyError:
+            pass
 
         # ``DataLoader`` - batch sizes (mandatory)
-        self._bs_train = datamessage.config['dataloader']['bs']['train']
-        self._bs_valid = datamessage.config['dataloader']['bs']['valid']
+        self._bs = datamessage.data_config['dataloader']['bs']
 
-    @property
-    def is_cv_run(self):
-        return (self._n_folds > 1) and (self._fold_id is not None)
+    def get_dataset(self) -> torch.utils.data.Dataset:
 
-    def set_fold_id(self, fold_id):
-        self._fold_id = fold_id
-
-    @staticmethod
-    def default_dataset_cv_split(dataset: torch.utils.data.Dataset,
-                                 n_folds: int,
-                                 current_fold_id: int,
-                                 seed: int) -> Tuple[List[int], List[int]]:
-        """Partition a data set into two cross-validation fold data sets.
-
-        Given a data set :math:`\mathcal{D}` containing :math:`N` points
-        (so that we can identify it with the set :math:`\{ 0, \dots, N-1 \}`),
-        a :math:`K`-fold cross-validation setup (where :math:`K > 1`), and a
-        fold index :math:`\bar{k} \in \{ 0, \dots, K-1 \}`, this function
-        computes a :math:`K`-partition
-        :math:`\{ \mathcal{D}^{(k)} \subset \mathcal{D} \}_{k = 1, \dots, K}`
-        of :math:`\{ 0, \dots, N-1 \}` and returns a pair
-        :math:`(\mathcal{D}^{(\bar{k})}_{train}, \mathcal{D}^{(\bar{k})}_{valid})`
-        of subsets of :math:`\mathcal{D}` such that
-        :math:`\mathcal{D}^{(\bar{k})}_{train} \cup \mathcal{D}^{(\bar{k})}_{valid} = \mathcal{D}`
-        and
-        :math:`\mathcal{D}^{(\bar{k})}_{train} \cap \mathcal{D}^{(\bar{k})}_{valid} = \emptyset`,
-        where
-        :math:`\mathcal{D}^{(\bar{k})}_{train} = \cup_{k \neq \bar{k}} \mathcal{D}^{(k)}`
-        and :math:`\mathcal{D}^{(\bar{k})}_{valid} = \mathcal{D}^{(\bar{k})}`.
-
-        Args:
-            dataset: the data set to be split into folds.
-            seed (int): the seed for the random number generator (RNG); it
-                ensures that the partition is consistent amongst multiple
-                parts of the experimental run, and that a fold's validation
-                points do not leak into the fold's training set (e.g., in case
-                of multi-process runs where each process individually computes
-                the partition, or in crashed/interrupted runs which require
-                restoring the last checkpointed state).
-            n_folds: the size of the partition.
-            current_fold_id: the index of the partition element that plays the
-                role of the validation set for the current fold.
-
-        Returns:
-            (tuple): tuple containing:
-
-                train_fold_indices: the indices of the files representing the
-                    fold's training set.
-                valid_fold_indices: the indices of the files representing the
-                    fold's validation set.
-
-        """
-
-        torch.manual_seed(seed)
-
-        # partition the set of indices
-        indices = torch.randperm(len(dataset)).tolist()  # TODO: I also `shuffle` the `DistributedSampler` later; am I sure that this step is necessary (if not an hazard)?
-        folds_indices = []
-        for fold_id in range(n_folds):
-            folds_indices.append(indices[fold_id::n_folds])
-
-        # get the fold's indices partitions
-        train_fold_indices = list(itertools.chain(*[folds_indices[i] for i in range(len(folds_indices)) if i != current_fold_id]))
-        valid_fold_indices = folds_indices[current_fold_id]
-
-        return train_fold_indices, valid_fold_indices
-
-    def get_dataset(self, train: bool = True) -> torch.utils.data.Dataset:
-
-        transform = self._transform_fun(train=train, **self._transform_kwargs)
-        dataset   = self._dataset_load_fun(self._path_data, transform, train=train)
+        transform = self._transform_class(**self._transform_kwargs)
+        dataset   = self._load_data_set_fun(self._partition, self._path_data, n_folds=self._n_folds, current_fold_id=self._fold_id, cv_seed=self._cv_seed, transform=transform)
 
         return dataset
 
     def get_sampler(self,
                     platform: PlatformManager,
-                    dataset: torch.utils.data.Dataset,
-                    train: bool = True) -> torch.utils.data.Sampler:
+                    dataset: torch.utils.data.Dataset) -> torch.utils.data.Sampler:
 
         if platform.is_horovod_run:
-            sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=platform.global_size, rank=platform.global_rank, shuffle=train)  # TODO: PyTorch 1.5.0 does not allow to seed ``DistributedSampler``s
+            sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=platform.global_size, rank=platform.global_rank, shuffle=True if self._partition == 'train' else False)  # TODO: PyTorch 1.5.0 does not allow to seed ``DistributedSampler``s
         else:
             # generator = torch.Generator()
             # generator.manual_seed(self._sampler_seeds[self._fold_id])  # TODO: PyTorch 1.5.0 does not allow to seed ``RandomSampler``s
-            sampler = torch.utils.data.RandomSampler(dataset) if train else torch.utils.data.SequentialSampler(dataset)
+            sampler = torch.utils.data.RandomSampler(dataset) if self._partition == 'train' else torch.utils.data.SequentialSampler(dataset)
 
         return sampler
 
     def get_dataloader(self,
                        platform: PlatformManager,
                        dataset: torch.utils.data.Dataset,
-                       sampler: torch.utils.data.Sampler,
-                       train: bool = True) -> torch.utils.data.DataLoader:
+                       sampler: torch.utils.data.Sampler) -> torch.utils.data.DataLoader:
 
         loader = torch.utils.data.DataLoader(dataset,
-                                             batch_size=self._bs_train if train else self._bs_valid,
+                                             batch_size=self._bs,
                                              sampler=sampler,
                                              collate_fn=dataset.collate_fn if hasattr(dataset, 'collate_fn') else None,
                                              num_workers=platform.num_workers,
@@ -311,7 +246,7 @@ class DataAssistant(object):
 
         return loader
 
-    def prepare(self, platform: PlatformManager, fold_id: int) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    def prepare(self, platform: PlatformManager, fold_id: int) -> torch.utils.data.DataLoader:
         """Create the training and validation/test ``DataLoader``s.
 
         Args:
@@ -319,50 +254,18 @@ class DataAssistant(object):
                 computation: hardware specifications, OS details, MPI
                 configuration (via Horovod).
             fold_id: the identifier of the fold for which to prepare the
-                ``DataLoader``s; in cross-validation experiment, this
-                determines the partition that will play the validation set
-                role.
+                ``DataLoader``; in cross-validation experiment, this
+                determines the partition that will play the role of validation
+                set.
 
         Returns:
-            (tuple):
-
-                train_loader: the ``DataLoader`` for training data.
-                valid_loader: the ``DataLoader`` for validation (test) data.
-
+            loader: the ``DataLoader``.
         """
 
-        self.set_fold_id(fold_id)
+        self._fold_id = fold_id
 
-        # build the datasets (taking into account cross-validation, if required by the experimental unit)
-        if self.is_cv_run:
+        dataset = self.get_dataset()
+        sampler = self.get_sampler(platform, dataset)
+        loader  = self.get_dataloader(platform, dataset, sampler)
 
-            dataset = self.get_dataset(train=True)
-
-            train_fold_indices = None
-            valid_fold_indices = None
-
-            # master-workers synchronisation point: the master computes the indices of the files in the folds, and distributes these indices to worker processes
-            if (not platform.is_horovod_run) or platform.is_master:
-                train_fold_indices, valid_fold_indices = self._dataset_cv_split_fun(dataset, self._n_folds, self._fold_id, self._cv_seed)
-            if platform.is_horovod_run:
-                train_fold_indices = platform.hvd.broadcast_object(train_fold_indices, root_rank=platform.master_rank, name='train_fold_indices')
-                valid_fold_indices = platform.hvd.broadcast_object(valid_fold_indices, root_rank=platform.master_rank, name='valid_fold_indices')
-
-            # build the fold's datasets
-            train_dataset = torch.utils.data.Subset(dataset, train_fold_indices)
-            valid_dataset = torch.utils.data.Subset(dataset, valid_fold_indices)
-
-        else:
-
-            train_dataset = self.get_dataset(train=True)
-            valid_dataset = self.get_dataset(train=False)
-
-        # build the samplers
-        train_sampler = self.get_sampler(platform, train_dataset, train=True)
-        valid_sampler = self.get_sampler(platform, valid_dataset, train=False)
-
-        # build the dataloaders
-        train_loader = self.get_dataloader(platform, train_dataset, train_sampler, train=True)
-        valid_loader = self.get_dataloader(platform, valid_dataset, valid_sampler, train=False)
-
-        return train_loader, valid_loader
+        return loader
