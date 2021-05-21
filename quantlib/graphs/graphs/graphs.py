@@ -3,7 +3,7 @@ import torch.onnx.utils
 import torch
 import itertools
 import networkx as nx
-from networkx.algorithms import dag
+rom networkx.algorithms import dag
 
 import quantlib.graphs.graphs
 
