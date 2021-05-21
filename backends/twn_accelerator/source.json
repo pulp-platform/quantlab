@@ -1,7 +1,0 @@
-{
-  "problem":  "ImageNet",
-  "topology": "VGG",
-  "exp_id":   23,
-  "fold_id":  0,
-  "ckpt":     "epoch0090.ckpt"
-}
