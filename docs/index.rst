@@ -18,7 +18,7 @@ QuantLab provides device-specific graph optimisation and code generation functio
 QuantLab performs two main roles:
 
 * **experiment manager**, where the abstractions implemented in the :ref:`manager package <manager-package>` act in coordination with the :ref:`systems package <systems-package>` (and its structure of sub-packages) to run experiments and organise their results in a coherent way;
-* **quantization library**; you can find several quantization algorithms (both *quantization-aware* and *post-training*) and abstractions to manipulate computational graphs into the :ref:`quantlib package <quantlib-package>`; concerning deployment, QuantLab supports graph optimisation and code-generation for some platforms through the :ref:`backends package <backends-package>`.
+* **quantization library**: you can find several quantization algorithms (both *quantization-aware* and *post-training*), graph editing functionalities, and even graph optimisation and code-generation support for some platforms in the :ref:`quantlib package <quantlib-package>`.
 
 QuantLab is built on top of the `PyTorch <https://pytorch.org/>`_ deep learning framework.
 It was developed at the `Integrated Systems Laboratory <https://iis.ee.ethz.ch/>`_ (Institut für Integrierte Systeme, IIS) of ETH Zürich as part of the `PULP project <https://pulp-platform.org/>`_.
@@ -31,7 +31,6 @@ It was developed at the `Integrated Systems Laboratory <https://iis.ee.ethz.ch/>
    systems/index
    manager/index
    quantlib/index
-   backends/index
 
 
 Indices and tables

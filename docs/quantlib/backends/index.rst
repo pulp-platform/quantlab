@@ -1,4 +1,4 @@
-.. _backends-package:
+.. _quantlib-backends-package:
 
 ``backends``
 ============

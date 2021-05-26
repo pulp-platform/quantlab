@@ -8,8 +8,8 @@ Converting fake-quantized computational graphs into true-quantized computational
 * *graph rewriting*, where specific sub-graphs of the source graph are replaced with new sub-graphs;
 * *folding* and *casting*, arithmetic operations whose nature is strictly related to digital arithmetic, and might even be device-specific.
 
-Computational graphs are not general graphs; instead, they are attached a very specific semantic.
-As described in the section on :ref:`computational graphs <quantlib-graphs-computationalgraphs>`, computational graphs are directed, bipartite graphs whose nodes represent operands and operations on these operands, and whose arcs represent dependency relationships between operands and operations.
+Computational graphs are not general graphs; indeed, they are attached a very specific semantic.
+Computational graphs are directed, bipartite graphs whose nodes represent operands and operations on these operands, and whose arcs represent dependency relationships between operands and operations.
 This clarification is important in that graph rewriting can be explained without reference to arithmetic aspects.
 Nevertheless, understanding the graph rewriting rules applied in the context of fake-to-true conversion mandates that the reader has also a firm grasp on the principles of *number representations* and *digital arithmetic*.
 
@@ -19,7 +19,7 @@ For this reason, this section of the documentation is structured as follows:
 * the second sub-section will summarise the principles of *number representations* and *digital arithmetic*;
 * the last sub-section will illustrate some of the general-purpose graph rewriting rules implemented in QuantLab's quantlib sub-package.
 
-Due to the often device-specific nature of the required folding and casting operations, we refer the reader to the examples of arithmetic computational graph rewriting rules implemented in the :ref:`TWN accelerator <twn-accelerator>` backend package.
+Due to the often device-specific nature of the required folding and casting operations, we refer the reader to the examples of arithmetic computational graph rewriting rules implemented in the :ref:`TWN accelerator <backends-twn-accelerator>` backend package.
 
 
 The algebraic approach to graph rewriting
