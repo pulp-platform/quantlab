@@ -30,9 +30,9 @@ class CIFAR10Statistic(TaskStatistic):
         self._postprocess_pr_fun = postprocess_pr_fun
 
     def _reset(self):
-        self._total_tracked = torch.Tensor([0]).to(dtype=torch.int64)
-        self._total_correct = torch.Tensor([0]).to(dtype=torch.int64)
-        self._value         = torch.Tensor([0.0])
+        self._total_tracked = torch.Tensor([0]).to(dtype=torch.int64, device=self._platform.device)
+        self._total_correct = torch.Tensor([0]).to(dtype=torch.int64, device=self._platform.device)
+        self._value         = torch.Tensor([0.0]).to(device=self._platform.device)
 
     def _stop_observing(self, *args):
         # master-only point: at the end of the epoch, write the running statistics to disk
@@ -49,7 +49,7 @@ class CIFAR10Statistic(TaskStatistic):
         pp_ypr = self._postprocess_pr_fun(ypr)
 
         # compute the batch statistics for the current process
-        bs        = torch.Tensor([ypr.shape[0]]).to(dtype=torch.int64)
+        bs        = torch.Tensor([ypr.shape[0]]).to(dtype=torch.int64, device=self._platform.device)
         correct   = pp_ygt == pp_ypr
         n_correct = torch.sum(correct[:, 0])
 
