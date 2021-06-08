@@ -1,16 +1,16 @@
-.. _manager-package:
+.. _manager_package:
 
 The ``manager`` package
 =======================
 
 This section introduces the ``manager`` package, and is organised as follows:
 
-* the :ref:`first sub-section <manager-package_improving-systems>` is a motivational discussion about structuring the analysis of machine learning systems, and in particular DNN systems;
-* the :ref:`second sub-section <manager-package_statistical-laboratory>` is also a motivational discussion introducing the basic concepts of *design of experiments* and their influence on the structure of the package;
-* the :ref:`third sub-section <manager-package_overview>` provides an overview of the package and contains references to its documentation.
+* the :ref:`first sub-section <manager_package-improving_systems>` is a motivational discussion about structuring the analysis of machine learning systems, and in particular DNN systems;
+* the :ref:`second sub-section <manager_package-statistical_laboratory>` is also a motivational discussion introducing the basic concepts of *design of experiments* and their influence on the structure of the package;
+* the :ref:`third sub-section <manager_package-overview>` provides an overview of the package and contains references to its documentation.
 
 
-.. _manager-package_improving-systems:
+.. _manager_package-improving_systems:
 
 Improving the quality of engineered systems
 -------------------------------------------
@@ -44,7 +44,7 @@ How can we assess the impact of different components and different configuration
 Can we do this following a methodologically sound approach?
 
 
-.. _manager-package_statistical-laboratory:
+.. _manager_package-statistical_laboratory:
 
 Envisioning a statistical laboratory
 ------------------------------------
@@ -69,7 +69,7 @@ In particular, the manager instructs a dedicated assistant to prepare the **meas
 The flow can begin."
 
 
-.. _manager-package_overview:
+.. _manager_package-overview:
 
 Overview
 --------
