@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-PATH_CFG=$(cd $(dirname ${BASH_SCRIPT[0]}) && pwd)
+PATH_CFG=$(cd $(dirname ${BASH_SOURCE[0]}) && pwd)
 PATH_QUANTLAB_HOME=$(cd $(dirname ${PATH_CFG}) && pwd)
 PATH_STORAGE_CFG=${PATH_CFG}/storage_cfg.json
 
