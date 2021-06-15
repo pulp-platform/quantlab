@@ -193,7 +193,7 @@ def train(args: argparse.Namespace):
             # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
             if (not platform.is_horovod_run) or platform.is_master:
                 for c in qnt_ctrls:
-                    c.step(epoch_id)
+                    c.step_pre_training(epoch_id)
             if platform.is_horovod_run:
                 platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
@@ -234,7 +234,7 @@ def train(args: argparse.Namespace):
             # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
             if (not platform.is_horovod_run) or platform.is_master:
                 for c in qnt_ctrls:
-                    c.step(epoch_id)
+                    c.step_pre_validation(epoch_id)
             if platform.is_horovod_run:
                 platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
@@ -242,6 +242,9 @@ def train(args: argparse.Namespace):
 
                 # cycle over batches of validation data (one loop for each epoch)
                 for batch_id, (x, ygt) in enumerate(valid_loader):
+                    if (not platform.is_horovod_run) or platform.is_master:
+                        for c in qnt_ctrls:
+                            c.step_pre_batch(epoch_id)
 
                     # event: forward pass is beginning
                     valid_meter.step(epoch_id, batch_id)
