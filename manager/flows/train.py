@@ -146,7 +146,7 @@ def train(args: argparse.Namespace):
         # network
         net          = networkassistant.prepare(platform, fold_id)
         # training
-        loss_fn      = trainingassistant.prepare_loss()
+        loss_fn      = trainingassistant.prepare_loss(net)
         gd           = trainingassistant.prepare_gd(platform, net)
         qnt_ctrls    = trainingassistant.prepare_qnt_ctrls(net)
         # meters
