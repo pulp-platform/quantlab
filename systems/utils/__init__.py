@@ -1,2 +1,2 @@
-from data import *
-from lrscheduler import *
+from .data import *
+from .lrscheduler import *
