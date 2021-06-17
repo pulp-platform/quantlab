@@ -233,6 +233,10 @@ class LogsManager(object):
         self._writerstub_step_valid.writer.close()
 
     # === CHECKPOINTING FUNCTIONALITIES ===
+
+    def make_ckpt_path(self, ckpt_name : str):
+        return os.path.join(self._path_saves, ckpt_name)
+
     def store_checkpoint(self,
                          epoch_id: int,
                          net: torch.nn.Module,
@@ -262,7 +266,7 @@ class LogsManager(object):
         ckpt['valid_meter'] = {}
         ckpt['valid_meter']['best_loss'] = meter_valid.best_loss
 
-        ckpt_filename = os.path.join(self._path_saves, 'best.ckpt' if is_best else _FORMAT_CKPT_FILE.format(epoch_id))
+        ckpt_filename = self.make_ckpt_path('best.ckpt' if is_best else _FORMAT_CKPT_FILE.format(epoch_id))
         torch.save(ckpt, ckpt_filename)
 
         message = manager.QUANTLAB_PREFIX + "Checkpoint stored: <{}>.".format(ckpt_filename)
@@ -277,14 +281,15 @@ class LogsManager(object):
                         valid_meter: Union[object, None] = None,  # `object` is of type `manager.meter.Meter`
                         ckpt_id: Union[int, None] = None) -> int:
 
+
         ckpts_list = os.listdir(self._path_saves)
 
         if len(ckpts_list) > 0:  # a checkpoint exists
 
             if ckpt_id is None:  # discover most recent checkpoint; this mode is used when resuming crashed/interrupted experimental runs
-                ckpt_filename = max([os.path.join(self._path_saves, f) for f in ckpts_list], key=os.path.getctime)
+                ckpt_filename = max([self.make_ckpt_path(f) for f in ckpts_list], key=os.path.getctime)
             else:  # load requested checkpoint; this mode should only be used by the test flow
-                ckpt_filename = os.path.join(self._path_saves, 'best.ckpt' if ckpt_id == -1 else _FORMAT_CKPT_FILE.format(ckpt_id))
+                ckpt_filename = self.make_ckpt_path('best.ckpt' if ckpt_id == -1 else _FORMAT_CKPT_FILE.format(ckpt_id))
 
             # load the checkpoint into the proper structures
             ckpt = torch.load(ckpt_filename)
