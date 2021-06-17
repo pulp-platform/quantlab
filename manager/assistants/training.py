@@ -136,7 +136,7 @@ class TrainingAssistant(object):
 
         # quantization controllers (optional)
         if 'quantize' in trainingmessage.config.keys():
-            qnt_library = importlib.import_module('.'.join('', 'quantize'), package=trainingmessage.library.module)
+            qnt_library = importlib.import_module('.quantize', package=trainingmessage.library.path)
             self._qnt_ctrls_fun    = getattr(qnt_library, trainingmessage.config['quantize']['function'])
             self._qnt_ctrls_kwargs = trainingmessage.config['quantize']['kwargs']
 

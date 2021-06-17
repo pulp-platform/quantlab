@@ -102,7 +102,7 @@ class NetworkAssistant(object):
 
         # quantization recipe (optional)
         if 'quantize' in networkmessage.config.keys():
-            qnt_library = importlib.import_module('.'.join('', 'quantize'), package=networkmessage.library.module)
+            qnt_library = importlib.import_module('.quantize', package=networkmessage.library.path)
             self._qnt_recipe_fun    = getattr(qnt_library, networkmessage.config['quantize']['function'])
             self._qnt_recipe_kwargs = networkmessage.config['quantize']['kwargs']
 
