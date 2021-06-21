@@ -4,7 +4,9 @@ from torch import nn
 
 __all__ = ['VGG7']
 
+
 class VGG7(nn.Module):
+
     def __init__(self, capacity : int, seed : int):
         super(VGG7, self).__init__()
         self.features = self._make_features(capacity)

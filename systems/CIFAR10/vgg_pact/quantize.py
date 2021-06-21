@@ -7,15 +7,17 @@ from quantlib.editing.lightweight.rules.filters import TypeFilter, VariadicOrFil
 
 
 class PACTSequential(LightweightGraph):
-    def __init__(self, net : nn.Module, config : dict):
+
+    def __init__(self, net: nn.Module, config: dict):
+
         super(PACTSequential, self).__init__(net)
-        #make filter for convs
+        # make filter for convs
         conv_filter = VariadicOrFilter(*[TypeFilter(t) for t in (nn.Conv2d, PACTConv2d)])
         self.conv_filter = conv_filter
-        #make filter for linears
+        # make filter for linears
         lin_filter = VariadicOrFilter(*[TypeFilter(t) for t in (nn.Linear, PACTLinear)])
         self.lin_filter = lin_filter
-        #make filter for activations
+        # make filter for activations
         act_filter = VariadicOrFilter(*[TypeFilter(t) for t in (nn.ReLU, PACTUnsignedAct)])
         self.act_filter = act_filter
         if config is not None:
@@ -46,10 +48,11 @@ class PACTSequential(LightweightGraph):
         if self.conv_config is None:
             print("PACTSequential: quantize_convs() called but no config supplied - returning!")
             return
-        lvl_cfg = {int(k):v for k,v in self.conv_config['n_levels'].items() if v > 0}
+        lvl_cfg = {int(k): v for k, v in self.conv_config['n_levels'].items() if v > 0}
         # all other config entries should be usable as kwargs for PACTConv2d
-        other_cfg = {k:v for k,v in self.conv_config.items() if k != 'n_levels'}
-        def replace_conv(c : nn.Conv2d, n_levels : int):
+        other_cfg = {k: v for k, v in self.conv_config.items() if k != 'n_levels'}
+
+        def replace_conv(c: nn.Conv2d, n_levels: int):
             pc = PACTConv2d.from_conv2d(c, n_levels=n_levels, **other_cfg)
             return pc
 
@@ -62,9 +65,10 @@ class PACTSequential(LightweightGraph):
         if self.lin_config is None:
             print("PACTSequential: quantize_lins() called but no config supplied - returning!")
             return
-        lvl_cfg = {int(k):v for k,v in self.lin_config['n_levels'].items() if v > 0}
-        other_cfg = {k:v for k,v in self.lin_config.items() if k != 'n_levels'}
-        def replace_lin(l : nn.Linear, n_levels : int):
+        lvl_cfg = {int(k): v for k, v in self.lin_config['n_levels'].items() if v > 0}
+        other_cfg = {k: v for k, v in self.lin_config.items() if k != 'n_levels'}
+
+        def replace_lin(l: nn.Linear, n_levels: int):
             pc = PACTLinear.from_linear(l, n_levels=n_levels, **other_cfg)
             return pc
 
@@ -77,8 +81,8 @@ class PACTSequential(LightweightGraph):
         if self.act_config is None:
             print("PACTSequential: quantize_acts() called but no config supplied - returning!")
             return
-        lvl_cfg = {int(k):v for k,v in self.act_config['n_levels'].items() if v > 0}
-        other_cfg = {k:v for k,v in self.act_config.items() if k != 'n_levels'}
+        lvl_cfg = {int(k): v for k, v in self.act_config['n_levels'].items() if v > 0}
+        other_cfg = {k: v for k, v in self.act_config.items() if k != 'n_levels'}
         for k, n in lvl_cfg.items():
             node_to_replace = self.act_nodes[k]
             pa = PACTUnsignedAct(n_levels=n, **other_cfg)
@@ -90,21 +94,20 @@ class PACTSequential(LightweightGraph):
         self.quantize_acts()
         self.rebuild_nodes_list()
 
-    def get_lin_controller(self, schedule : dict, verbose : bool = False):
+    def get_lin_controller(self, schedule: dict, verbose: bool = False):
         lin_modules = [n.module for n in self.conv_nodes + self.linear_nodes]
         return PACTLinearController(lin_modules, schedule, verbose=verbose)
 
-
-    def get_act_controller(self, schedule : dict, verbose : bool = False):
+    def get_act_controller(self, schedule: dict, verbose: bool = False):
         act_modules = [n.module for n in self.act_nodes]
         return PACTActController(act_modules, schedule, verbose=verbose)
-
 
 
 def quantize_pact(net, config):
     g = PACTSequential(net, config)
     g.quantize()
     return g.net
+
 
 def get_pact_controllers(net, schedules, verbose=False):
     g = PACTSequential(net, None)

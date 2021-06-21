@@ -14,13 +14,13 @@ def _postprocess_pr(ypr: torch.Tensor) -> torch.Tensor:
     return ypr.argmax(dim=1).unsqueeze(-1)
 
 
-class vgg_pactStatistic(CIFAR10Statistic):
+class VGGPACTStatistic(CIFAR10Statistic):
 
     def __init__(self,
                  platform: PlatformManager, writerstub: WriterStub,
                  n_epochs: int, n_batches: int,
                  train: bool):
-        super(vgg_pactStatistic, self).__init__(platform=platform, writerstub=writerstub,
-                                           n_epochs=n_epochs, n_batches=n_batches,
-                                           train=train,
-                                           postprocess_gt_fun=_postprocess_gt, postprocess_pr_fun=_postprocess_pr)
+        super(VGGPACTStatistic, self).__init__(platform=platform, writerstub=writerstub,
+                                               n_epochs=n_epochs, n_batches=n_batches,
+                                               train=train,
+                                               postprocess_gt_fun=_postprocess_gt, postprocess_pr_fun=_postprocess_pr)
