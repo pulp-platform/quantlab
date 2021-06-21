@@ -109,15 +109,13 @@
                         "1": "verbose_off",
                         "3": "verbose_on",
                         "200": "start",
-                        "280": "freeze",
-                        "290": "thaw"
+                        "325": "freeze"
                     },
                     "activation": {
                         "1": "verbose_off",
                         "3": "verbose_on",
                         "180": "start",
-                        "280": "freeze",
-                        "290": "thaw"
+                        "325": "freeze"
                     }
                 }
             }
