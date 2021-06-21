@@ -28,7 +28,7 @@
             "function": "quantize_pact",
             "kwargs": {
                 "config": {
-                    "PACT_Conv2d": {
+                    "PACTConv2d": {
                         "quantize": "per_channel",
                         "init_clip": "sawb",
                         "learn_clip": false,
@@ -41,7 +41,7 @@
                             "5": 4
                         }
                     },
-                    "PACT_Linear": {
+                    "PACTLinear": {
                         "quantize": "per_channel",
                         "init_clip": "max",
                         "learn_clip": true,
@@ -52,7 +52,7 @@
                             "2": 256
                         }
                     },
-                    "PACT_UnsignedAct": {
+                    "PACTUnsignedAct": {
                         "init_clip": "max",
                         "n_levels": {
                             "0": 32,
@@ -77,7 +77,7 @@
         },
         "gd": {
             "opt": {
-                "class": "PACT_Adam",
+                "class": "PACTAdam",
                 "takes_net": true,
                 "kwargs": {
                     "pact_decay": 0.01,
