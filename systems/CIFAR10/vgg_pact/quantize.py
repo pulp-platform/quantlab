@@ -3,20 +3,20 @@ from torch import nn
 from quantlib.algorithms.pact import PACT_UnsignedAct, PACT_Conv2d, PACT_Linear
 from quantlib.algorithms.pact import PACT_ActController, PACT_LinearController
 from quantlib.editing.lightweight import LightweightGraph, LightweightEditor, LightweightRule
-from quantlib.editing.lightweight.rules.filters import TypeFilter, OrFilter
+from quantlib.editing.lightweight.rules.filters import TypeFilter, VarOrFilter
 
 
 class PACT_Sequential(LightweightGraph):
     def __init__(self, net : nn.Module, config : dict):
         super(PACT_Sequential, self).__init__(net)
         #make filter for convs
-        conv_filter = TypeFilter(nn.Conv2d, PACT_Conv2d)
+        conv_filter = VarOrFilter(*[TypeFilter(t) for t in (nn.Conv2d, PACT_Conv2d)])
         self.conv_filter = conv_filter
         #make filter for linears
-        lin_filter = TypeFilter(nn.Linear, PACT_Linear)
+        lin_filter = VarOrFilter(*[TypeFilter(t) for t in (nn.Linear, PACT_Linear)])
         self.lin_filter = lin_filter
         #make filter for activations
-        act_filter = TypeFilter(nn.ReLU, PACT_UnsignedAct)
+        act_filter = VarOrFilter(*[TypeFilter(t) for t in (nn.ReLU, PACT_UnsignedAct)])
         self.act_filter = act_filter
         if config is not None:
             self.conv_config = config['PACT_Conv2d']
