@@ -300,7 +300,7 @@ class LogsManager(object):
 
             opt.load_state_dict(ckpt['gd']['opt'])
             if lr_sched is not None:
-                assert ckpt['lr_sched'] is not None
+                assert ckpt['gd']['lr_sched'] is not None
                 lr_sched.load_state_dict(ckpt['gd']['lr_sched'])
             for c, sd in zip(qnt_ctrls, ckpt['qnt_ctrls']):
                 c.load_state_dict(sd)
