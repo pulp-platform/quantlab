@@ -28,7 +28,7 @@
             "function": "quantize_pact",
             "kwargs": {
                 "config": {
-                    "PACT_Conv2d": {
+                    "PACTConv2d": {
                         "quantize": "per_channel",
                         "init_clip": "sawb",
                         "learn_clip": false,
@@ -41,10 +41,10 @@
                             "5": 4
                         }
                     },
-                    "PACT_Linear": {
+                    "PACTLinear": {
                         "quantize": "per_channel",
-                        "init_clip": "max",
-                        "learn_clip": true,
+                        "init_clip": "sawb",
+                        "learn_clip": false,
                         "symm_wts": true,
                         "n_levels": {
                             "0": 16,
@@ -52,7 +52,7 @@
                             "2": 256
                         }
                     },
-                    "PACT_UnsignedAct": {
+                    "PACTUnsignedAct": {
                         "init_clip": "max",
                         "n_levels": {
                             "0": 32,
@@ -72,12 +72,12 @@
     "training": {
         "loss_fn": {
             "class": "CrossEntropyLoss",
-            "pass_net": false,
+            "takes_net": false,
             "kwargs": {}
         },
         "gd": {
             "opt": {
-                "class": "PACT_Adam",
+                "class": "PACTAdam",
                 "takes_net": true,
                 "kwargs": {
                     "pact_decay": 0.01,
@@ -92,14 +92,15 @@
                         "80": 0.1,
                         "120": 0.01,
                         "150": 0.001,
-                        "180": 0.1,
-                        "230": 0.01,
-                        "260": 0.001
+                        "180": 1,
+                        "230": 0.1,
+                        "260": 0.01,
+                        "300": 0.001
                     }
                 }
             }
         },
-        "n_epochs": 310,
+        "n_epochs": 340,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
