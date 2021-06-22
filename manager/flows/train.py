@@ -148,7 +148,7 @@ def train(args: argparse.Namespace):
         # training
         loss_fn      = trainingassistant.prepare_loss(net)
         gd           = trainingassistant.prepare_gd(platform, net)
-        qnt_ctrls    = trainingassistant.prepare_qnt_ctrls(net)
+        qnt_ctrls    = trainingassistant.prepare_qnt_ctrls(platform, net)
         # meters
         train_meter  = trainmeterassistant.prepare(platform, len(train_loader), net, gd.opt)
         valid_meter  = validmeterassistant.prepare(platform, len(valid_loader), net)
@@ -193,7 +193,7 @@ def train(args: argparse.Namespace):
             # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
             if (not platform.is_horovod_run) or platform.is_master:
                 for c in qnt_ctrls:
-                    c.step_pre_training_epoch(epoch_id)
+                    c.step_pre_training_epoch()
             if platform.is_horovod_run:
                 platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
@@ -204,7 +204,7 @@ def train(args: argparse.Namespace):
                 # TODO: in multi-process runs, synchronising processes at each step might be too costly
                 if (not platform.is_horovod_run) or platform.is_master:
                     for c in qnt_ctrls:
-                        c.step_pre_training_batch(epoch_id)
+                        c.step_pre_training_batch()
                 if platform.is_horovod_run:
                     platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
@@ -242,7 +242,7 @@ def train(args: argparse.Namespace):
             # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
             if (not platform.is_horovod_run) or platform.is_master:
                 for c in qnt_ctrls:
-                    c.step_pre_validation(epoch_id)
+                    c.step_pre_validation()
             if platform.is_horovod_run:
                 platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 

@@ -22,9 +22,10 @@
     "network": {
         "class": "VGG",
         "kwargs": {
-            "config": "VGG9",
+            "config": "VGG8",
             "capacity": 1,
-            "use_bn": true
+            "use_bn_features": true,
+            "use_bn_classifier": true
         },
         "quantize": {
             "function": "all_ana_recipe",
@@ -58,77 +59,77 @@
                     {
                         "modules": ["pilot.0", "pilot.2"],
                         "fnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 2}}
                         },
                         "bnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 2}}
                         }
                     },
                     {
                         "modules": ["features.1", "features.3"],
                         "fnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 2}}
                         },
                         "bnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 2}}
                         }
                     },
                     {
                         "modules": ["features.4", "features.6"],
                         "fnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 2}}
                         },
                         "bnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 2}}
                         }
                     },
                     {
                         "modules": ["features.8", "features.10"],
                         "fnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 2}}
                         },
                         "bnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 2}}
                         }
                     },
                     {
                         "modules": ["features.11", "features.13"],
                         "fnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 20, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 20, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 20, "tend": 50, "alpha": 2}}
                         },
                         "bnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 25, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 25, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 25, "tend": 50, "alpha": 2}}
                         }
                     },
                     {
                         "modules": ["classifier.0", "classifier.2"],
                         "fnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 2}}
                         },
                         "bnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 2}}
                         }
                     },
                     {
                         "modules": ["classifier.3", "classifier.5"],
                         "fnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 2}}
                         },
                         "bnoise": {
-                            "mi":    {"base": -1.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 1}},
+                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 1}},
                             "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 2}}
                         }
                     }
