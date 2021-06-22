@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 PROBLEM=${1}   # TODO: check that this is alphanumeric
 TOPOLOGY=${2}  # TODO: check that this is alphanumeric

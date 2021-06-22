@@ -57,7 +57,7 @@ def test(args):
     # network
     net         = networkassistant.prepare(platform, logbook.fold_id)
     # training
-    loss_fn     = trainingassistant.prepare_loss()
+    loss_fn     = trainingassistant.prepare_loss(net)
     gd          = trainingassistant.prepare_gd(platform, net)
     qnt_ctrls   = trainingassistant.prepare_qnt_ctrls(net)
     # meters

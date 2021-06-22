@@ -146,7 +146,7 @@ def train(args: argparse.Namespace):
         # network
         net          = networkassistant.prepare(platform, fold_id)
         # training
-        loss_fn      = trainingassistant.prepare_loss()
+        loss_fn      = trainingassistant.prepare_loss(net)
         gd           = trainingassistant.prepare_gd(platform, net)
         qnt_ctrls    = trainingassistant.prepare_qnt_ctrls(net)
         # meters
@@ -193,12 +193,15 @@ def train(args: argparse.Namespace):
             # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
             if (not platform.is_horovod_run) or platform.is_master:
                 for c in qnt_ctrls:
-                    c.step(epoch_id)
+                    c.step_pre_training_epoch(epoch_id)
             if platform.is_horovod_run:
                 platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
             # cycle over batches of training data (one loop for each epoch)
             for batch_id, (x, ygt) in enumerate(train_loader):
+                if (not platform.is_horovod_run) or platform.is_master:
+                    for c in qnt_ctrls:
+                        c.step_pre_training_batch(epoch_id)
 
                 # event: forward pass is beginning
                 train_meter.step(epoch_id, batch_id)
@@ -234,7 +237,7 @@ def train(args: argparse.Namespace):
             # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
             if (not platform.is_horovod_run) or platform.is_master:
                 for c in qnt_ctrls:
-                    c.step(epoch_id)
+                    c.step_pre_validation(epoch_id)
             if platform.is_horovod_run:
                 platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
