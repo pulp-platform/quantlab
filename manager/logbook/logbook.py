@@ -160,7 +160,7 @@ class Logbook(object):
         # #         sampler_seeds = [random.randint(0, _MAX_SEED)] * n_folds
         # # else:
         # #     sampler_seeds = [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
-        # self.config['data']['sampler']['seeds']         = [sampler_seed if sampler_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds if fix_sampler else [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
+        # self.config['data']['sampler']['seeds'] = [sampler_seed if sampler_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds if fix_sampler else [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
 
         self.config['network']['seeds'] = [network_seed if network_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds if fix_network else [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
 

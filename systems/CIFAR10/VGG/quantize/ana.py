@@ -6,7 +6,7 @@ import quantlib.editing.lightweight as qlw
 from typing import List
 
 
-def recipe_all_ana(net:            nn.Module,
+def all_ana_recipe(net:            nn.Module,
                    quantizer_spec: dict,
                    noise_type:     str) -> nn.Module:
 
