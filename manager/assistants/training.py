@@ -8,6 +8,7 @@ import systems.utils
 
 from .library import QuantLabLibrary
 from manager.platform import PlatformManager
+from quantlib.algorithms import Controller
 
 
 GradientDescent = namedtuple('GradientDescent', ['opt', 'lr_sched'])  # an update algorithm for gradient descent consists of two parts: computing the updates given the gradients and (possibly) dynamically updating the step length hyper-parameter
@@ -160,7 +161,7 @@ class TrainingAssistant(object):
         gd = GradientDescent(opt=opt, lr_sched=lr_sched)
         return gd
 
-    def prepare_qnt_ctrls(self, net: torch.nn.Module) -> Union[List[object], List]:  # TODO: return list of QuantLab ``Controller``s
+    def prepare_qnt_ctrls(self, net: torch.nn.Module) -> List[Controller]:
         qnt_ctrls = self._qnt_ctrls_fun(net, **self._qnt_ctrls_kwargs) if self._qnt_ctrls_fun is not None else []
         return qnt_ctrls
 
