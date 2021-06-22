@@ -283,7 +283,7 @@ def train(args: argparse.Namespace):
             if (not platform.is_horovod_run) or platform.is_master:
                 if epoch_id % logbook.config['experiment']['ckpt_period'] == 0:  # checkpoint epoch; note that the first epoch is always a checkpoint epoch
                     logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter, valid_meter)
-                if epoch_id == logbook.n_epochs:
+                if epoch_id == logbook.n_epochs-1:
                     logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter, valid_meter)  # this is the last epoch
                 if is_best:  # the target metric has improved during this epoch
                     logbook.logs_manager.store_checkpoint(epoch_id, net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter, valid_meter, is_best=is_best)
