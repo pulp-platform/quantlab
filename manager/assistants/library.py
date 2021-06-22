@@ -17,5 +17,5 @@ class QuantLabLibrary(object):
         return os.path.basename(os.path.dirname(self._module.__file__))
 
     @property
-    def path(self):
+    def package(self):
         return self._module.__package__

@@ -1,13 +1,13 @@
 from collections import namedtuple
-from operator import attrgetter
 import importlib
+from operator import attrgetter
 from typing import Union, List
-
 import torch
+
+import systems.utils
 
 from .library import QuantLabLibrary
 from manager.platform import PlatformManager
-from systems import utils
 
 
 GradientDescent = namedtuple('GradientDescent', ['opt', 'lr_sched'])  # an update algorithm for gradient descent consists of two parts: computing the updates given the gradients and (possibly) dynamically updating the step length hyper-parameter
@@ -59,25 +59,21 @@ class TrainingAssistant(object):
         library and on the experimental unit's configuration.
 
         This class follows a **builder** design pattern.
-
-        Training deep neural networks
-
         """
 
-        self._loss_fn_class  = None
-        self._loss_fn_kwargs = None
-        self._loss_takes_net = False
+        self._loss_fn_class     = None
+        self._loss_fn_kwargs    = None
+        self._loss_fn_takes_net = False  # non-standard, topology-dependent loss function
 
-        self._opt_class  = None
-        self._opt_kwargs = None
-        self._opt_takes_net = False
+        self._opt_class     = None
+        self._opt_kwargs    = None
+        self._opt_takes_net = False  # non-standard, topology-dependent optimiser
 
         self._lr_sched_class  = None
         self._lr_sched_kwargs = None
 
         self._qnt_ctrls_fun    = None
         self._qnt_ctrls_kwargs = None
-
 
     def recv_trainingmessage(self, trainingmessage: TrainingMessage) -> None:
         """Resolve the functional dependencies for the assembly.
@@ -90,73 +86,75 @@ class TrainingAssistant(object):
         """
 
         # loss function (mandatory)
-        loss_getter = attrgetter(trainingmessage.config['loss_fn']['class'])
-        try:
-            self._loss_takes_net = trainingmessage.config['loss_fn']['takes_net']
-        except KeyError:
-            pass
+        loss_fn_getter = attrgetter(trainingmessage.config['loss_fn']['class'])
+        if 'takes_net' in trainingmessage.config['loss_fn'].keys():
+            self._loss_fn_takes_net = trainingmessage.config['loss_fn']['takes_net']
 
         try:
-            self._loss_fn_class = loss_getter(torch.nn)
-        except AttributeError:  # the loss function is custom
-            try: # the loss is custom -> search for it in the topology library first
-                self._loss_fn_class = loss_getter(trainingmessage.library.module)
-            except AttributeError: # the loss is not in the topology library ->
-                # search for it in utils
-                self._loss_fn_class = loss_getter(utils)
+            self._loss_fn_class = loss_fn_getter(torch.nn)
+        except AttributeError:
+            # the loss function is custom
+            # search order:
+            #   1. topology library
+            #   2. systems library
+            try:
+                self._loss_fn_class = loss_fn_getter(trainingmessage.library.module)
+            except AttributeError:
+                self._loss_fn_class = loss_fn_getter(systems.utils.loss)
         self._loss_fn_kwargs = trainingmessage.config['loss_fn']['kwargs']
 
         # optimisation algorithm - optimiser (mandatory)
         opt_getter = attrgetter(trainingmessage.config['gd']['opt']['class'])
-        try:
+        if 'takes_net' in trainingmessage.config['gd']['opt'].keys():
             self._opt_takes_net = trainingmessage.config['gd']['opt']['takes_net']
-        except KeyError:
-            pass
 
         try:
             self._opt_class = opt_getter(torch.optim)
-        except AttributeError: # the optimizer is custom - search for it in the topology library first
+        except AttributeError:
+            # the optimiser is custom
+            # search order:
+            #   1. topology library
+            #   2. systems library
             try:
                 self._opt_class = opt_getter(trainingmessage.library.module)
-            except AttributeError: # the optimizer is custom - search for it in utils
-                self._opt_class = opt_getter(utils)
+            except AttributeError:
+                self._opt_class = opt_getter(systems.utils.optimizer)
         self._opt_kwargs = trainingmessage.config['gd']['opt']['kwargs']
 
         # optimisation algorithm - learning rate scheduler (optional)
         if 'lr_sched' in trainingmessage.config['gd'].keys():
-            lr_getter = attrgetter(trainingmessage.config['gd']['lr_sched']['class'])
+            lr_sched_getter = attrgetter(trainingmessage.config['gd']['lr_sched']['class'])
             try:
-                self._lr_sched_class = lr_getter(torch.optim.lr_scheduler)
-            except AttributeError:  # the lr scheduler is custom - search for it in the topology library first
+                self._lr_sched_class = lr_sched_getter(torch.optim.lr_scheduler)
+            except AttributeError:
+                # the learning rate scheduler is custom
+                # search order:
+                #   1. topology library
+                #   2. systems library
                 try:
-                    self._lr_sched_class = lr_getter(trainingmessage.library.module)
-                except AttributeError: # the optimizer is custom - search for it in utils
-                    self._lr_sched_class = lr_getter(utils)
+                    self._lr_sched_class = lr_sched_getter(trainingmessage.library.module)
+                except AttributeError:
+                    self._lr_sched_class = lr_sched_getter(systems.utils.lrscheduler)
             self._lr_sched_kwargs = trainingmessage.config['gd']['lr_sched']['kwargs']
 
         # quantization controllers (optional)
         if 'quantize' in trainingmessage.config.keys():
-            qnt_library = importlib.import_module('.quantize', package=trainingmessage.library.path)
+            qnt_library = importlib.import_module('.quantize', package=trainingmessage.library.package)
             self._qnt_ctrls_fun    = getattr(qnt_library, trainingmessage.config['quantize']['function'])
             self._qnt_ctrls_kwargs = trainingmessage.config['quantize']['kwargs']
 
-    def prepare_loss(self, net : torch.nn.Module) -> torch.nn.Module:
-        if self._loss_takes_net:
-            # a custom loss may use the network to apply some nonstandard loss
-            # dependent on network structure
-            loss_fn = self._loss_fn_class(net, **self._loss_fn_kwargs)
-        else:
-            loss_fn = self._loss_fn_class(**self._loss_fn_kwargs)
+    def prepare_loss(self, net: torch.nn.Module) -> torch.nn.Module:
+        loss_fn = self._loss_fn_class(net, **self._loss_fn_kwargs) if self._loss_fn_takes_net else self._loss_fn_class(**self._loss_fn_kwargs)
         return loss_fn
 
     def prepare_gd(self, platform: PlatformManager, net: torch.nn.Module) -> GradientDescent:
-        if self._opt_takes_net:
-            opt = self._opt_class(net, **self._opt_kwargs)
-        else:
-            opt = self._opt_class(net.parameters(), **self._opt_kwargs)
+
+        # optimiser
+        opt = self._opt_class(net, **self._opt_kwargs) if self._opt_takes_net else self._opt_class(net.parameters(), **self._opt_kwargs)
         if platform.is_horovod_run:
             opt = platform.hvd.DistributedOptimizer(opt, named_parameters=net.named_parameters())
 
+        # learning rate scheduler
         lr_sched = self._lr_sched_class(opt, **self._lr_sched_kwargs) if self._lr_sched_class is not None else None
 
         gd = GradientDescent(opt=opt, lr_sched=lr_sched)

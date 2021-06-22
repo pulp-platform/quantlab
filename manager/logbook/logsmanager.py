@@ -233,8 +233,7 @@ class LogsManager(object):
         self._writerstub_step_valid.writer.close()
 
     # === CHECKPOINTING FUNCTIONALITIES ===
-
-    def make_ckpt_path(self, ckpt_name : str):
+    def make_ckpt_path(self, ckpt_name: str) -> str:
         return os.path.join(self._path_saves, ckpt_name)
 
     def store_checkpoint(self,
@@ -280,7 +279,6 @@ class LogsManager(object):
                         train_meter: Union[object, None] = None,  # `object` is of type `manager.meter.Meter`
                         valid_meter: Union[object, None] = None,  # `object` is of type `manager.meter.Meter`
                         ckpt_id: Union[int, None] = None) -> int:
-
 
         ckpts_list = os.listdir(self._path_saves)
 

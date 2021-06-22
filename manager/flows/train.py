@@ -199,9 +199,14 @@ def train(args: argparse.Namespace):
 
             # cycle over batches of training data (one loop for each epoch)
             for batch_id, (x, ygt) in enumerate(train_loader):
+
+                # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
+                # TODO: in multi-process runs, synchronising processes at each step might be too costly
                 if (not platform.is_horovod_run) or platform.is_master:
                     for c in qnt_ctrls:
                         c.step_pre_training_batch(epoch_id)
+                if platform.is_horovod_run:
+                    platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
                 # event: forward pass is beginning
                 train_meter.step(epoch_id, batch_id)
