@@ -161,8 +161,8 @@ class TrainingAssistant(object):
         gd = GradientDescent(opt=opt, lr_sched=lr_sched)
         return gd
 
-    def prepare_qnt_ctrls(self, platform: PlatformManager, net: torch.nn.Module) -> List[Controller]:
-        qnt_ctrls = self._qnt_ctrls_fun(net if not platform.is_nndataparallel_run else net.module, **self._qnt_ctrls_kwargs) if self._qnt_ctrls_fun is not None else []
+    def prepare_qnt_ctrls(self, net: torch.nn.Module) -> List[Controller]:
+        qnt_ctrls = self._qnt_ctrls_fun(net, **self._qnt_ctrls_kwargs) if self._qnt_ctrls_fun is not None else []
         return qnt_ctrls
 
     # def prepare(self, platform: PlatformManager, net: torch.nn.Module) -> Tuple[torch.nn.Module, GradientDescent, Union[List[object], List]]:

@@ -59,7 +59,7 @@ def test(args):
     # training
     loss_fn     = trainingassistant.prepare_loss(net)
     gd          = trainingassistant.prepare_gd(platform, net)
-    qnt_ctrls   = trainingassistant.prepare_qnt_ctrls(platform, net)
+    qnt_ctrls   = trainingassistant.prepare_qnt_ctrls(net)
     # meters
     test_meter  = testmeterassistant.prepare(platform, len(test_loader), net, gd.opt)
 
