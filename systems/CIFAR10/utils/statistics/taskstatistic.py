@@ -1,3 +1,24 @@
+# 
+# taskstatistic.py
+# 
+# Author(s):
+# Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
+# 
+# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# 
+
 import torch
 
 from manager.meter import TaskStatistic
@@ -70,3 +91,4 @@ class CIFAR10Statistic(TaskStatistic):
         if (not self._platform.is_horovod_run) or self._platform.is_master:
             message = manager.QUANTLAB_PREFIX + "Epoch [{:3d}/{:3d}] : Batch [{:5d}/{:5d}] - Accuracy: {:6.2f}%".format(self._epoch_id, self._n_epochs, self._batch_id, self._n_batches, self._value.item())
             print(message)
+
