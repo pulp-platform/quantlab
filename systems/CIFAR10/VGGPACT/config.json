@@ -1,0 +1,141 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {"augment": true}
+                }
+            },
+            "dataloader": {"bs": 256}
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {"augment": false}
+                }
+            },
+            "dataloader": {"bs": 512}
+        }
+    },
+    "network": {
+        "class": "VGG7",
+        "kwargs": {
+            "capacity": 1
+        },
+        "quantize": {
+            "function": "quantize_pact",
+            "kwargs": {
+                "config": {
+                    "PACTConv2d": {
+                        "quantize": "per_channel",
+                        "init_clip": "sawb",
+                        "learn_clip": false,
+                        "n_levels": {
+                            "0": 128,
+                            "1": 64,
+                            "2": 16,
+                            "3": 8,
+                            "4": 32,
+                            "5": 4
+                        }
+                    },
+                    "PACTLinear": {
+                        "quantize": "per_channel",
+                        "init_clip": "max",
+                        "learn_clip": true,
+                        "symm_wts": true,
+                        "n_levels": {
+                            "0": 16,
+                            "1": 16,
+                            "2": 256
+                        }
+                    },
+                    "PACTUnsignedAct": {
+                        "init_clip": "max",
+                        "n_levels": {
+                            "0": 32,
+                            "1": 16,
+                            "2": 32,
+                            "3": 64,
+                            "4": 16,
+                            "5": 32,
+                            "6": 64,
+                            "7": 32
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "pass_net": false,
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "PACTAdam",
+                "takes_net": true,
+                "kwargs": {
+                    "pact_decay": 0.01,
+                    "lr": 0.001
+                }
+            },
+            "lr_sched":{
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0":  1,
+                        "80": 0.1,
+                        "120": 0.01,
+                        "150": 0.001,
+                        "180": 0.1,
+                        "230": 0.01,
+                        "260": 0.001
+                    }
+                }
+            }
+        },
+        "n_epochs": 310,
+        "quantize": {
+            "function": "get_pact_controllers",
+            "kwargs": {
+                "schedules": {
+                    "linear": {
+                        "1": "verbose_off",
+                        "3": "verbose_on",
+                        "200": "start",
+                        "280": "freeze",
+                        "290": "thaw"
+                    },
+                    "activation": {
+                        "1": "verbose_off",
+                        "3": "verbose_on",
+                        "180": "start",
+                        "280": "freeze",
+                        "290": "thaw"
+                    }
+                }
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "features.3", "start": 0, "period": 100}},
+                {"class": "MeanUpdateNormWeightNormRatio",          "kwargs": {"name": "features.3", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientNorm",       "kwargs": {"name": "features.4", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "features.4", "start": 0, "period": 100}},
+                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "features.5", "start": 0, "period": 100, "n_inputs": 4}}
+            ]
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    }
+}
