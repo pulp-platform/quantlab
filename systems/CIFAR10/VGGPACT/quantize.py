@@ -2,7 +2,8 @@ from torch import nn
 
 from quantlib.algorithms.pact import PACTUnsignedAct, PACTConv2d, PACTLinear
 from quantlib.algorithms.pact import PACTActController, PACTLinearController
-from quantlib.editing.lightweight import LightweightGraph, LightweightEditor, LightweightRule
+from quantlib.editing.lightweight import LightweightGraph, LightweightEditor
+from quantlib.editing.lightweight.rules import LightweightRule
 from quantlib.editing.lightweight.rules.filters import TypeFilter, VariadicOrFilter
 
 
