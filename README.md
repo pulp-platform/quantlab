@@ -12,15 +12,21 @@ QuantLab and `quantlib` have been developed at the [Integrated Systems Laborator
 
 ## Installation and usage
 
-In the following, we assume that you have cloned the repository to your local machine at your home folder, which we will denote by `~`.
 We will conventionally use the UNIX separator `/` when writing filesystem paths (Windows users might have to replace it with the backslash) and the dollar sign `$` to denote the command line prompt.
-
-We call `~/QuantLab` the *QuantLab home*.
+Analogously, we will denote your home folder on the machine on which you are working by `~`.
 
 ### Create an Anaconda environment and install `quantlib`
-As a first thing, navigate to the QuantLab home and use [Anaconda](https://docs.anaconda.com/anaconda/install/) to install QuantLab's prerequisites
+After cloning QuantLab, navigate to the repository and initialise the `quantlib` sub-module:
 ```
+$ cd ~
+$ git clone [...]
 $ cd ~/QuantLab
+$ git submodule update --init
+```
+We call `~/QuantLab` the *QuantLab home*.
+
+Then, use [Anaconda](https://docs.anaconda.com/anaconda/install/) to install QuantLab's prerequisites
+```
 $ conda env create -f quantlab.yml
 ```
 Note: at the moment of writing, the [PyTorch Anaconda channel](https://anaconda.org/pytorch/pytorch/files?version=) does not provide a distribution package for the combination Python 3.8/PyTorch 1.9 supporting a CUDA version lower than 10.2.
@@ -29,10 +35,10 @@ Therefore, if you plan to install QuantLab with GPU support, ensure that your CU
 After creating the Anaconda environment, it will make your life easier to install the `quantlib` quantization library in your Anaconda environment:
 ```
 $ conda activate quantlab
-$ (quantlab) cd quantlib
-$ (quantlab) python setup.py build
-$ (quantlab) python setup.py install
-$ (quantlab) cd ..
+(quantlab) $ cd quantlib
+(quantlab) $ python setup.py build
+(quantlab) $ python setup.py install
+(quantlab) $ cd ..
 ```
 
 ### Configure storage drives
@@ -70,7 +76,7 @@ Finally, suppose that your filesystem exposes two folders:
 
 If you
 ```
-$ (quantlab) ls QuantLab/configure
+(quantlab) $ ls QuantLab/configure
 ```
 you will find a JSON file and three BASH scripts:
 * `storage_cfg.json`;
@@ -82,21 +88,21 @@ To configure QuantLab, you need to tell it where the data for and logs of your e
 You do this by editing `storage_cfg.json`.
 Continuing the example above, you would set
 ```
-$ (quantlab) vim QuantLab/configure/storage_cfg.json
+(quantlab) $ vim QuantLab/configure/storage_cfg.json
 $ 
 {
     'data': '/scratchb',
     'logs': '/scratcha'
 }
 :wq
-$ 
+(quantlab) $ 
 ```
 so that the tool will fetch your data from the SSD drive and write logs to the HDD drive.
 Running the `storage.sh` script creates *mock-up QuantLab homes* under both folders:
 ```
-$ (quantlab) bash configure/storage.sh
-$ (quantlab) ls /scratchb/QuantLab  # this folder now exists
-$ (quantlab) ls /scratcha/QuantLab  # this folder now exists
+(quantlab) $ bash configure/storage.sh
+(quantlab) $ ls /scratchb/QuantLab  # this folder now exists
+(quantlab) $ ls /scratcha/QuantLab  # this folder now exists
 ```
 
 QuantLab is shipped with example *problem packages* (`CIFAR10`, `ILSVRC12`), each of which contains one or more *topology sub-packages* (e.g., `VGG`).
@@ -104,24 +110,30 @@ When running an experiment in QuantLab, its abstractions will look for data in a
 Instead, they will log results in a `logs` sub-folder under the chosen topology sub-package.
 The `problem.sh` and `topology.sh` scripts actually create such folders on the devices specified at configuration time, and then create links to these folders under the problem and topology sub-package:
 ```
-$ (quantlab) bash configure/problem.sh CIFAR10       # ~/QuantLab/systems/CIFAR10/data     -- now points to -> /scratchb/QuantLab/systems/CIFAR10/data
-$ (quantlab) bash configure/topology.sh CIFAR10 VGG  # ~/QuantLab/systems/CIFAR10/VGG/logs -- now points to -> /scratcha/QuantLab/systems/CIFAR10/VGG/logs
+(quantlab) $ bash configure/problem.sh CIFAR10       # ~/QuantLab/systems/CIFAR10/data     -- now points to -> /scratchb/QuantLab/systems/CIFAR10/data
+(quantlab) $ bash configure/topology.sh CIFAR10 VGG  # ~/QuantLab/systems/CIFAR10/VGG/logs -- now points to -> /scratcha/QuantLab/systems/CIFAR10/VGG/logs
 ```
 
 ### Run a QuantLab experiment
 You can now run your first QuantLab experiment!
 Configure the experiment
 ```
-$ (quantlab) python main.py --problem=CIFAR10 --topology=VGG configure
-$ [QuantLab] Experimental unit #0.
-$ [QuantLab] Experimental unit's logs folder created at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000>.
+(quantlab) $ python main.py --problem=CIFAR10 --topology=VGG configure
+[QuantLab] Experimental unit #0.
+[QuantLab] Experimental unit's logs folder created at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000>.
 ```
 and train the system
 ```
-$ (quantlab) python main.py --problem=CIFAR10 --topology=VGG train --exp_id=0
-$ [QuantLab] Experimental unit #0.
-$ [QuantLab] No checkpoint found at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000/fold0/saves>.
-$ ...
+(quantlab) $ python main.py --problem=CIFAR10 --topology=VGG train --exp_id=0
+[QuantLab] Experimental unit #0.
+[QuantLab] No checkpoint found at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000/fold0/saves>.
+...
+```
+
+QuantLab depends on [TensorBoard](https://www.tensorflow.org/tensorboard) for enabling useful analysis and data visualisations.
+After a training run has reached completion, you can inspect the logged statistics by issuing the following command:
+```
+(quantlab) $ tensorboard --log_dir=~/QuantLab/systems/CIFAR10/VGG/logs/exp0000 --port=6006
 ```
 
 
@@ -129,26 +141,26 @@ $ ...
 Whenever you want to start working on a new data set, you should invoke the configuration script `problem.sh`.
 Assuming that your data set is codenamed `XYZ`, issue the following commands:
 ```
-$ (quantlab) cd ~/QuantLab
-$ (quantlab) bash configure/problem.sh XYZ
-$ [QuantLab] Remember to prepare the data for problem XYZ at </scratchb/QuantLab/systems/XYZ/data>."
-$ (quantlab) ls ~/QuantLab/systems/XYZ  # this folder now exists
+(quantlab) $ cd ~/QuantLab
+(quantlab) $ bash configure/problem.sh XYZ
+[QuantLab] Remember to prepare the data for problem XYZ at </scratchb/QuantLab/systems/XYZ/data>."
+(quantlab) $ ls ~/QuantLab/systems/XYZ  # this folder now exists
 ```
 In particular, the warning `[QuantLab] Remember to prepare the data for problem XYZ at </scratchb/QuantLab/systems/XYZ/data>.` is raised to the user because QuantLab has no way to know how to prepare the files representing the data points of your data set.
 In some cases, the raw-but-prepared data points might already be available on the computing systems where you installed QuantLab; for example, this is the case for many laboratory workstations that are shared amongst many people.
 In such cases, assuming that the data set is stored in some folder `/scratchc/ml_datasets/XYZ`, we suggest the following workaround:
 ```
-$ (quantlab) cd /scratchb/QuantLab/systems/XYZ
-$ (quantlab) rm -r data
-$ (quantlab) ln -s /scratchc/ml_datasets/XYZ data
+(quantlab) $ cd /scratchb/QuantLab/systems/XYZ
+(quantlab) $ rm -r data
+(quantlab) $ ln -s /scratchc/ml_datasets/XYZ data
 ```
 In other words: you should manually replace the `data` folder automatically created by `problem.sh` inside `/scratchb/QuantLab/systems/XYZ` with a soft-link to the folder containing the raw-but-prepared data points.
 
 To prepare the (empty) working files for a new network topology `ABC` that you want to apply to the problem `XYZ`, invoke the configuration script `topology.sh`:
 ```
-$ (quantlab) cd ~/QuantLab
-$ (quantlab) bash configure/topology.sh XYZ ABC
-$ (quantlab) ls ~/QuantLab/systems/XYZ/ABC  # this folder now exists
+(quantlab) $ cd ~/QuantLab
+(quantlab) $ bash configure/topology.sh XYZ ABC
+(quantlab) $ ls ~/QuantLab/systems/XYZ/ABC  # this folder now exists
 ```
 
 
@@ -162,11 +174,11 @@ In case you want to benefit from this performance boost, you need to install Hor
 
 Assuming that you installed Horovod inside the `quantlab` Anaconda environment, you can try the following to verify that everything works correctly:
 ```
-$ (quantlab) cd ~/QuantLab
-$ (quantlab) python main.py --problem=XYZ --topology=ABC configure
-$ [QuantLab] Experimental unit #0.
-$ [QuantLab] Experimental unit's logs folder created at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000>.
-$ (quantlab) horovodrun -np 1 -H localhost:1 python main.py --problem=XYZ --topology=ABC train --exp_id=0
-$ [QuantLab] Experimental unit #0.
-$ [QuantLab] No checkpoint found at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000/fold0/saves>.
+(quantlab) $ cd ~/QuantLab
+(quantlab) $ python main.py --problem=XYZ --topology=ABC configure
+[QuantLab] Experimental unit #0.
+[QuantLab] Experimental unit's logs folder created at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000>.
+(quantlab) $ horovodrun -np 1 -H localhost:1 python main.py --problem=XYZ --topology=ABC train --exp_id=0
+[QuantLab] Experimental unit #0.
+[QuantLab] No checkpoint found at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000/fold0/saves>.
 ```
