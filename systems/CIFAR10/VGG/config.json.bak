@@ -1,0 +1,59 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {"augment": true}
+                }
+            },
+            "dataloader": {"bs": 512}
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {"augment": false}
+                }
+            },
+            "dataloader": {"bs": 512}
+        }
+    },
+    "network": {
+        "class": "VGG",
+        "kwargs": {
+            "config": "VGG9",
+            "capacity": 1,
+            "use_bn": true
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "Adam",
+                "kwargs": {"lr": 0.001}
+            }
+        },
+        "n_epochs": 12
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
+                {"class": "MeanUpdateNormWeightNormRatio",          "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientNorm",       "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
+                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 100, "n_inputs": 4}}
+            ]
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    }
+}

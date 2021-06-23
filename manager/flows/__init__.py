@@ -19,7 +19,6 @@
 # limitations under the License.
 # 
 
-# -*- coding: utf-8 -*-
 """The flows that can be invoked during a **QuantLab session**.
 
 This module exposes several abstractions that model the high-level

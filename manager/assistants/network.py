@@ -19,7 +19,6 @@
 # limitations under the License.
 # 
 
-# -*- coding: utf-8 -*-
 import importlib
 import torch.nn as nn
 

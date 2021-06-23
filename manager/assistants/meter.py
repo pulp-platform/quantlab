@@ -19,7 +19,6 @@
 # limitations under the License.
 # 
 
-# -*- coding: utf-8 -*-
 from collections import namedtuple, OrderedDict
 import torch
 

@@ -2,7 +2,7 @@
 # vgg_pact.py
 # 
 # Author(s):
-# Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
+# Georg Rutishauser <georgr@iis.ee.ethz.ch>
 # 
 # Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
 # 

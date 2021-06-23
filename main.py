@@ -19,7 +19,6 @@
 # limitations under the License.
 # 
 
-# -*- coding: utf-8 -*-
 """The facade of QuantLab.
 
 Run this script to open the doors to all QuantLab flows.

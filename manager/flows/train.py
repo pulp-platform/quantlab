@@ -3,7 +3,8 @@
 # 
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
-# 
+# Georg Rutishauser <georgr@iis.ee.ethz.ch>
+#
 # Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +20,6 @@
 # limitations under the License.
 # 
 
-# -*- coding: utf-8 -*-
 import argparse
 import torch
 
