@@ -1,6 +1,23 @@
+# ignore OS- and IDE-specific files
+**/.DS_Store
 **/.idea
-**/__pycache__
-**/docs/_build/*
-**/data
-**/logs
+
+# ignore profiling files
 **/gmon.out
+
+# ignore generated Python bytecode
+**/__pycache__
+
+# ignore topology-specific logs and problem-specific data (but not `data` utilities)
+**/logs
+**/data
+!./systems/utils/data
+
+# ignore PyTorch JIT traces
+**/.libtraces
+
+# ignore built documentation and Jupyter notebook checkpoints/generated figures
+**/docs/_build/*
+**/.ipynb_checkpoints
+**/examples/**/figures
+
