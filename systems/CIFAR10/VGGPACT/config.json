@@ -29,7 +29,7 @@
             "kwargs": {
                 "config": {
                     "PACTConv2d": {
-                        "quantize": "per_layer",
+                        "quantize": "per_channel",
                         "init_clip": "sawb",
                         "learn_clip": false,
                         "n_levels": {
@@ -42,7 +42,7 @@
                         }
                     },
                     "PACTLinear": {
-                        "quantize": "per_layer",
+                        "quantize": "per_channel",
                         "init_clip": "sawb",
                         "learn_clip": false,
                         "symm_wts": true,
@@ -102,13 +102,11 @@
             "kwargs": {
                 "schedules": {
                     "linear": {
-                        "0": "verbose_on",
-                        "1": "start",
+                        "0": ["verbose_on", "start"],
                         "100": "freeze"
                     },
                     "activation": {
-                        "0": "verbose_on",
-                        "1": "start",
+                        "0": ["verbose_on", "start"],
                         "100": "freeze"
                     }
                 }
