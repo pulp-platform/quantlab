@@ -1,13 +1,10 @@
 # QuantLab
-
-QuantLab is a tool to train, compare and deploy quantized neural networks (QNNs).
+**QuantLab** is a tool to train, compare and deploy quantized neural networks (QNNs).
 It was developed on top of the  [PyTorch](https://pytorch.org/) deep learning framework, and it is a purely-command-line-based tool.
 
 QuantLab consists of two main components:
 * a **library** of quantization tools (`quantlib`);
 * **organising software** to manage machine learning (ML) experiments (`systems` and `manager` packages, as well as the `main.py` façade script).
-
-QuantLab and `quantlib` have been developed at the [Integrated Systems Laboratory](https://iis.ee.ethz.ch/) (IIS) of ETH Zürich.
 
 
 ## Installation and usage
@@ -32,14 +29,19 @@ $ conda env create -f quantlab.yml
 Note: at the moment of writing, the [PyTorch Anaconda channel](https://anaconda.org/pytorch/pytorch/files?version=) does not provide a distribution package for the combination Python 3.8/PyTorch 1.9 supporting a CUDA version lower than 10.2.
 Therefore, if you plan to install QuantLab with GPU support, ensure that your CUDA version is not lower than 10.2.
 
-After creating the Anaconda environment, it will make your life easier to install the `quantlib` quantization library in your Anaconda environment:
+After creating the Anaconda environment, it can make your life easier to install the `quantlib` quantization library in your Anaconda environment:
 ```
 $ conda activate quantlab
 (quantlab) $ cd quantlib
-(quantlab) $ python setup.py build
 (quantlab) $ python setup.py install
+(quantlab) $ python
+(quantlab) $ >>> import quantlib
+(quantlab) $ >>> quantlib.editing.graphs.traces.trace.trace_pytorch_modules()
+(quantlab) $ >>> quantlib.editing.graphs.traces.trace.trace_quantlib_modules()
+(quantlab) $ >>> exit()
 (quantlab) $ cd ..
 ```
+Also, this installation is mandatory in case you intend to run some of the Jupyter notebooks contained in the `examples` folder.
 
 ### Configure storage drives
 QuantLab was originally conceived to accelerate and organise experiments on workstations and (some) supercomputers.
@@ -182,3 +184,28 @@ Assuming that you installed Horovod inside the `quantlab` Anaconda environment, 
 [QuantLab] Experimental unit #0.
 [QuantLab] No checkpoint found at <~/QuantLab/systems/CIFAR10/VGG/logs/exp0000/fold0/saves>.
 ```
+
+
+## Notice
+
+### Licensing information
+Both QuantLab and `quantlib` are distributed under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0).
+QuantLab and `quantlib` have been developed at the [Integrated Systems Laboratory](https://iis.ee.ethz.ch/) (IIS) of ETH Zürich, which is the copyright owner of both tools.
+
+In case you are planning to use QuantLab and `quantlib` in your projects, you might also want to consider the licenses under which the packages on which they depend are distributed:
+
+* PyTorch - a [mix of licenses](https://github.com/pytorch/pytorch/blob/master/NOTICE), including the Apache 2.0 License and the 3-Clause BSD License;
+* TensorBoard - [Apache 2.0 License](https://github.com/tensorflow/tensorboard/blob/master/LICENSE);
+* NetworkX - [3-Clause BSD License](https://github.com/networkx/networkx/blob/main/LICENSE.txt);
+* GraphViz - [MIT License](https://github.com/graphp/graphviz/blob/master/LICENSE);
+* matplotlib - a [custom license](https://github.com/matplotlib/matplotlib/blob/master/LICENSE/LICENSE);
+* NumPy - [3-Clause BSD License](https://github.com/numpy/numpy/blob/main/LICENSE.txt);
+* SciPy - [3-Clause BSD License](https://github.com/scipy/scipy/blob/master/LICENSE.txt);
+* Mako - [MIT License](https://github.com/sqlalchemy/mako/blob/master/LICENSE);
+* Jupyter - [3-Clause BSD License](https://github.com/jupyter/notebook/blob/master/LICENSE).
+
+### Authors
+* Matteo Spallanzani <<a href="mailto:spmatteo@iis.ee.ethz.ch">spmatteo@iis.ee.ethz.ch</a>>
+* Georg Rutishauser  <<a href="mailto:georgr@iis.ee.ethz.ch">georgr@iis.ee.ethz.ch</a>>
+* Moritz Scherer     <<a href="mailto:scheremo@iis.ee.ethz.ch">scheremo@iis.ee.ethz.ch</a>>
+* Francesco Conti    <<a href="mailto:f.conti@unibo.it">f.conti@unibo.it</a>>

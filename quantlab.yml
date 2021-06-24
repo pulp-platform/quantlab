@@ -18,4 +18,3 @@ dependencies:
   - sphinx_rtd_theme=0.4.3
   - ipython=7.22.0
   - jupyter=1.0.0
-
