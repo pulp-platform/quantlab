@@ -220,7 +220,6 @@ def train(args: argparse.Namespace):
 
             # cycle over batches of training data (one loop for each epoch)
             for batch_id, (x, ygt) in enumerate(train_loader):
-
                 # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
                 # TODO: in multi-process runs, synchronising processes at each step might be too costly
                 if (not platform.is_horovod_run) or platform.is_master:

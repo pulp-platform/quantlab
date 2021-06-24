@@ -117,11 +117,11 @@ class PACTSequential(LightweightGraph):
         self.rebuild_nodes_list()
 
     def get_lin_controller(self, schedule: dict, verbose: bool = False):
-        lin_modules = [n.module for n in self.conv_nodes + self.linear_nodes]
+        lin_modules = [n.module for n in self.conv_nodes + self.linear_nodes if type(n) in [PACTConv2d, PACTLinear] ]
         return PACTLinearController(lin_modules, schedule, verbose=verbose)
 
     def get_act_controller(self, schedule: dict, verbose: bool = False):
-        act_modules = [n.module for n in self.act_nodes]
+        act_modules = [n.module for n in self.act_nodes if isinstance(n, PACTUnsignedAct)]
         return PACTActController(act_modules, schedule, verbose=verbose)
 
 
