@@ -9,7 +9,8 @@ QuantLab consists of two main components:
 
 ## Installation and usage
 
-We will conventionally use the UNIX separator `/` when writing filesystem paths (Windows users might have to replace it with the backslash) and the dollar sign `$` to denote the command line prompt.
+At the moment, QuantLab can run only on UNIX systems.
+Therefore, we will conventionally use the UNIX separator `/` when writing filesystem paths and the dollar sign `$` to denote the command line prompt.
 Analogously, we will denote your home folder on the machine on which you are working by `~`.
 
 ### Create an Anaconda environment and install `quantlib`
