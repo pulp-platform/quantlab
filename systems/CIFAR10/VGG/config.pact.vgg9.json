@@ -20,49 +20,47 @@
         }
     },
     "network": {
-        "class": "VGG7",
+        "class": "VGG",
         "kwargs": {
-            "capacity": 1
+            "capacity": 1,
+            "config": "VGG9",
+            "use_bn_features": true,
+            "use_bn_classifier": true
         },
         "quantize": {
             "function": "quantize_pact",
             "kwargs": {
                 "config": {
                     "PACTConv2d": {
-                        "quantize": "per_channel",
-                        "init_clip": "sawb",
+                        "quantize": "per_layer",
+                        "init_clip": "sawb_asymm",
                         "learn_clip": false,
                         "n_levels": {
-
-                            "1": 4,
-                            "2": 4,
-                            "3": 4,
-                            "4": 4,
-                            "5": 4
+                            "features.0$": 4,
+                            "features.4$": 4,
+                            "features.7$": 4,
+                            "features.11$": 4,
+                            "features.14$": 4
                         }
                     },
                     "PACTLinear": {
-                        "quantize": "per_channel",
-                        "init_clip": "sawb",
+                        "quantize": "per_layer",
+                        "init_clip": "sawb_asymm",
                         "learn_clip": false,
                         "symm_wts": true,
                         "n_levels": {
-                            "0": 4,
-                            "1": 4
                         }
                     },
                     "PACTUnsignedAct": {
-                        "init_clip": "max",
+                        "init_clip": "std",
                         "n_levels": {
-                            "0": 4,
-                            "1": 4,
-                            "2": 4,
-                            "3": 4,
-                            "4": 4,
-                            "5": 4,
-                            "6": 4,
-                            "7": 4
-                        }
+                            "features.2$": 4,
+                            "features.6$": 4,
+                            "features.9$": 4,
+                            "features.13$": 4,
+                            "features.16$": 4
+                        },
+                        "nb_std": 3
                     }
                 }
             }
@@ -80,7 +78,7 @@
                 "takes_net": true,
                 "kwargs": {
                     "pact_decay": 0.01,
-                    "lr": 0.002
+                    "lr": 0.1
                 }
             },
             "lr_sched":{
@@ -88,10 +86,10 @@
                 "kwargs": {
                     "schedule": {
                         "0":  1,
-                        "80": 0.1,
-                        "120": 0.01,
-                        "150": 0.001
-
+                        "15": 1,
+                        "100": 0.1,
+                        "150": 0.01,
+                        "200": 0.001
                     }
                 }
             }
@@ -103,11 +101,12 @@
                 "schedules": {
                     "linear": {
                         "0": ["verbose_on", "start"],
-                        "100": "freeze"
+                        "175": "freeze"
                     },
                     "activation": {
-                        "0": ["verbose_on", "start"],
-                        "100": "freeze"
+                        "0": "verbose_on",
+                        "8": "start",
+                        "175": "freeze"
                     }
                 }
             }

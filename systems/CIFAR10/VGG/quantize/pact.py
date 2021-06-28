@@ -1,5 +1,5 @@
 # 
-# quantize.py
+# pact.py
 # 
 # Author(s):
 # Georg Rutishauser <georgr@iis.ee.ethz.ch>
@@ -25,7 +25,7 @@ from quantlib.algorithms.pact import PACTUnsignedAct, PACTConv2d, PACTLinear
 from quantlib.algorithms.pact import PACTActController, PACTLinearController
 from quantlib.editing.lightweight import LightweightGraph, LightweightEditor
 from quantlib.editing.lightweight.rules import LightweightRule
-from quantlib.editing.lightweight.rules.filters import TypeFilter, VariadicOrFilter
+from quantlib.editing.lightweight.rules.filters import TypeFilter, VariadicOrFilter, NameFilter
 
 
 class PACTSequential(LightweightGraph):
@@ -70,7 +70,7 @@ class PACTSequential(LightweightGraph):
         if self.conv_config is None:
             print("PACTSequential: quantize_convs() called but no config supplied - returning!")
             return
-        lvl_cfg = {int(k): v for k, v in self.conv_config['n_levels'].items() if v > 0}
+        lvl_cfg = self.conv_config['n_levels']
         # all other config entries should be usable as kwargs for PACTConv2d
         other_cfg = {k: v for k, v in self.conv_config.items() if k != 'n_levels'}
 
@@ -79,7 +79,13 @@ class PACTSequential(LightweightGraph):
             return pc
 
         for k, n in lvl_cfg.items():
-            node_to_replace = self.conv_nodes[k]
+            filt = NameFilter(k)
+            #node_to_replace = self.act_nodes[k]
+            try:
+                node_to_replace, = filt(self.conv_nodes)
+            except:
+                IPython.embed()
+            #node_to_replace = self.conv_nodes[k]
             pc = replace_conv(node_to_replace.module, n)
             LightweightRule.replace_module(self.net, node_to_replace.path, pc)
 
@@ -87,7 +93,9 @@ class PACTSequential(LightweightGraph):
         if self.lin_config is None:
             print("PACTSequential: quantize_lins() called but no config supplied - returning!")
             return
-        lvl_cfg = {int(k): v for k, v in self.lin_config['n_levels'].items() if v > 0}
+        #lvl_cfg = {int(k): v for k, v in self.lin_config['n_levels'].items()
+        #if v > 0}
+        lvl_cfg = self.lin_config['n_levels']
         other_cfg = {k: v for k, v in self.lin_config.items() if k != 'n_levels'}
 
         def replace_lin(l: nn.Linear, n_levels: int):
@@ -95,7 +103,10 @@ class PACTSequential(LightweightGraph):
             return pc
 
         for k, n in lvl_cfg.items():
-            node_to_replace = self.linear_nodes[k]
+            #node_to_replace = self.linear_nodes[k]
+            filt = NameFilter(k)
+            #node_to_replace = self.act_nodes[k]
+            node_to_replace, = filt(self.linear_nodes)
             pl = replace_lin(node_to_replace.module, n)
             LightweightRule.replace_module(self.net, node_to_replace.path, pl)
 
@@ -103,10 +114,14 @@ class PACTSequential(LightweightGraph):
         if self.act_config is None:
             print("PACTSequential: quantize_acts() called but no config supplied - returning!")
             return
-        lvl_cfg = {int(k): v for k, v in self.act_config['n_levels'].items() if v > 0}
+        #lvl_cfg = {int(k): v for k, v in self.act_config['n_levels'].items()
+        #if v > 0}
+        lvl_cfg = self.act_config['n_levels']
         other_cfg = {k: v for k, v in self.act_config.items() if k != 'n_levels'}
         for k, n in lvl_cfg.items():
-            node_to_replace = self.act_nodes[k]
+            filt = NameFilter(k)
+            #node_to_replace = self.act_nodes[k]
+            node_to_replace, = filt(self.act_nodes)
             pa = PACTUnsignedAct(n_levels=n, **other_cfg)
             LightweightRule.replace_module(self.net, node_to_replace.path, pa)
 
@@ -117,12 +132,14 @@ class PACTSequential(LightweightGraph):
         self.rebuild_nodes_list()
 
     def get_lin_controller(self, schedule: dict, verbose: bool = False):
-        lin_modules = [n.module for n in self.conv_nodes + self.linear_nodes if type(n) in [PACTConv2d, PACTLinear] ]
+        lin_modules = [n.module for n in self.conv_nodes + self.linear_nodes if isinstance(n.module, (PACTConv2d, PACTLinear))]
+
         return PACTLinearController(lin_modules, schedule, verbose=verbose)
 
-    def get_act_controller(self, schedule: dict, verbose: bool = False):
-        act_modules = [n.module for n in self.act_nodes if isinstance(n, PACTUnsignedAct)]
-        return PACTActController(act_modules, schedule, verbose=verbose)
+    def get_act_controller(self, schedule: dict, init_clip_hi : float = 1., verbose: bool = False):
+        act_modules = [n.module for n in self.act_nodes if isinstance(n.module, PACTUnsignedAct)]
+
+        return PACTActController(act_modules, schedule, init_clip_hi=init_clip_hi, verbose=verbose)
 
 
 def quantize_pact(net, config):
@@ -131,7 +148,7 @@ def quantize_pact(net, config):
     return g.net
 
 
-def get_pact_controllers(net, schedules, verbose=False):
+def get_pact_controllers(net, schedules, verbose=False, init_act_clip_hi=1.):
     g = PACTSequential(net, None)
-    return [g.get_lin_controller(schedule=schedules['linear'], verbose=verbose), g.get_act_controller(schedule=schedules['activation'], verbose=verbose)]
+    return [g.get_lin_controller(schedule=schedules['linear'], verbose=verbose), g.get_act_controller(schedule=schedules['activation'], init_clip_hi=init_act_clip_hi, verbose=verbose)]
 
