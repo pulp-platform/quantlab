@@ -1,18 +1,32 @@
 {
     "description": {},
     "data": {
-        "dataset": {
-            "transforms": {
-                "function": "get_transform_a",
-                "kwargs": {}
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": true
+                    }
+                }
             },
-            "cv": {}
-        },
-        "dataloader": {
-            "bs": {
-                "train": 256,
-                "valid": 256
+            "dataloader": {
+                "bs": 256
             }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+
         }
     },
     "network": {

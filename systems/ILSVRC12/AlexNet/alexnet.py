@@ -25,13 +25,14 @@ import torch.nn as nn
 
 class AlexNet(nn.Module):
 
-    def __init__(self, use_bn: bool, num_classes: int = 1000) -> None:
+    def __init__(self, use_bn: bool, num_classes: int = 1000, seed : int = -1) -> None:
 
         super(AlexNet, self).__init__()
 
         self.features   = self._make_features(use_bn)
         self.avgpool    = nn.AdaptiveAvgPool2d((6, 6))
         self.classifier = self._make_classifier(num_classes)
+        self._initialize_weights(seed)
 
     def _make_features(self, use_bn: bool) -> nn.Sequential:
 
@@ -95,4 +96,25 @@ class AlexNet(nn.Module):
         x = self.classifier(x)
 
         return x
+
+    def _initialize_weights(self, seed: int = -1):
+
+        if seed >= 0:
+            torch.manual_seed(seed)
+
+        for m in self.modules():
+
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
