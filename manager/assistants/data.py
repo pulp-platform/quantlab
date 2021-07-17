@@ -226,7 +226,7 @@ class DataAssistant(object):
         # ``Sampler`` - seed
         try:
             self._sampler_seeds = datamessage.data_config['sampler']['seeds']
-        except KeyError:  # TODO: we should obsolete this branch of the try-except construct
+        except KeyError:
             pass
 
         # ``DataLoader`` - batch sizes (mandatory)
@@ -244,10 +244,10 @@ class DataAssistant(object):
                     dataset: torch.utils.data.Dataset) -> torch.utils.data.Sampler:
 
         if platform.is_horovod_run:
-            sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=platform.global_size, rank=platform.global_rank, shuffle=True if self._partition == 'train' else False, seed=self._sampler_seeds[self._fold_id])
+            sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=platform.global_size, rank=platform.global_rank, shuffle=True if self._partition == 'train' else False, seed=self._sampler_seeds[self._fold_id] if self._partition == 'train' else 0)
         else:
             generator = torch.Generator()
-            generator.manual_seed(self._sampler_seeds[self._fold_id])
+            generator.manual_seed(self._sampler_seeds[self._fold_id] if self._partition == 'train' else 0)
             sampler = torch.utils.data.RandomSampler(dataset, generator=generator) if self._partition == 'train' else torch.utils.data.SequentialSampler(dataset)
 
         return sampler

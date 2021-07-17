@@ -178,7 +178,7 @@ class Logbook(object):
             sampler_seeds = [sampler_seed if sampler_seed >=0 else random.randint(0, _MAX_SEED)] * n_folds
         else:
             sampler_seeds = [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
-        self.config['data']['sampler']['seeds'] = sampler_seeds
+        self.config['data']['train']['sampler']['seeds'] = sampler_seeds
 
         if fix_network:
             network_seeds = [network_seed if network_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds
