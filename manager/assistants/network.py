@@ -146,7 +146,7 @@ class NetworkAssistant(object):
 
         """
 
-        net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id])
+        net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id])  # WARNING: all QuantLab networks require a seed now!
 
         if self._qnt_recipe_fun:
             net = self._qnt_recipe_fun(net, **self._qnt_recipe_kwargs)
