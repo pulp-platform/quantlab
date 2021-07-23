@@ -11,11 +11,13 @@ dependencies:
   - pytorch=1.9.0
   - torchvision=0.10.0
   - tensorboard=2.5.0
+  - tabulate=0.8.9
   - networkx=2.5.1
   - python-graphviz=0.16
   - Mako=1.1.4
   - packaging=20.9
   - jsonschema=3.2.0
+  - sphinx=4.0.2
   - sphinx_rtd_theme=0.4.3
   - ipython=7.22.0
   - jupyter=1.0.0
