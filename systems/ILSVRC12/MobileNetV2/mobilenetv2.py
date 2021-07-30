@@ -110,7 +110,7 @@ class InvertedResidual(nn.Module):
 
 class MobileNetV2(nn.Module):
 
-    def __init__(self, config: str, capacity: float = 1.0, round_to_closest_multiple_of: int = 8, num_classes: int = 1000, seed : int = -1):
+    def __init__(self, config: str, capacity: float = 1.0, round_to_closest_multiple_of: int = 8, num_classes: int = 1000, pretrained : str = None, seed : int = -1):
 
         super(MobileNetV2, self).__init__()
 
@@ -124,7 +124,10 @@ class MobileNetV2(nn.Module):
         self.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = self._make_classifier(out_channels_features, num_classes)
 
-        self._initialize_weights(seed)
+        if pretrained is not None:
+            self.load_state_dict(torch.load(pretrained))
+        else:
+            self._initialize_weights(seed)
 
     @staticmethod
     def _make_divisible_by(dilated_num_channels: float, divisor: int, min_num_channels: Union[int, None] = None) -> int:
