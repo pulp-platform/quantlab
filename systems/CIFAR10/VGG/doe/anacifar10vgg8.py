@@ -2,8 +2,6 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from collections import namedtuple
-import os
-import json
 
 from quantlib.algorithms.ana.ana_controller import ANATimer
 
@@ -74,7 +72,6 @@ from typing import Union
 
 
 CriticalInstants = namedtuple('CriticalInstants', ['critical_instants', 'n_epochs'])
-
 
 
 from enum import Enum, IntEnum
@@ -197,7 +194,7 @@ def compute_alphas(decay_power_law_policy: int, n_layers: Union[None, int] = Non
 
 class Period(IntEnum):
     SHORT   = 20
-    MIDDLE  = 50
+    NORMAL  = 50
     LONG    = 80
 
 
@@ -288,8 +285,7 @@ def compute_timer_specs(noise_parameters: NoiseParameters,
     return timer_specs
 
 
-
-from manager.doeflows.experimentaldesign import Configuration, ExperimentalDesign
+from manager.doeflows.experimentaldesign import ExperimentalSetup, ExperimentalDesign, patch_dictionary
 
 
 class ANACIFAR10VGG8(ExperimentalDesign):
@@ -298,22 +294,17 @@ class ANACIFAR10VGG8(ExperimentalDesign):
         dofs = (Period, NoiseType, NoiseMean, NoiseVariance, NoiseComputationForward, DecayIntervals, DecayPowerLaw)
         super(ANACIFAR10VGG8, self).__init__(dofs)
 
-    def _load_base_cfg(self):
-        """Generate a basic configuration dictionary that will be patched."""
-        with open(os.path.join(os.path.dirname(__file__), '.'.join([self.__class__.__name__, 'json'])), 'r') as fp:
-            self._base_cfg = json.load(fp)
+    def _generate_experimental_setups(self):
 
-    def _generate_configs(self):
-
-        configs = []
+        setups = list()
 
         layers = [
             # conv/linear     activation
-            ['pilot.0', 'pilot.1'],
-            ['features.1', 'features.3'],
-            ['features.4', 'features.6'],
-            ['features.8', 'features.10'],
-            ['features.11', 'features.13'],
+            ['pilot.0',      'pilot.2'],
+            ['features.1',   'features.3'],
+            ['features.4',   'features.6'],
+            ['features.8',   'features.10'],
+            ['features.11',  'features.13'],
             ['classifier.0', 'classifier.2'],
             ['classifier.3', 'classifier.5']
         ]
@@ -331,7 +322,7 @@ class ANACIFAR10VGG8(ExperimentalDesign):
         for nt in NoiseType:
 
             network_quantize_patch = {'network': {
-                'quantize': {'noise_type': nt.value}}}  # dictionaries can be "patched" using the `update` method
+                'quantize': {'kwargs': {'noise_type': nt.value}}}}  # dictionaries can be "patched" using the `update` method
 
             for p in Period:
 
@@ -340,7 +331,7 @@ class ANACIFAR10VGG8(ExperimentalDesign):
                 hand_scheduler_epoch = p * (n_layers + 1)  # lower the learning rate to fine-tune the parameters
 
                 training_n_epochs_patch = {'training': {'n_epochs': n_epochs}}
-                training_gd_lr_sched_patch = {'training': {'gd': {
+                training_gd_patch = {'training': {'gd': {
                     'lr_sched': {'class': 'HandScheduler', 'kwargs': {'schedule': {hand_scheduler_epoch: 0.1}}}}}}
 
                 # static noise policy
@@ -352,10 +343,12 @@ class ANACIFAR10VGG8(ExperimentalDesign):
                 setup = (
                 p.value, nt.value, *[a.value for a in next(iter(static_noise_policy))], DecayIntervals.OVERLAPPED.value,
                 DecayPowerLaw.SAME.value)
-                patch = {**network_quantize_patch, **training_n_epochs_patch, **training_gd_lr_sched_patch,
-                         **training_quantize_patch}
+                patch = {**network_quantize_patch}
+                patch = patch_dictionary(patch, training_n_epochs_patch)
+                patch = patch_dictionary(patch, training_gd_patch)
+                patch = patch_dictionary(patch, training_quantize_patch)
 
-                configs.append(Configuration(setup=setup, patch=patch))
+                setups.append(ExperimentalSetup(dofs_values=setup, config_patch=patch))
 
                 # dynamic noise policies
                 for np in dynamic_noise_policies:
@@ -367,8 +360,10 @@ class ANACIFAR10VGG8(ExperimentalDesign):
                         training_quantize_patch = {'training': {'quantize': {'kwargs': {'ctrl_spec': timer_specs}}}}
 
                         setup = (p.value, nt.value, *[a.value for a in np], dip.value, dplp.value)
-                        patch = {**network_quantize_patch, **training_n_epochs_patch, **training_gd_lr_sched_patch,
-                                 **training_quantize_patch}
-                        configs.append(Configuration(setup=setup, patch=patch))
+                        patch = {**network_quantize_patch}
+                        patch = patch_dictionary(patch, training_n_epochs_patch)
+                        patch = patch_dictionary(patch, training_gd_patch)
+                        patch = patch_dictionary(patch, training_quantize_patch)
+                        setups.append(ExperimentalSetup(dofs_values=setup, config_patch=patch))
 
-        self._configs = configs
+        return setups

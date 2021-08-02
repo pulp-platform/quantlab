@@ -1,1 +1,1 @@
-from .ana import ANACIFAR10VGG8
+from .anacifar10vgg8 import ANACIFAR10VGG8
