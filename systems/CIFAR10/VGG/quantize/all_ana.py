@@ -29,7 +29,8 @@ from typing import List
 
 def all_ana_recipe(net:            nn.Module,
                    quantizer_spec: dict,
-                   noise_type:     str) -> nn.Module:
+                   noise_type:     str,
+                   strategy:       str) -> nn.Module:
 
     # define filters
     # type-based filters
@@ -45,13 +46,13 @@ def all_ana_recipe(net:            nn.Module,
     # define rules
     # 2D convolutions
     filter_conv2d_pilot_or_features = filter_conv2d & (filter_pilot | filter_features)
-    rho_conv2d = qlw.rules.ana.ReplaceConv2dANAConv2dRule(filter_=filter_conv2d_pilot_or_features, quantizer_spec=quantizer_spec, noise_type=noise_type)
+    rho_conv2d = qlw.rules.ana.ReplaceConv2dANAConv2dRule(filter_=filter_conv2d_pilot_or_features, quantizer_spec=quantizer_spec, noise_type=noise_type, strategy=strategy)
     # linear maps
     filter_linear_classifier_no_last = filter_linear & filter_classifier & (-filter_last_node)
-    rho_linear = qlw.rules.ana.ReplaceLinearANALinearRule(filter_=filter_linear_classifier_no_last, quantizer_spec=quantizer_spec, noise_type=noise_type)
+    rho_linear = qlw.rules.ana.ReplaceLinearANALinearRule(filter_=filter_linear_classifier_no_last, quantizer_spec=quantizer_spec, noise_type=noise_type, strategy=strategy)
     # ReLUs
     filter_relu_pilot_or_features_or_classifier = filter_relu & (filter_pilot | filter_features | filter_classifier)
-    rho_relu = qlw.rules.ana.ReplaceReLUANAActivationRule(filter_relu_pilot_or_features_or_classifier, quantizer_spec=quantizer_spec, noise_type=noise_type)
+    rho_relu = qlw.rules.ana.ReplaceReLUANAActivationRule(filter_relu_pilot_or_features_or_classifier, quantizer_spec=quantizer_spec, noise_type=noise_type, strategy=strategy)
 
     # edit
     lwgraph  = qlw.LightweightGraph(net)
@@ -73,4 +74,3 @@ def all_ana_controller(net:       nn.Module,
                        ctrl_spec: list) -> List[qa.Controller]:
     anactrl = qa.ana.ANAController(net, ctrl_spec)
     return [anactrl]
-

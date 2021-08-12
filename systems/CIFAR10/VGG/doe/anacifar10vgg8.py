@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 from collections import namedtuple
 
-from quantlib.algorithms.ana.ana_controller import ANATimer
+from quantlib.algorithms.ana.controller import ANATimer
 
 from typing import List, Tuple, Dict
 from typing import Union
