@@ -4,27 +4,19 @@
             "dataset": {
                 "transform": {
                     "class": "TransformB",
-                    "kwargs": {
-                        "augment": true
-                    }
+                    "kwargs": {"augment": true}
                 }
             },
-            "dataloader": {
-                "bs": 512
-            }
+            "dataloader": {"bs": 512}
         },
         "valid": {
             "dataset": {
                 "transform": {
                     "class": "TransformB",
-                    "kwargs": {
-                        "augment": false
-                    }
+                    "kwargs": {"augment": false}
                 }
             },
-            "dataloader": {
-                "bs": 512
-            }
+            "dataloader": {"bs": 512}
         }
     },
     "network": {
@@ -39,13 +31,13 @@
             "function": "all_ana_recipe",
             "kwargs": {
                 "quantizer_spec": {
-                    "nbits": 2,
-                    "signed": true,
+                    "nbits":    2,
+                    "signed":   true,
                     "balanced": true,
-                    "eps": 1.0
+                    "eps":      1.0
                 },
-                "noise_type": "logistic",
-                "strategy": "mode"
+                "noise_type": "uniform",
+                "strategy":   "expectation"
             }
         }
     },
@@ -57,275 +49,48 @@
         "gd": {
             "opt": {
                 "class": "Adam",
-                "kwargs": {
-                    "lr": 0.001
-                }
-            },
-            "lr_sched": {
-                "class": "HandScheduler",
-                "kwargs": {
-                    "schedule": {
-                        "640": 0.1
-                    }
-                }
+                "kwargs": {"lr": 0.001}
             }
         },
-        "n_epochs": 800,
+        "n_epochs": 200,
         "quantize": {
             "function": "all_ana_controller",
             "kwargs": {
                 "ctrl_spec": [
                     {
-                        "modules": [
-                            "pilot.0",
-                            "pilot.2"
-                        ],
-                        "mi": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 80,
-                                "alpha": [
-                                    1.0,
-                                    14
-                                ]
-                            }
-                        },
-                        "sigma": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 80,
-                                "alpha": [
-                                    1.0,
-                                    14
-                                ]
-                            }
-                        }
+                        "modules": ["pilot.0", "pilot.2"],
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  7}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 14}}
                     },
                     {
-                        "modules": [
-                            "features.1",
-                            "features.3"
-                        ],
-                        "mi": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 80,
-                                "tend": 160,
-                                "alpha": [
-                                    1.0,
-                                    12
-                                ]
-                            }
-                        },
-                        "sigma": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 80,
-                                "tend": 160,
-                                "alpha": [
-                                    1.0,
-                                    12
-                                ]
-                            }
-                        }
+                        "modules": ["features.1", "features.3"],
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 12}}
                     },
                     {
-                        "modules": [
-                            "features.4",
-                            "features.6"
-                        ],
-                        "mi": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 160,
-                                "tend": 240,
-                                "alpha": [
-                                    1.0,
-                                    10
-                                ]
-                            }
-                        },
-                        "sigma": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 160,
-                                "tend": 240,
-                                "alpha": [
-                                    1.0,
-                                    10
-                                ]
-                            }
-                        }
+                        "modules": ["features.4", "features.6"],
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  5}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 10}}
                     },
                     {
-                        "modules": [
-                            "features.8",
-                            "features.10"
-                        ],
-                        "mi": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 240,
-                                "tend": 320,
-                                "alpha": [
-                                    1.0,
-                                    8
-                                ]
-                            }
-                        },
-                        "sigma": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 240,
-                                "tend": 320,
-                                "alpha": [
-                                    1.0,
-                                    8
-                                ]
-                            }
-                        }
+                        "modules": ["features.8", "features.10"],
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  8}}
                     },
                     {
-                        "modules": [
-                            "features.11",
-                            "features.13"
-                        ],
-                        "mi": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 320,
-                                "tend": 400,
-                                "alpha": [
-                                    1.0,
-                                    6
-                                ]
-                            }
-                        },
-                        "sigma": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 320,
-                                "tend": 400,
-                                "alpha": [
-                                    1.0,
-                                    6
-                                ]
-                            }
-                        }
+                        "modules": ["features.11", "features.13"],
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  3}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}}
                     },
                     {
-                        "modules": [
-                            "classifier.0",
-                            "classifier.2"
-                        ],
-                        "mi": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 400,
-                                "tend": 480,
-                                "alpha": [
-                                    1.0,
-                                    4
-                                ]
-                            }
-                        },
-                        "sigma": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 400,
-                                "tend": 480,
-                                "alpha": [
-                                    1.0,
-                                    4
-                                ]
-                            }
-                        }
+                        "modules": ["classifier.0", "classifier.2"],
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}}
                     },
                     {
-                        "modules": [
-                            "classifier.3",
-                            "classifier.5"
-                        ],
-                        "mi": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 480,
-                                "tend": 560,
-                                "alpha": [
-                                    1.0,
-                                    2
-                                ]
-                            }
-                        },
-                        "sigma": {
-                            "beta": [
-                                0.0,
-                                0
-                            ],
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 480,
-                                "tend": 560,
-                                "alpha": [
-                                    1.0,
-                                    2
-                                ]
-                            }
-                        }
+                        "modules": ["classifier.3", "classifier.5"],
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  1}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}}
                     }
                 ]
             }
@@ -336,31 +101,9 @@
             "compute_profiling_statistic": true,
             "compute_task_statistic": true,
             "tensor_statistics": [
-                {
-                    "class": "DistributionOutputFeaturesComponents",
-                    "kwargs": {
-                        "name": "pilot.0",
-                        "start": 0,
-                        "period": 100
-                    }
-                },
-                {
-                    "class": "DistributionOutgoingGradientComponents",
-                    "kwargs": {
-                        "name": "pilot.1",
-                        "start": 0,
-                        "period": 100
-                    }
-                },
-                {
-                    "class": "OutputFeaturesSnapshot",
-                    "kwargs": {
-                        "name": "pilot.2",
-                        "start": 0,
-                        "period": 100,
-                        "n_inputs": 4
-                    }
-                }
+                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
+                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 100, "n_inputs": 4}}
             ]
         },
         "valid": {

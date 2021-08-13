@@ -6,6 +6,9 @@ import io
 from .experimentaldesign import ExperimentalUnitStatus, ExperimentalDesignLogger
 
 
+import IPython
+
+
 def get_experimental_unit_id(stdout):
     # The experimental unit's ID can be inferred from the standard output of
     # the process running the basic QuantLab flow `configure`; see:
@@ -74,9 +77,9 @@ def configure(args):
 
         # call the basic QuantLab flow `configure`
         command = build_command(args)
-        # output  = subprocess.run(command, shell=True, capture_output=True)
-        # eu_id   = get_experimental_unit_id(output.stdout)
+        output  = subprocess.run(command, shell=True, capture_output=True)
+        eu_id   = get_experimental_unit_id(output.stdout)
 
         # update the record of configured experimental units
-        logger.update_register(ExperimentalUnitStatus.CONFIGURED, idx, setup) #eu_id, setup)
+        logger.update_register(ExperimentalUnitStatus.CONFIGURED, eu_id, setup)
         logger.write_register()

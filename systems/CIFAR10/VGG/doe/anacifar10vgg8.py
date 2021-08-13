@@ -135,7 +135,7 @@ def compute_timer_specs(layers: List[List[str]],
         timer_spec['modules'] = modules
         timer_spec['mi'] = \
         {
-            'base': mb,
+            'beta': mb,
             'fun': 'bws',
             'kwargs': {
                    'tstart': s,
@@ -145,7 +145,7 @@ def compute_timer_specs(layers: List[List[str]],
         }
         timer_spec['sigma'] = \
         {
-            'base': sb,
+            'beta': sb,
             'fun': 'bws',
             'kwargs': {
                 'tstart': s,
