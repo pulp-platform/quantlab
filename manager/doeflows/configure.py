@@ -74,12 +74,9 @@ def configure(args):
 
         # call the basic QuantLab flow `configure`
         command = build_command(args)
-        output  = subprocess.run(command, shell=True, capture_output=True)
-        eu_id   = get_experimental_unit_id(output.stdout)
+        # output  = subprocess.run(command, shell=True, capture_output=True)
+        # eu_id   = get_experimental_unit_id(output.stdout)
 
         # update the record of configured experimental units
-        logger.update_register(ExperimentalUnitStatus.CONFIGURED, eu_id, setup)
+        logger.update_register(ExperimentalUnitStatus.CONFIGURED, idx, setup) #eu_id, setup)
         logger.write_register()
-
-        if idx >= 1:
-            break
