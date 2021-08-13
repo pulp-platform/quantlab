@@ -3,7 +3,7 @@
         "train": {
             "dataset": {
                 "transform": {
-                    "class": "TransformA",
+                    "class": "TransformB",
                     "kwargs": {"augment": true}
                 }
             },
@@ -12,7 +12,7 @@
         "valid": {
             "dataset": {
                 "transform": {
-                    "class": "TransformA",
+                    "class": "TransformB",
                     "kwargs": {"augment": false}
                 }
             },
@@ -31,12 +31,13 @@
             "function": "all_ana_recipe",
             "kwargs": {
                 "quantizer_spec": {
-                    "nbits": 2,
-                    "signed": true,
+                    "nbits":    2,
+                    "signed":   true,
                     "balanced": true,
-                    "eps": 1.0
+                    "eps":      1.0
                 },
-                "noise_type": "uniform"
+                "noise_type": "uniform",
+                "strategy":   "expectation"
             }
         }
     },
@@ -51,87 +52,45 @@
                 "kwargs": {"lr": 0.001}
             }
         },
-        "n_epochs": 60,
+        "n_epochs": 200,
         "quantize": {
             "function": "all_ana_controller",
             "kwargs": {
                 "ctrl_spec": [
                     {
                         "modules": ["pilot.0", "pilot.2"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 2}}
-                        },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 2}}
-                        }
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  7}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 14}}
                     },
                     {
                         "modules": ["features.1", "features.3"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 2}}
-                        },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 2}}
-                        }
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 12}}
                     },
                     {
                         "modules": ["features.4", "features.6"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 2}}
-                        },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 2}}
-                        }
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  5}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 10}}
                     },
                     {
                         "modules": ["features.8", "features.10"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 2}}
-                        },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 2}}
-                        }
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  8}}
                     },
                     {
                         "modules": ["features.11", "features.13"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 20, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 20, "tend": 50, "alpha": 2}}
-                        },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 25, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 25, "tend": 50, "alpha": 2}}
-                        }
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  3}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}}
                     },
                     {
                         "modules": ["classifier.0", "classifier.2"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 2}}
-                        },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 2}}
-                        }
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}}
                     },
                     {
                         "modules": ["classifier.3", "classifier.5"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 2}}
-                        },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 2}}
-                        }
+                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  1}},
+                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}}
                     }
                 ]
             }
@@ -143,8 +102,6 @@
             "compute_task_statistic": true,
             "tensor_statistics": [
                 {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
-                {"class": "MeanUpdateNormWeightNormRatio",          "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
-                {"class": "DistributionOutgoingGradientNorm",       "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
                 {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
                 {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 100, "n_inputs": 4}}
             ]

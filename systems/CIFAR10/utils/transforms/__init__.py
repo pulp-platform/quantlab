@@ -20,4 +20,4 @@
 # 
 
 from .transforms import CIFAR10Normalize
-
+from .transforms import CIFAR10NormalizeHomogeneous

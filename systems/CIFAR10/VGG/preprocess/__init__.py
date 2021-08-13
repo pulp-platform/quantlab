@@ -23,11 +23,14 @@ import torch
 import torchvision
 
 from .transform_a import TransformA
+from .transform_b import TransformB
 from systems.utils.data import default_dataset_cv_split
+
 
 __all__ = [
     'load_data_set',
     'TransformA',
+    'TransformB',
 ]
 
 

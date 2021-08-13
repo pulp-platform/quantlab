@@ -19,6 +19,7 @@
 # limitations under the License.
 # 
 
+import torch
 from torchvision.transforms import Normalize
 
 
@@ -36,3 +37,9 @@ class CIFAR10Normalize(Normalize):
     def __init__(self):
         super(CIFAR10Normalize, self).__init__(**CIFAR10STATS['normalize'])
 
+
+class CIFAR10NormalizeHomogeneous(Normalize):
+    def __init__(self):
+        mean = torch.mean(torch.Tensor(CIFAR10STATS['normalize']['mean']))
+        std  = torch.mean(torch.Tensor(CIFAR10STATS['normalize']['std']))
+        super(CIFAR10NormalizeHomogeneous, self).__init__(mean=mean, std=std)
