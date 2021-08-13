@@ -7,7 +7,7 @@
                     "kwargs": {"augment": true}
                 }
             },
-            "dataloader": {"bs": 512}
+            "dataloader": {"bs": 256}
         },
         "valid": {
             "dataset": {
@@ -16,7 +16,7 @@
                     "kwargs": {"augment": false}
                 }
             },
-            "dataloader": {"bs": 512}
+            "dataloader": {"bs": 256}
         }
     },
     "network": {
@@ -101,9 +101,9 @@
             "compute_profiling_statistic": true,
             "compute_task_statistic": true,
             "tensor_statistics": [
-                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
-                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
-                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 100, "n_inputs": 4}}
+                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 157}},
+                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 157}},
+                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 157, "n_inputs": 4}}
             ]
         },
         "valid": {
