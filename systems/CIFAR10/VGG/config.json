@@ -90,7 +90,7 @@
                             }
                         },
                         "sigma": {
-                            "beta": 1.0,
+                            "beta": 0.5,
                             "fun": "bws",
                             "kwargs": {
                                 "tstart": 0,
@@ -114,7 +114,7 @@
                             }
                         },
                         "sigma": {
-                            "beta": 1.0,
+                            "beta": 0.5,
                             "fun": "bws",
                             "kwargs": {
                                 "tstart": 50,
@@ -138,7 +138,7 @@
                             }
                         },
                         "sigma": {
-                            "beta": 1.0,
+                            "beta": 0.5,
                             "fun": "bws",
                             "kwargs": {
                                 "tstart": 100,
@@ -162,7 +162,7 @@
                             }
                         },
                         "sigma": {
-                            "beta": 1.0,
+                            "beta": 0.5,
                             "fun": "bws",
                             "kwargs": {
                                 "tstart": 150,
@@ -186,7 +186,7 @@
                             }
                         },
                         "sigma": {
-                            "beta": 1.0,
+                            "beta": 0.5,
                             "fun": "bws",
                             "kwargs": {
                                 "tstart": 200,
@@ -210,7 +210,7 @@
                             }
                         },
                         "sigma": {
-                            "beta": 1.0,
+                            "beta": 0.5,
                             "fun": "bws",
                             "kwargs": {
                                 "tstart": 250,
@@ -234,7 +234,7 @@
                             }
                         },
                         "sigma": {
-                            "beta": 1.0,
+                            "beta": 0.5,
                             "fun": "bws",
                             "kwargs": {
                                 "tstart": 300,

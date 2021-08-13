@@ -1,6 +1,8 @@
 from enum import IntEnum
 from typing import NamedTuple
 import itertools
+import math
+from scipy.special import erfinv
 
 from quantlib.algorithms.ana.ops import NoiseType, ForwardComputationStrategy
 from manager.doeflows.experimentaldesign import ExperimentalSetup, ExperimentalDesign, patch_dictionary
@@ -53,6 +55,7 @@ Policy      = NamedTuple('Policy',      [('fcs',   ForwardComputationStrategy),
 
 def get_noise_hyperparameters(n_layers: int,
                               layer_id: int,
+                              nt:       NoiseType,
                               np:       NoisePolicy,
                               dp:       DecayPolicy):
 
@@ -68,16 +71,34 @@ def get_noise_hyperparameters(n_layers: int,
     mi_alpha    = 1 * base_power
     sigma_alpha = 2 * base_power
 
-    # compute initial coefficients
+    # I compare different mass distributions in a given interval
+    half_interval           = 0.5   # probability mass should be contained in the interval [mi_beta - half_interval, mi_beta + half_interval]
+    mass_fraction_unbounded = 0.95  # probability distributions with unbounded support can not be "squeezed" inside the interval, so I try to put a "reasonable" amount of mass in it
+
+    # compute mean hyper-parameters
     if np.mi == NoiseMean.STATIC:
         mi_beta  = 0.0
         mi_alpha = 0
     elif np.mi == NoiseMean.DYNAMIC:
-        mi_beta = -1.0  # anneal to the Heaviside H+
+        mi_beta = -half_interval  # anneal to the Heaviside H+
     else:
         raise ValueError
 
-    sigma_beta = 1.0  # if there is no noise, gradients can't flow!
+    # compute standard deviation (or standard deviation proxy) hyper-parameters
+    if nt == NoiseType.UNIFORM:
+        # for the uniform noise, I don't use the standard deviation, but a proxy s = \sqrt{3} * std
+        sigma_beta = half_interval  # STE-like
+    elif nt == NoiseType.TRIANGULAR:
+        # for the triangular noise, I don't use the standard deviation, but a proxy s = \sqrt{6} * std
+        sigma_beta = half_interval
+    elif nt == NoiseType.LOGISTIC:
+        sigma_beta = 1 / (2 * math.log((1 + mass_fraction_unbounded) / (1 - mass_fraction_unbounded)))
+    elif nt == NoiseType.NORMAL:
+        sigma_beta = - half_interval * math.sqrt(2) / (2 * erfinv(-mass_fraction_unbounded))
+    else:
+        raise ValueError
+    assert sigma_beta > 0.0  # if there is no noise, gradients can't flow!
+
     if np.sigma == NoiseVariance.STATIC:
         sigma_alpha = 0
     elif np.sigma == NoiseVariance.DYNAMIC:
@@ -89,9 +110,10 @@ def get_noise_hyperparameters(n_layers: int,
 
 
 def compute_noise_hyperparameters(n_layers: int,
+                                  nt:       NoiseType,
                                   np:       NoisePolicy,
                                   dp:       DecayPolicy) -> List[Tuple[Tuple[float, int], Tuple[float, int]]]:
-    return [get_noise_hyperparameters(n_layers, layer_id, np, dp) for layer_id in range(0, n_layers)]
+    return [get_noise_hyperparameters(n_layers, layer_id, nt, np, dp) for layer_id in range(0, n_layers)]
 
 
 def compute_decay_intervals(n_layers: int,
@@ -124,9 +146,10 @@ def compute_decay_intervals(n_layers: int,
 
 def compute_timer_specs(layers: List[List[str]],
                         period: int,
+                        nt:     NoiseType,
                         policy: Policy):
 
-    noise_hyperparameters = compute_noise_hyperparameters(len(layers), policy.np, policy.dp)
+    noise_hyperparameters = compute_noise_hyperparameters(len(layers), nt, policy.np, policy.dp)
     decay_intervals       = compute_decay_intervals(len(layers), period, policy.dp)
 
     timer_specs = []
@@ -228,7 +251,7 @@ class ANACIFAR10VGG8(ExperimentalDesign):
                         }
                     }
 
-                timer_specs = compute_timer_specs(layers, period, policy)
+                timer_specs = compute_timer_specs(layers, period, nt, policy)
                 training_quantize_patch = \
                     {
                         'training': {
