@@ -75,7 +75,7 @@ class ExperimentalDesign(object):
         """Load the basic configuration dictionary that will be patched."""
         class_ = self.__class__
         exp_design_folder = os.path.dirname(inspect.getfile(class_))
-        cfg_file_filename = '.'.join([class_.__name__.lower(), _CFG_FILE_EXTENSION])
+        cfg_file_filename = '.'.join([class_.__name__.upper(), _CFG_FILE_EXTENSION])
 
         with open(os.path.join(exp_design_folder, cfg_file_filename), 'r') as fp:
             base_config = json.load(fp)
