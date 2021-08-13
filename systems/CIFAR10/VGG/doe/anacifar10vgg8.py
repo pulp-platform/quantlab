@@ -1,5 +1,5 @@
 from enum import IntEnum
-from collections import namedtuple
+from typing import NamedTuple
 import itertools
 
 from quantlib.algorithms.ana.ops import NoiseType, ForwardComputationStrategy
@@ -13,9 +13,9 @@ from typing import List, Tuple
 # ====================
 
 class Period(IntEnum):
-    SHORT   = 20
-    NORMAL  = 50
-    LONG    = 80
+    # SHORT    = 20
+    STANDARD = 50
+    # LONG     = 80
 
 
 class NoiseMean(IntEnum):
@@ -40,9 +40,15 @@ class DecayPowerLaw(IntEnum):
     PROGRESSIVE = 1  # theory-inspired
 
 
-NoisePolicy = namedtuple('NoisePolicy', ['mi', 'sigma'])
-DecayPolicy = namedtuple('DecayPolicy', ['di', 'dpl'])
-Policy      = namedtuple('Policy',      ['fcs', 'np', 'dp'])
+NoisePolicy = NamedTuple('NoisePolicy', [('mi',    NoiseMean),
+                                         ('sigma', NoiseVariance)])
+
+DecayPolicy = NamedTuple('DecayPolicy', [('di',    DecayIntervals),
+                                         ('dpl',   DecayPowerLaw)])
+
+Policy      = NamedTuple('Policy',      [('fcs',   ForwardComputationStrategy),
+                                         ('np',    NoisePolicy),
+                                         ('dp',    DecayPolicy)])
 
 
 def get_noise_hyperparameters(n_layers: int,
@@ -124,27 +130,27 @@ def compute_timer_specs(layers: List[List[str]],
     decay_intervals       = compute_decay_intervals(len(layers), period, policy.dp)
 
     timer_specs = []
-    for layer_id, (modules, (b, a), (s, e)) in enumerate(zip(layers, noise_hyperparameters, decay_intervals)):
+    for layer_id, (modules, ((mb, ma), (sb, sa)), (s, e)) in enumerate(zip(layers, noise_hyperparameters, decay_intervals)):
         timer_spec = dict()
         timer_spec['modules'] = modules
         timer_spec['mi'] = \
         {
-            'base': b,
-            'fun': 'lws',
+            'base': mb,
+            'fun': 'bws',
             'kwargs': {
                    'tstart': s,
                    'tend':   e,
-                   'alpha':  a
+                   'alpha':  ma
             }
         }
         timer_spec['sigma'] = \
         {
-            'base': b,
-            'fun': 'lws',
+            'base': sb,
+            'fun': 'bws',
             'kwargs': {
                 'tstart': s,
                 'tend':   e,
-                'alpha':  a
+                'alpha':  sa
             }
         }
         timer_specs.append(timer_spec)

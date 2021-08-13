@@ -81,11 +81,11 @@
                             "pilot.2"
                         ],
                         "mi": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 0,
                                 "tend": 80,
@@ -96,11 +96,11 @@
                             }
                         },
                         "sigma": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 0,
                                 "tend": 80,
@@ -117,11 +117,11 @@
                             "features.3"
                         ],
                         "mi": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 80,
                                 "tend": 160,
@@ -132,11 +132,11 @@
                             }
                         },
                         "sigma": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 80,
                                 "tend": 160,
@@ -153,11 +153,11 @@
                             "features.6"
                         ],
                         "mi": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 160,
                                 "tend": 240,
@@ -168,11 +168,11 @@
                             }
                         },
                         "sigma": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 160,
                                 "tend": 240,
@@ -189,11 +189,11 @@
                             "features.10"
                         ],
                         "mi": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 240,
                                 "tend": 320,
@@ -204,11 +204,11 @@
                             }
                         },
                         "sigma": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 240,
                                 "tend": 320,
@@ -225,11 +225,11 @@
                             "features.13"
                         ],
                         "mi": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 320,
                                 "tend": 400,
@@ -240,11 +240,11 @@
                             }
                         },
                         "sigma": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 320,
                                 "tend": 400,
@@ -261,11 +261,11 @@
                             "classifier.2"
                         ],
                         "mi": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 400,
                                 "tend": 480,
@@ -276,11 +276,11 @@
                             }
                         },
                         "sigma": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 400,
                                 "tend": 480,
@@ -297,11 +297,11 @@
                             "classifier.5"
                         ],
                         "mi": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 480,
                                 "tend": 560,
@@ -312,11 +312,11 @@
                             }
                         },
                         "sigma": {
-                            "base": [
+                            "beta": [
                                 0.0,
                                 0
                             ],
-                            "fun": "lws",
+                            "fun": "bws",
                             "kwargs": {
                                 "tstart": 480,
                                 "tend": 560,
