@@ -59,38 +59,38 @@
                 "ctrl_spec": [
                     {
                         "modules": ["pilot.0", "pilot.2"],
-                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  7}},
-                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 14}}
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  7}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 14}}
                     },
                     {
                         "modules": ["features.1", "features.3"],
-                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}},
-                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 12}}
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 12}}
                     },
                     {
                         "modules": ["features.4", "features.6"],
-                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  5}},
-                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 10}}
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  5}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 10}}
                     },
                     {
                         "modules": ["features.8", "features.10"],
-                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}},
-                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  8}}
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  8}}
                     },
                     {
                         "modules": ["features.11", "features.13"],
-                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  3}},
-                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}}
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  3}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}}
                     },
                     {
                         "modules": ["classifier.0", "classifier.2"],
-                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}},
-                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}}
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}}
                     },
                     {
                         "modules": ["classifier.3", "classifier.5"],
-                        "mi":      {"beta": -0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  1}},
-                        "sigma":   {"beta":  1.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}}
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  1}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}}
                     }
                 ]
             }
