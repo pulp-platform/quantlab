@@ -3,6 +3,7 @@
 # 
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
+# Georg Rutishauser <georgr@iis.ee.ethz.ch>
 # 
 # Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
 # 
@@ -19,8 +20,13 @@
 # limitations under the License.
 # 
 
+import pathlib
+import os
+
 import torch
 import torch.nn as nn
+
+import torchvision.models as tvm
 
 from typing import Union, List, Tuple
 
@@ -199,6 +205,27 @@ _CONFIGS = {
                                  ( 3, 512, 2)]},
 }
 
+def resnet_replace_key(k):
+    if k.startswith('conv1'):
+        return k.replace('conv1', 'pilot.0')
+    if k.startswith('bn1'):
+        return k.replace('bn1', 'pilot.1')
+    for n in range(1, 5):
+        k = k.replace(f'layer{n}', f'features.{n-1}')
+    k = k.replace('downsample.0', 'downsample.conv')
+    k = k.replace('downsample.1', 'downsample.bn')
+    k = k.replace('fc', 'classifier')
+    return k
+
+def dict_keys_match(d1, d2):
+    match = True
+    match &= all(k in d2.keys() for k in d1.keys())
+    match &= all(k in d1.keys() for k in d2.keys())
+    return match
+
+def convert_torchvision_to_ql_resnet_state_dict(state_dict : dict):
+    ql_state_dict = {resnet_replace_key(k):v for k,v in state_dict.items()}
+    return ql_state_dict
 
 class ResNet(nn.Module):
 
@@ -207,7 +234,8 @@ class ResNet(nn.Module):
                  n_groups: int = 1,
                  group_capacity: int = 1,
                  num_classes: int = 1000,
-                 seed : int = -1):
+                 seed : int = -1,
+                 pretrained : Union[bool, str] = False):
 
         super(ResNet, self).__init__()
 
@@ -224,8 +252,12 @@ class ResNet(nn.Module):
         self.features   = self._make_features(block_cfgs, block_class, in_planes_features, out_planes_features, n_groups, group_capacity)
         self.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Linear(out_channels_features, num_classes)
-
-        self._initialize_weights(seed)
+        if pretrained == True: # load weights from torchvision model
+            self.preload_torchvision(config)
+        elif pretrained: # if `pretrained` is string, load from checkpoint
+            self.load_state_dict(torch.load(pretrained))
+        else: # randomly initialize weights
+            self._initialize_weights(seed)
 
     def _make_pilot(self, out_channels_pilot: int) -> nn.Sequential:
 
@@ -317,3 +349,17 @@ class ResNet(nn.Module):
             elif isinstance(m, BottleneckBlock):
                 nn.init.constant_(m.bn3.weight, 0)
 
+    def preload_torchvision(self, config : str):
+        assert config in _CONFIGS and config != 'ResNet26', f"ResNet: Unsupported preload config: {config}"
+        pretrained_path = pathlib.Path(__file__).parent.joinpath('pretrained')
+        pretrained_path.mkdir(exist_ok=True)
+        ckpt_path = pretrained_path.joinpath(f"{config.lower()}_torchvision.ckpt")
+        if not ckpt_path.exists():
+            tv_model_fn = getattr(tvm, config.lower())
+            tv_model = tv_model_fn(pretrained=True)
+            ql_state_dict = convert_torchvision_to_ql_resnet_state_dict(tv_model.state_dict())
+            assert dict_keys_match(self.state_dict(), ql_state_dict), f"Error loading pretrained ResNet state_dict for config '{config}'!"
+            self.load_state_dict(ql_state_dict)
+            torch.save(self.state_dict(), str(ckpt_path))
+        else:
+            self.load_state_dict(torch.load(str(ckpt_path)))
