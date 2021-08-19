@@ -131,8 +131,9 @@
                             "n_levels": 256,
                             "quantize": "per_channel",
                             "init_clip": "max",
-                            "learn_clip": false,
-                            "symm_wts": true
+                            "learn_clip": true,
+                            "symm_wts": true,
+                            "tqt": true
                         }
                     },
                     "PACTLinear": {
@@ -141,8 +142,9 @@
                             "n_levels": 256,
                             "quantize": "per_layer",
                             "init_clip": "max",
-                            "learn_clip": false,
-                            "symm_wts": true
+                            "learn_clip": true,
+                            "symm_wts": true,
+                            "tqt": true
                         }
                     },
                     "PACTUnsignedAct": {
@@ -185,7 +187,9 @@
                             "n_levels": 256,
                             "init_clip": "const",
                             "noisy": false,
-                            "rounding": true
+                            "rounding": true,
+                            "learn_clip": true,
+                            "tqt": true
                         }
                     },
                     "canonicalize": {
@@ -209,7 +213,7 @@
                 "takes_net": true,
                 "kwargs": {
                     "pact_decay": 0.001,
-                    "lr": 0.0005,
+                    "lr": 0.002,
                     "momentum": 0.9,
                     "weight_decay": 4e-05
                 }
@@ -219,9 +223,8 @@
                 "kwargs": {
                     "schedule": {
                         "0": 1,
-                        "5": 0.1,
-                        "10": 0.01,
-                        "15": 0.001
+                        "3": 0.1,
+                        "5": 0.01
                     }
                 }
             }
@@ -233,7 +236,7 @@
                 "schedules": {
                     "linear": {
                         "0": ["start", "verbose_on"],
-                        "5": "freeze"
+                        "4": "freeze"
                     },
                     "activation": {
                         "1": ["start", "verbose_on"],
@@ -258,5 +261,7 @@
             "compute_profiling_statistic": true
         }
     },
-    "experiment": {}
+    "experiment": {
+        "ckpt_period": 1
+    }
 }
