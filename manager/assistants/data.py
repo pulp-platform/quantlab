@@ -184,16 +184,17 @@ class DataAssistant(object):
         self._partition = partition
 
         # ingredients for dataset creation
-        self._load_data_set_fun = None
+        self._load_data_set_fun    = None
+        self._load_data_set_kwargs = None
         # database
-        self._path_data         = None
+        self._path_data            = None
         # cross-validation
-        self._n_folds           = None
-        self._fold_id           = None
-        self._cv_seed           = None
+        self._n_folds              = None
+        self._fold_id              = None
+        self._cv_seed              = None
         # transform
-        self._transform_class   = None
-        self._transform_kwargs  = None
+        self._transform_class      = None
+        self._transform_kwargs     = None
 
         # ingredients for sampler creation
         self._sampler_seeds = None
@@ -223,6 +224,12 @@ class DataAssistant(object):
         self._transform_class  = getattr(datamessage.library.module, datamessage.data_config['dataset']['transform']['class'])
         self._transform_kwargs = datamessage.data_config['dataset']['transform']['kwargs']
 
+        # load_data_set kwargs are optional for backward compatibility
+        try:
+            self._load_data_set_kwargs = datamessage.data_config['dataset']['kwargs']
+        except KeyError:
+            self._load_data_set_kwargs = {}
+
         # ``Sampler`` - seed
         try:
             self._sampler_seeds = datamessage.data_config['sampler']['seeds']
@@ -235,7 +242,7 @@ class DataAssistant(object):
     def get_dataset(self) -> torch.utils.data.Dataset:
 
         transform = self._transform_class(**self._transform_kwargs)
-        dataset   = self._load_data_set_fun(self._partition, self._path_data, n_folds=self._n_folds, current_fold_id=self._fold_id, cv_seed=self._cv_seed, transform=transform)
+        dataset   = self._load_data_set_fun(self._partition, self._path_data, n_folds=self._n_folds, current_fold_id=self._fold_id, cv_seed=self._cv_seed, transform=transform, **self._load_data_set_kwargs)
 
         return dataset
 
