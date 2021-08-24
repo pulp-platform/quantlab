@@ -1,0 +1,166 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "DVSAugmentTransform",
+                    "kwargs": {
+                        "augment": true,
+                        "downsample": 1
+                    }
+                },
+                "kwargs": {
+                    "window_stride": 2,
+                    "cnn_win": 8,
+                    "tcn_win": 5,
+                    "n_val_subjects": 6
+                }
+            },
+            "dataloader": {
+                "bs": 128
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "DVSAugmentTransform",
+                    "kwargs": {
+                        "augment": false,
+                        "downsample": 1
+                    }
+                },
+                "kwargs": {
+                    "window_stride": 2,
+                    "cnn_win": 8,
+                    "tcn_win": 5,
+                    "n_val_subjects": 6
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        }
+    },
+    "network": {
+        "class": "DVSHybridNet",
+        "kwargs": {
+            "cnn_cfg_key": "ninetysix_ch",
+            "tcn_cfg_key": "first_try",
+            "pool_type": "max_pool",
+            "cnn_window": 8,
+            "tcn_window": 5,
+            "activation": "htanh",
+            "n_classes": 11,
+            "classifier_bias": false,
+            "fix_cnn_pool": true,
+            "twn_classifier": false,
+            "k_cnn": 3,
+            "classifier_type": "linear",
+            "classifier_out": "last",
+            "layer_order": "bn_pool",
+            "last_conv_nopad": true
+        },
+        "quantize": {
+            "function": "layers_ste_inq",
+            "kwargs": {
+                "config": {
+                    "STE": {
+                        "n_levels": 3,
+                        "quant_start_epoch": 38
+                    },
+                    "INQ": {
+                        "n_levels": 3,
+                        "quant_init_method": "uniform-l2-opt",
+                        "quant_strategy": "magnitude"
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "takes_net": false,
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "Adam",
+                "takes_net": false,
+                "kwargs": {
+                    "lr": 0.01
+                }
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0": 1,
+                        "35": 0.1,
+                        "40": 1,
+                        "48": 0.1,
+                        "52": 0.01,
+                        "55": 1,
+                        "63": 0.1,
+                        "67": 0.01,
+                        "70": 1,
+                        "78": 0.1,
+                        "82": 0.01,
+                        "85": 1,
+                        "93": 0.1,
+                        "97": 0.01,
+                        "100": 1,
+                        "105": 0.1,
+                        "108": 0.01,
+                        "110": 1,
+                        "115": 0.1,
+                        "118": 0.01,
+                        "120": 1,
+                        "125": 0.1,
+                        "128": 0.01
+                    }
+                }
+            }
+        },
+        "n_epochs": 135,
+        "quantize": {
+            "function": "layers_ste_inq_get_controllers",
+            "kwargs": {
+                "verbose": true,
+                "STE": {
+                    "clear_optim_state_on_step": false
+                },
+                "INQ": {
+                    "schedule": {
+                        "40": 0.2,
+                        "55": 0.4,
+                        "70": 0.6,
+                        "85": 0.8,
+                        "100": 0.9,
+                        "110": 0.95,
+                        "120": 0.975,
+                        "130": 1
+                    },
+                    "clear_optim_state_on_step": true
+                }
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": []
+        },
+        "valid": {
+            "compute_profiling_statistic": true,
+            "tensor_statistics": []
+        }
+    },
+    "experiment": {
+        "n_folds": 1,
+        "metrics": {
+            "target_metric": "valid"
+        }
+    }
+}
