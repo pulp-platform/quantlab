@@ -73,7 +73,7 @@ class DVS128Statistic(TaskStatistic):
         # compute the batch statistics for the current process
         bs        = torch.Tensor([ypr.shape[0]]).to(dtype=torch.int64, device=self._platform.device)
         correct   = pp_ygt == pp_ypr
-        n_correct = torch.sum(correct[:, 0])
+        n_correct = torch.sum(correct)
 
         # master-workers synchronisation point: different processes apply the model to different data, hence they observe different statistics
         if self._platform.is_multiproc_horovod_run:

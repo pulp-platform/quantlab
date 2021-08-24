@@ -6,7 +6,7 @@
                     "class": "DVSAugmentTransform",
                     "kwargs": {
                         "augment": true,
-                        "downsample": 1
+                        "downsample": 2
                     }
                 },
                 "kwargs": {
@@ -26,7 +26,7 @@
                     "class": "DVSAugmentTransform",
                     "kwargs": {
                         "augment": false,
-                        "downsample": 1
+                        "downsample": 2
                     }
                 },
                 "kwargs": {
@@ -45,7 +45,7 @@
         "class": "DVSHybridNet",
         "kwargs": {
             "cnn_cfg_key": "ninetysix_ch",
-            "tcn_cfg_key": "first_try",
+            "tcn_cfg_key": "ninetysix_ch",
             "pool_type": "max_pool",
             "cnn_window": 8,
             "tcn_window": 5,
@@ -126,22 +126,24 @@
         "quantize": {
             "function": "layers_ste_inq_get_controllers",
             "kwargs": {
-                "verbose": true,
-                "STE": {
-                    "clear_optim_state_on_step": false
-                },
-                "INQ": {
-                    "schedule": {
-                        "40": 0.2,
-                        "55": 0.4,
-                        "70": 0.6,
-                        "85": 0.8,
-                        "100": 0.9,
-                        "110": 0.95,
-                        "120": 0.975,
-                        "130": 1
+                "config": {
+                    "verbose": true,
+                    "STE": {
+                        "clear_optim_state_on_step": false
                     },
-                    "clear_optim_state_on_step": true
+                    "INQ": {
+                        "schedule": {
+                            "40": 0.2,
+                            "55": 0.4,
+                            "70": 0.6,
+                            "85": 0.8,
+                            "100": 0.9,
+                            "110": 0.95,
+                            "120": 0.975,
+                            "130": 1
+                        },
+                        "clear_optim_state_on_step": true
+                    }
                 }
             }
         }
