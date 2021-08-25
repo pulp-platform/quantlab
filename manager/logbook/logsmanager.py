@@ -36,6 +36,16 @@ def _get_format_string(MAX):
     return "".join(["{:0", str(math.floor(math.log10(MAX))), "d}"])
 
 
+def _state_dict_dataparallel_to_module(state_dict : dict):
+    return {k.lstrip("module."): v for k, v in state_dict.items()}
+
+def _state_dict_module_to_dataparallel(state_dict : dict):
+    return {f"module.{k}": v for k, v in state_dict.items()}
+
+def _state_dict_is_from_dataparallel(state_dict : dict):
+    return all(k.startswith('module.') for k in state_dict.keys())
+
+
 _MAX_EXP_UNITS  = 10000
 _FORMAT_EXP_DIR = "".join(["exp", _get_format_string(_MAX_EXP_UNITS)])
 
@@ -314,9 +324,20 @@ class LogsManager(object):
             ckpt = torch.load(ckpt_filename)
             assert ckpt['experiment']['fold_id'] == self._fold_id  # if not, something weird must have happened during a call to `store_checkpoint`...
             epoch_id = ckpt['experiment']['epoch_id']
-
-            net.load_state_dict(ckpt['net'])
-
+            if not isinstance(net, torch.nn.DataParallel) and _state_dict_is_from_dataparallel(ckpt['net']):
+                # if the ckpt was created in a multi-GPU run and now we have
+                # only 1 GPU or are running on CPU, we need to strip 'module.'
+                # from the state_dict keys.
+                net_state_dict = _state_dict_dataparallel_to_module(ckpt['net'])
+            elif isinstance(net, torch.nn.DataParallel) and not _state_dict_is_from_dataparallel(ckpt['net']):
+                # ..conversely, if the ckpt was created in a single-GPU/CPU run
+                # and now we have multiple GPUs, we need to add 'module.' to
+                # the state_dict keys
+                net_state_dict = _state_dict_module_to_dataparallel(ckpt['net'])
+            else:
+                # otherwise, we can load the checkpoint as-is!
+                net_state_dict = ckpt['net']
+            net.load_state_dict(net_state_dict)
             opt.load_state_dict(ckpt['gd']['opt'])
             if lr_sched is not None:
                 assert ckpt['gd']['lr_sched'] is not None
