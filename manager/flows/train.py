@@ -214,7 +214,7 @@ def train(args: argparse.Namespace):
             # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
             if (not platform.is_horovod_run) or platform.is_master:
                 for c in qnt_ctrls:
-                    c.step_pre_training_epoch(epoch_id)
+                    c.step_pre_training_epoch(epoch_id, gd.opt)
             if platform.is_horovod_run:
                 platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
