@@ -31,7 +31,7 @@ def load_data_set(partition: str,
     # if number of subjects is not divisible by n_val_subjects, the last fold will
     # contain fewer subjects. the number of subjects is a prime number so this
     # will always be the case if we do "exhaustive" CV.
-    start_user = max(0, 29-(current_fold_id+1)*n_val_subjects)
+    start_user = max(0, 30-(current_fold_id+1)*n_val_subjects)
     val_subjects = list(range(start_user, 30-current_fold_id*n_val_subjects))
     train_subjects = [i for i in range(1, 30) if i not in val_subjects]
     file_suffix = "_lo"+"".join([f"_{u}" for u in val_subjects]) + f"_{partition}"

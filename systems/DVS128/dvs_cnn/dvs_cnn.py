@@ -5,7 +5,8 @@ import numpy as np
 __CNN_CFGS__ = {
     'first_try' : [128, 128, 128, 128],
     'ninetysix_ch' : [96, 96, 96, 96],
-    'reduced_channels' : [64, 64, 64, 64]
+    'reduced_channels' : [64, 64, 64, 64],
+    '32_channels' : [32, 32, 32, 32]
 }
 
 # TCN configs:
@@ -13,7 +14,9 @@ __CNN_CFGS__ = {
 __TCN_CFGS__ = {
     'first_try' : [(2, 1, 64), (2, 2, 64), (2, 4, 64)],
     'ninetysix_ch' : [(2, 1, 96), (2, 2, 96), (2, 4, 96)],
-    'k3' : [(3, 1, 64), (3, 2, 64), (3, 4, 64)]
+    '128_ch' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
+    'k3' : [(3, 1, 64), (3, 2, 64), (3, 4, 64)],
+    '32_channels' : [(2, 1, 32), (2, 2, 32), (2, 4, 32)]
 }
 
 class CausalConv1d(torch.nn.Conv1d):
@@ -61,12 +64,14 @@ class Pad2d(nn.Module):
 
 class DVSNet2D(nn.Module):
     def __init__(self, cnn_cfg_key : str, pool_type : str = "stride", cnn_window : int = 16, activation : str = 'relu',
-                 out_size : int = 11, use_classifier : bool = True, fix_cnn_pool=False, k : int = 3, layer_order : str = 'pool_bn', last_conv_nopad : bool = False, **kwargs):
+                 out_size : int = 11, use_classifier : bool = True, fix_cnn_pool=False, k : int = 3, layer_order : str = 'pool_bn', last_conv_nopad : bool = False,  **kwargs):
         super(DVSNet2D, self).__init__()
         cfg = __CNN_CFGS__[cnn_cfg_key]
         self.k = k
         if activation == 'relu':
             self._act = nn.ReLU
+        elif activation == 'relu6':
+            self._act = nn.ReLU6
         elif activation == 'htanh':
             self._act = nn.Hardtanh
         else:
@@ -81,22 +86,22 @@ class DVSNet2D(nn.Module):
         else:
             pad = k//2
 
-        adapter_list.append(nn.Conv2d(cnn_window, cfg[0], kernel_size=k, padding=pad, bias=False))
+        adapter_list.append(nn.Conv2d(cnn_window, 32, kernel_size=k, padding=pad, bias=False))
         if pool_type != 'max_pool':
             adapter_pool = nn.AvgPool2d(kernel_size=2)
         else:
             adapter_pool = nn.MaxPool2d(kernel_size=2)
         if layer_order == 'pool_bn':
             adapter_list.append(adapter_pool)
-            adapter_list.append(nn.BatchNorm2d(cfg[0]))
+            adapter_list.append(nn.BatchNorm2d(32))
         else:
-            adapter_list.append(nn.BatchNorm2d(cfg[0]))
+            adapter_list.append(nn.BatchNorm2d(32))
             adapter_list.append(adapter_pool)
         adapter_list.append(self._act(inplace=True))
         adapter = nn.Sequential(*adapter_list)
         self.adapter = adapter
 
-        features = self._get_features(cfg[0], cfg, k, pool_type, self._act, layer_order, last_conv_nopad)
+        features = self._get_features(32, cfg, k, pool_type, self._act, layer_order, last_conv_nopad)
         self.features = features
         # after features block, we should have a 4x4 feature map
         if use_classifier:
@@ -120,7 +125,11 @@ class DVSNet2D(nn.Module):
                     out_pool_act = self._act(inplace=True)
                     self.out_pool = nn.Sequential(out_pool_conv, out_pool_layer, out_pool_bn, out_pool_act)
             else:
-                self.out_pool = None
+                # last_conv_nopad requires the input size to be (64, 64),
+                # otherwise the output dimensions don't match, so we add this
+                # pooling layer to make it work even for different input sizes
+                self.out_pool = nn.AdaptiveAvgPool2d((1,1))
+
 
     @staticmethod
     def _get_features(in_channels : int, cfg : list, k : int, pool_type : str = "stride", act : type = nn.ReLU, layer_order : str = 'pool_bn', last_conv_nopad : bool = False):
@@ -163,7 +172,7 @@ class DVSNet2D(nn.Module):
                 x = self.out_pool(x)
             # return a 2D tensor
             # shape: (n_batch, cfg[-1])
-            x = torch.squeeze(x)
+            x = torch.flatten(x, start_dim=1)
             return x
 
 
@@ -179,6 +188,8 @@ class DVSTCN(nn.Module):
         cfg = __TCN_CFGS__[tcn_cfg_key]
         if activation == 'relu':
             self._act = nn.ReLU
+        elif activation == 'relu6':
+            self._act = nn.ReLU6
         elif activation == 'htanh':
             self._act = nn.Hardtanh
         else:
@@ -235,7 +246,7 @@ class DVSTCN(nn.Module):
 
 
 class DVSHybridNet(nn.Module):
-    def __init__(self, cnn_window : int, tcn_window : int, cnn_cfg_key : str, tcn_cfg_key : str, n_classes : int = 11, activation : str = 'relu', k_cnn : int = 3, last_conv_nopad : bool = False, **kwargs):
+    def __init__(self, cnn_window : int, tcn_window : int, cnn_cfg_key : str, tcn_cfg_key : str, n_classes : int = 11, activation : str = 'relu', k_cnn : int = 3, last_conv_nopad : bool = False, pretrained : str = None, **kwargs):
         super(DVSHybridNet, self).__init__()
         cnn_cfg = __CNN_CFGS__[cnn_cfg_key]
         embedding_size = cnn_cfg[-1]
@@ -243,6 +254,10 @@ class DVSHybridNet(nn.Module):
         self.tcn_window = tcn_window
         self.cnn = DVSNet2D(cnn_cfg_key=cnn_cfg_key, cnn_window=cnn_window, use_classifier=False, activation=activation, k=k_cnn, last_conv_nopad=last_conv_nopad, **kwargs)
         self.tcn = DVSTCN(tcn_cfg_key=tcn_cfg_key, in_channels=embedding_size, n_classes=n_classes, activation=activation, sequence_length=tcn_window, **kwargs)
+
+        if pretrained:
+            self.load_state_dict(torch.load(pretrained))
+
 
     def forward(self, x):
         # we get a (cnn_window * tcn_window)-sized stack of frame batches
@@ -256,6 +271,7 @@ class DVSHybridNet(nn.Module):
         # 3. assemble the CNN outputs into a "window":
         # => shape: (n_batch, tcn_window, cnn_cfg[-1])
         cnn_output = torch.stack(cnn_outs, dim=2)
+
         # 4. run the TCN over this window
         tcn_output = self.tcn(cnn_output)
         # 5. done! We get an output window:
