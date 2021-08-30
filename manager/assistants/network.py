@@ -121,10 +121,14 @@ class NetworkAssistant(object):
         self._network_seeds  = networkmessage.config['seeds']
 
         # quantization recipe (optional)
-        if 'quantize' in networkmessage.config.keys():
-            qnt_library = importlib.import_module('.quantize', package=networkmessage.library.package)
-            self._qnt_recipe_fun    = getattr(qnt_library, networkmessage.config['quantize']['function'])
-            self._qnt_recipe_kwargs = networkmessage.config['quantize']['kwargs']
+        try:
+            if networkmessage.config['quantize'] is not None:
+                qnt_library = importlib.import_module('.quantize', package=networkmessage.library.package)
+                self._qnt_recipe_fun    = getattr(qnt_library, networkmessage.config['quantize']['function'])
+                self._qnt_recipe_kwargs = networkmessage.config['quantize']['kwargs']
+        except KeyError:
+            # do not quantize if 'quantize' is Null
+            pass
 
         # TODO: import pre-trained model loading function
 
@@ -146,7 +150,7 @@ class NetworkAssistant(object):
 
         """
 
-        net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id])
+        net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id])  # WARNING: all QuantLab networks require a seed now!
 
         if self._qnt_recipe_fun:
             net = self._qnt_recipe_fun(net, **self._qnt_recipe_kwargs)

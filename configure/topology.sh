@@ -32,7 +32,7 @@ else
             touch ${PATH_TOPOLOGY_PKG}/__init__.py
             mkdir ${PATH_TOPOLOGY_PKG}/preprocess
             touch ${PATH_TOPOLOGY_PKG}/preprocess/__init__.py
-            touch ${PATH_TOPOLOGY_PKG}/"${${TOPOLOGY},,}.py"
+            touch ${PATH_TOPOLOGY_PKG}/"$(tr '[:upper:]' '[:lower:]' <<< ${TOPOLOGY}).py"
             mkdir ${PATH_TOPOLOGY_PKG}/postprocess
             touch ${PATH_TOPOLOGY_PKG}/postprocess/__init__.py
             touch ${PATH_TOPOLOGY_PKG}/config.json
