@@ -160,10 +160,14 @@ class TrainingAssistant(object):
             self._lr_sched_kwargs = trainingmessage.config['gd']['lr_sched']['kwargs']
 
         # quantization controllers (optional)
-        if 'quantize' in trainingmessage.config.keys():
-            qnt_library = importlib.import_module('.quantize', package=trainingmessage.library.package)
-            self._qnt_ctrls_fun    = getattr(qnt_library, trainingmessage.config['quantize']['function'])
-            self._qnt_ctrls_kwargs = trainingmessage.config['quantize']['kwargs']
+        try:
+            if trainingmessage.config['quantize'] is not None:
+                qnt_library = importlib.import_module('.quantize', package=trainingmessage.library.package)
+                self._qnt_ctrls_fun    = getattr(qnt_library, trainingmessage.config['quantize']['function'])
+                self._qnt_ctrls_kwargs = trainingmessage.config['quantize']['kwargs']
+        except KeyError:
+            # do not quantize
+            pass
 
     def prepare_loss(self, net: torch.nn.Module) -> torch.nn.Module:
         loss_fn = self._loss_fn_class(net, **self._loss_fn_kwargs) if self._loss_fn_takes_net else self._loss_fn_class(**self._loss_fn_kwargs)
