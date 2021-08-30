@@ -26,6 +26,18 @@ class TranslateTransform(object):
         sample = sample[:, np.max([-dy, 0]):np.max([oy-dy, oy]), np.max([-dx, 0]):np.max([ox-dx, ox])]
         return sample
 
+class RandomPxFlipTransform(object):
+    #flip every pixel with probability p IID
+    def __init__(self, p : float):
+        self.p = p
+        self.rng = np.random.default_rng()
+
+    def __call__(self, sample):
+        nz_idxs = sample!=0
+        facs = 2*self.rng.binomial(1, p=1-self.p, size=np.sum(nz_idxs))-1
+        sample[nz_idxs] *= facs
+        return sample
+
 
 class TernaryDownsampleTransform(object):
     def __init__(self, low, high, factor):
@@ -52,9 +64,10 @@ class TernaryDownsampleTransform(object):
 
 
 class DVSAugmentTransform(Compose):
-    def __init__(self, augment : bool, downsample : int = 1):
+    def __init__(self, augment : bool, downsample : int = 1, p_flip : float = 0.):
         transforms = []
         if augment:
+            transforms.append(RandomPxFlipTransform(p=p_flip))
             transforms.append(TranslateTransform(fracs=(0.1, 0.1)))
         n_vals_in_range = (2*downsample**2+1)//3
         transforms.append(TernaryDownsampleTransform(-downsample**2+n_vals_in_range, downsample**2-n_vals_in_range, downsample))
