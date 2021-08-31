@@ -116,13 +116,13 @@ class TrainingAssistant(object):
             self._loss_fn_class = loss_fn_getter(torch.nn)
         except AttributeError:
             # the loss function is custom
-            # search order:
-            #   1. topology library
-            #   2. systems library
+            # search order (from less to more problem/topology specific):
+            #   1. systems library
+            #   2. topology library
             try:
-                self._loss_fn_class = loss_fn_getter(trainingmessage.library.module)
-            except AttributeError:
                 self._loss_fn_class = loss_fn_getter(systems.utils.loss)
+            except AttributeError:
+                self._loss_fn_class = loss_fn_getter(trainingmessage.library.module)
         self._loss_fn_kwargs = trainingmessage.config['loss_fn']['kwargs']
 
         # optimisation algorithm - optimiser (mandatory)
@@ -134,13 +134,13 @@ class TrainingAssistant(object):
             self._opt_class = opt_getter(torch.optim)
         except AttributeError:
             # the optimiser is custom
-            # search order:
-            #   1. topology library
-            #   2. systems library
+            # search order (from less to more problem/topology specific):
+            #   1. systems library
+            #   2. topology library
             try:
-                self._opt_class = opt_getter(trainingmessage.library.module)
-            except AttributeError:
                 self._opt_class = opt_getter(systems.utils.optimizer)
+            except AttributeError:
+                self._opt_class = opt_getter(trainingmessage.library.module)
         self._opt_kwargs = trainingmessage.config['gd']['opt']['kwargs']
 
         # optimisation algorithm - learning rate scheduler (optional)
@@ -150,17 +150,17 @@ class TrainingAssistant(object):
                 self._lr_sched_class = lr_sched_getter(torch.optim.lr_scheduler)
             except AttributeError:
                 # the learning rate scheduler is custom
-                # search order:
-                #   1. topology library
-                #   2. systems library
+                # search order (from less to more problem/topology specific):
+                #   1. systems library
+                #   2. topology library
                 try:
-                    self._lr_sched_class = lr_sched_getter(trainingmessage.library.module)
-                except AttributeError:
                     self._lr_sched_class = lr_sched_getter(systems.utils.lrscheduler)
+                except AttributeError:
+                    self._lr_sched_class = lr_sched_getter(trainingmessage.library.module)
             self._lr_sched_kwargs = trainingmessage.config['gd']['lr_sched']['kwargs']
 
         # quantization controllers (optional)
-        if 'quantize' in trainingmessage.config.keys():
+        if ('quantize' in trainingmessage.config.keys()) and (trainingmessage.config['quantize'] is not None):
             qnt_library = importlib.import_module('.quantize', package=trainingmessage.library.package)
             self._qnt_ctrls_fun    = getattr(qnt_library, trainingmessage.config['quantize']['function'])
             self._qnt_ctrls_kwargs = trainingmessage.config['quantize']['kwargs']
@@ -213,4 +213,3 @@ class TrainingAssistant(object):
     #     qnt_ctrls = self.prepare_qnt_ctrls(net)
     #
     #     return loss_fn, gd, qnt_ctrls
-

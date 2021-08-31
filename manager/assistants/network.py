@@ -121,7 +121,7 @@ class NetworkAssistant(object):
         self._network_seeds  = networkmessage.config['seeds']
 
         # quantization recipe (optional)
-        if 'quantize' in networkmessage.config.keys():
+        if ('quantize' in networkmessage.config.keys()) and (networkmessage.config['quantize'] is not None):
             qnt_library = importlib.import_module('.quantize', package=networkmessage.library.package)
             self._qnt_recipe_fun    = getattr(qnt_library, networkmessage.config['quantize']['function'])
             self._qnt_recipe_kwargs = networkmessage.config['quantize']['kwargs']
@@ -163,4 +163,3 @@ class NetworkAssistant(object):
             platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
         return net
-

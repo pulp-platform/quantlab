@@ -32,7 +32,7 @@ _CONFIGS = {
 
 
 class VGG(nn.Module):
-    def __init__(self, config: str, capacity: int = 1, use_bn: bool = False, num_classes: int = 1000):
+    def __init__(self, config: str, capacity: int = 1, use_bn: bool = False, num_classes: int = 1000, seed : int = -1):
 
         super(VGG, self).__init__()
 
@@ -41,7 +41,7 @@ class VGG(nn.Module):
         self.avgpool    = nn.AdaptiveAvgPool2d((7, 7))
         self.classifier = self._make_classifier(capacity, num_classes)
 
-        self._initialize_weights()
+        self._initialize_weights(seed)
 
     @staticmethod
     def _make_pilot(capacity: int, use_bn: bool) -> nn.Sequential:
@@ -96,7 +96,10 @@ class VGG(nn.Module):
 
         return x
 
-    def _initialize_weights(self):
+    def _initialize_weights(self, seed : int = -1):
+
+        if seed >= 0:
+            torch.manual_seed(seed)
 
         for m in self.modules():
 

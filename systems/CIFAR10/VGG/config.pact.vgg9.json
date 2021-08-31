@@ -1,0 +1,136 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {"augment": true}
+                }
+            },
+            "dataloader": {"bs": 256}
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {"augment": false}
+                }
+            },
+            "dataloader": {"bs": 512}
+        }
+    },
+    "network": {
+        "class": "VGG",
+        "kwargs": {
+            "capacity": 1,
+            "config": "VGG9",
+            "use_bn_features": true,
+            "use_bn_classifier": true
+        },
+        "quantize": {
+            "function": "quantize_pact",
+            "kwargs": {
+                "config": {
+                    "PACTConv2d": {
+                        "quantize": "per_layer",
+                        "init_clip": "sawb_asymm",
+                        "learn_clip": false,
+                        "n_levels": {
+                            "pilot.0$": 256,
+                            "features.0$": 4,
+                            "features.4$": 4,
+                            "features.7$": 4,
+                            "features.11$": 4,
+                            "features.14$": 4
+                        }
+                    },
+                    "PACTLinear": {
+                        "quantize": "per_layer",
+                        "init_clip": "sawb_asymm",
+                        "learn_clip": false,
+                        "symm_wts": true,
+                        "n_levels": {
+                            "classifier.0$": 4,
+                            "classifier.3$": 4,
+                            "classifier.6$": 256
+                        }
+                    },
+                    "PACTUnsignedAct": {
+                        "init_clip": "std",
+                        "n_levels": {
+                            "pilot.2$": 4,
+                            "features.2$": 4,
+                            "features.6$": 4,
+                            "features.9$": 4,
+                            "features.13$": 4,
+                            "features.16$": 4,
+                            "classifier.2$": 4,
+                            "classifier.5$": 256
+                        },
+                        "nb_std": 3
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "takes_net": false,
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "PACTAdam",
+                "takes_net": true,
+                "kwargs": {
+                    "pact_decay": 0.01,
+                    "lr": 0.01
+                }
+            },
+            "lr_sched":{
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0":  1,
+                        "80": 0.1,
+                        "110": 0.01,
+                        "130": 0.4,
+                        "160": 0.1,
+                        "190": 0.01,
+                        "220": 0.001
+                    }
+                }
+            }
+        },
+        "n_epochs": 250,
+        "quantize": {
+            "function": "get_pact_controllers",
+            "kwargs": {
+                "schedules": {
+                    "linear": {
+                        "0": "verbose_on",
+                        "130": "start",
+                        "210": "freeze"
+                    },
+                    "activation": {
+                        "0": "verbose_on",
+                        "138": "start",
+                        "210": "freeze"
+                    }
+                }
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": []
+        },
+        "valid": {
+            "compute_profiling_statistic": true,
+            "tensor_statistics": []
+        }
+    }
+}

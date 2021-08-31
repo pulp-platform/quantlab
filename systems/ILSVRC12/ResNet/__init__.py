@@ -22,4 +22,5 @@
 from .preprocess import *
 from .resnet import ResNet
 from .postprocess import *
+from .quantize import *
 

@@ -20,3 +20,4 @@
 # 
 
 from .all_ana import all_ana_recipe, all_ana_controller
+from .pact import quantize_pact, get_pact_controllers

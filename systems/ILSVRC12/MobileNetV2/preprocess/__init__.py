@@ -23,19 +23,14 @@ import os
 import torch
 import torchvision
 
-from .transform_a import get_transform_a
+from systems.ILSVRC12.utils.data import load_ilsvrc12
+from .transform_a import TransformA
 
 
 __all__ = [
-    'dataset_load',
-    'get_transform_a',
+    'load_data_set',
+    'TransformA',
 ]
 
 
-def dataset_load(path_data: str, transform: torchvision.transforms.Compose, train: bool = True) -> torch.utils.data.Dataset:
-
-    path_dataset = os.path.join(os.path.realpath(path_data), 'train' if train else 'val')
-    dataset = torchvision.datasets.ImageFolder(path_dataset, transform)
-
-    return dataset
-
+load_data_set = load_ilsvrc12

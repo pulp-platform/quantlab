@@ -176,7 +176,7 @@ def train(args: argparse.Namespace):
 
         # [recovery] master-workers synchronisation point: load the latest checkpoint from disk
         if (not platform.is_horovod_run) or platform.is_master:
-            start_epoch_id = logbook.logs_manager.load_checkpoint(net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter=train_meter, valid_meter=valid_meter)
+            start_epoch_id = logbook.logs_manager.load_checkpoint(platform, net, gd.opt, gd.lr_sched, qnt_ctrls, train_meter=train_meter, valid_meter=valid_meter)
         if platform.is_horovod_run:
             start_epoch_id = platform.hvd.broadcast_object(start_epoch_id, root_rank=platform.master_rank, name='start_epoch_id')
             platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
@@ -329,4 +329,3 @@ def train(args: argparse.Namespace):
     # === LOOP ON FOLDS: END ===
 
     # === FLOW: END ===
-

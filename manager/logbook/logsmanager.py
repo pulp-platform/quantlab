@@ -27,6 +27,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from manager.meter import WriterStub
+import manager.platform
 import manager
 
 from typing import Union, List
@@ -293,6 +294,7 @@ class LogsManager(object):
         print(message)
 
     def load_checkpoint(self,
+                        platform: manager.platform.PlatformManager,
                         net: torch.nn.Module,
                         opt: torch.optim.Optimizer,
                         lr_sched: Union[torch.optim.lr_scheduler._LRScheduler, None],
@@ -313,10 +315,22 @@ class LogsManager(object):
             # load the checkpoint into the proper structures
             ckpt = torch.load(ckpt_filename)
             assert ckpt['experiment']['fold_id'] == self._fold_id  # if not, something weird must have happened during a call to `store_checkpoint`...
+
+            # epoch ID
             epoch_id = ckpt['experiment']['epoch_id']
 
+            # network parameters
+            is_nndataparallel_state_dict = all(k.startswith('module.') for k in ckpt['net'].keys())
+            if platform.is_nndataparallel_run != is_nndataparallel_state_dict:
+                if not platform.is_nndataparallel_run:
+                    assert is_nndataparallel_state_dict
+                    ckpt['net'] = {"module.{}".format(k): v for k, v in ckpt['net'].items()}
+                else:
+                    assert platform.is_nndataparallel_run and (not is_nndataparallel_state_dict)
+                    ckpt['net'] = {k.replace("module."): v for k, v in ckpt['net'].items()}
             net.load_state_dict(ckpt['net'])
 
+            # optimizer hyper-parameters
             opt.load_state_dict(ckpt['gd']['opt'])
             if lr_sched is not None:
                 assert ckpt['gd']['lr_sched'] is not None
@@ -324,6 +338,7 @@ class LogsManager(object):
             for c, sd in zip(qnt_ctrls, ckpt['qnt_ctrls']):
                 c.load_state_dict(sd)
 
+            # meter statistics
             if train_meter is not None:
                 train_meter.best_loss = ckpt['train_meter']['best_loss']
             if valid_meter is not None:

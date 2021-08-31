@@ -27,20 +27,22 @@ from torchvision.transforms import Resize, CenterCrop, ToTensor  # structural tr
 from systems.ILSVRC12.utils.transforms.transforms import ColorJitter, ILSVRC12Lighting, ILSVRC12Normalize  # public ILSVRC12 transforms
 
 
-def get_transform_a(train: bool, augment: bool = True) -> Compose:
+class TransformA(Compose):
 
-    if augment and train:
-        transform = Compose([RandomResizedCrop(224),
-                              RandomHorizontalFlip(),
-                              ToTensor(),
-                              ColorJitter(),
-                              ILSVRC12Lighting(),
-                              ILSVRC12Normalize()])
-    else:
-        transform = Compose([Resize(256),
-                             CenterCrop(224),
-                             ToTensor(),
-                             ILSVRC12Normalize()])
+    def __init__(self, augment: bool):
 
-    return transform
 
+        if augment:
+            transforms = [RandomResizedCrop(224),
+                          RandomHorizontalFlip(),
+                          ToTensor(),
+                          ColorJitter(),
+                          ILSVRC12Lighting(),
+                          ILSVRC12Normalize()]
+        else:
+            transforms = [Resize(256),
+                          CenterCrop(224),
+                          ToTensor(),
+                          ILSVRC12Normalize()]
+
+        super(TransformA, self).__init__(transforms)

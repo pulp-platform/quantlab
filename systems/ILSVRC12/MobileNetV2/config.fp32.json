@@ -26,11 +26,15 @@
             "dataloader": {
                 "bs": 256
             }
+
         }
     },
     "network": {
-        "class": "AlexNet",
-        "kwargs": {"use_bn": true}
+        "class": "MobileNetV2",
+        "kwargs": {
+            "config": "standard",
+            "capacity": 1.0
+        }
     },
     "training": {
         "loss_fn": {
@@ -39,8 +43,12 @@
         },
         "gd": {
             "opt": {
-                "class": "Adam",
-                "kwargs": {"lr": 0.001}
+                "class": "SGD",
+                "kwargs": {
+                    "lr": 0.045,
+                    "momentum": 0.9,
+                    "weight_decay": 4e-05
+                }
             },
             "lr_sched": {
                 "class": "StepLR",
@@ -57,11 +65,11 @@
             "compute_profiling_statistic": true,
             "compute_task_statistic": true,
             "tensor_statistics": [
-                {"class": "DistributionOutputFeaturesNorm",         "kwargs": {"name": "features.0", "start": 0, "period": 100}},
-                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "features.0", "start": 0, "period": 100}},
-                {"class": "DistributionOutgoingGradientNorm",       "kwargs": {"name": "features.1", "start": 0, "period": 100}},
-                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "features.1", "start": 0, "period": 100}},
-                {"class": "MeanUpdateNormWeightNormRatio",          "kwargs": {"name": "features.0", "start": 0, "period": 100}}
+                {"class": "DistributionOutputFeaturesNorm",         "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
+                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientNorm",       "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
+                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
+                {"class": "MeanUpdateNormWeightNormRatio",          "kwargs": {"name": "pilot.0", "start": 0, "period": 100}}
             ]
         },
         "valid": {

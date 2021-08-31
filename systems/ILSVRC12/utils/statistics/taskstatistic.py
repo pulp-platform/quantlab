@@ -53,11 +53,11 @@ class ILSVRC12Statistic(TaskStatistic):
         self._postprocess_pr_fun = postprocess_pr_fun
 
     def _reset(self):
-        self._total_tracked = torch.Tensor([0]).to(dtype=torch.int64)
-        self._total_top1    = torch.Tensor([0]).to(dtype=torch.int64)
-        self._total_top5    = torch.Tensor([0]).to(dtype=torch.int64)
-        self._value_top1    = torch.Tensor([0.0])
-        self._value_top5    = torch.Tensor([0.0])
+        self._total_tracked = torch.Tensor([0]).to(dtype=torch.int64, device=self._platform.device)
+        self._total_top1    = torch.Tensor([0]).to(dtype=torch.int64, device=self._platform.device)
+        self._total_top5    = torch.Tensor([0]).to(dtype=torch.int64, device=self._platform.device)
+        self._value_top1    = torch.Tensor([0.0]).to(device=self._platform.device)
+        self._value_top5    = torch.Tensor([0.0]).to(device=self._platform.device)
 
     def _stop_observing(self, *args):
         # master-only point: at the end of the epoch, write the running statistics to disk
@@ -75,7 +75,7 @@ class ILSVRC12Statistic(TaskStatistic):
         pp_ypr = self._postprocess_pr_fun(ypr)
 
         # compute the batch statistics for the current process
-        bs          = torch.Tensor([ypr.shape[0]]).to(dtype=torch.int64)
+        bs          = torch.Tensor([ypr.shape[0]]).to(dtype=torch.int64, device=ypr.device)
         pp_ypr_top5 = torch.topk(pp_ypr, 5, dim=1).indices
         correct     = pp_ygt == pp_ypr_top5
 
