@@ -22,4 +22,3 @@
 from .preprocess import *
 from .vgg import VGG
 from .postprocess import *
-from quantlib.algorithms.pact import PACTAdam, PACTAdagrad, PACTSGD
