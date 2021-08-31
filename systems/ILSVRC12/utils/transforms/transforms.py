@@ -52,7 +52,7 @@ class Grayscale(object):
     def __call__(self, img):
         # uses the Recommendation 601 (Rec. 601) RGB-to-YCbCr conversion
         gs = img.clone()
-        gs[0].mul_(self._Rec601['red']).add_(gs[1],  alpha=self._Rec601['green']).add_(gs[2], alpha=self._Rec601['blue'])
+        gs[0].mul_(self._Rec601['red']).add_(gs[1], alpha=self._Rec601['green']).add_(gs[2], alpha=self._Rec601['blue'])
         gs[1].copy_(gs[0])
         gs[2].copy_(gs[0])
         return gs
@@ -152,4 +152,3 @@ class ILSVRC12Lighting(Lighting):
 class ILSVRC12Normalize(Normalize):
     def __init__(self):
         super(ILSVRC12Normalize, self).__init__(**ILSVRC12STATS['normalize'])
-
