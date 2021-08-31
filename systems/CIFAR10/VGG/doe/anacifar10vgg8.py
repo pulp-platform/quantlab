@@ -211,7 +211,8 @@ class ANACIFAR10VGG8(ExperimentalDesign):
 
         dynamic_policies = set(filter(lambda p: not (p.np.mi == NoiseMean.STATIC and p.np.sigma == NoiseVariance.STATIC), policies))
         static_policies  = policies.difference(dynamic_policies)
-        static_policies  = set(filter(lambda p: not (p.fcs == ForwardComputationStrategy.EXPECTATION or p.dp.di != DecayIntervals.OVERLAPPED or p.dp.dpl != DecayPowerLaw.HOMOGENEOUS), static_policies))
+        dynamic_policies = set(filter(lambda p: not (p.np.sigma == NoiseVariance.STATIC and p.fcs == ForwardComputationStrategy.EXPECTATION), dynamic_policies))
+        static_policies  = set(filter(lambda p: p.fcs != ForwardComputationStrategy.EXPECTATION and p.dp.di == DecayIntervals.OVERLAPPED and p.dp.dpl == DecayPowerLaw.HOMOGENEOUS, static_policies))
 
         for period, nt in itertools.product(Period, NoiseType):
 
