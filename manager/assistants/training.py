@@ -138,9 +138,9 @@ class TrainingAssistant(object):
             #   1. systems library
             #   2. topology library
             try:
-                self._opt_class = opt_getter(trainingmessage.library.module)
-            except AttributeError:
                 self._opt_class = opt_getter(systems.utils.optimizer)
+            except AttributeError:
+                self._opt_class = opt_getter(trainingmessage.library.module)
         self._opt_kwargs = trainingmessage.config['gd']['opt']['kwargs']
 
         # optimisation algorithm - learning rate scheduler (optional)

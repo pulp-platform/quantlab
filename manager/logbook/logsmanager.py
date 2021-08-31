@@ -27,6 +27,7 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from manager.meter import WriterStub
+import manager.platform
 import manager
 
 from typing import Union, List
@@ -34,16 +35,6 @@ from typing import Union, List
 
 def _get_format_string(MAX):
     return "".join(["{:0", str(math.floor(math.log10(MAX))), "d}"])
-
-
-def _state_dict_dataparallel_to_module(state_dict : dict):
-    return {k.lstrip("module."): v for k, v in state_dict.items()}
-
-def _state_dict_module_to_dataparallel(state_dict : dict):
-    return {f"module.{k}": v for k, v in state_dict.items()}
-
-def _state_dict_is_from_dataparallel(state_dict : dict):
-    return all(k.startswith('module.') for k in state_dict.keys())
 
 
 _MAX_EXP_UNITS  = 10000
@@ -303,6 +294,7 @@ class LogsManager(object):
         print(message)
 
     def load_checkpoint(self,
+                        platform: manager.platform.PlatformManager,
                         net: torch.nn.Module,
                         opt: torch.optim.Optimizer,
                         lr_sched: Union[torch.optim.lr_scheduler._LRScheduler, None],
@@ -323,21 +315,22 @@ class LogsManager(object):
             # load the checkpoint into the proper structures
             ckpt = torch.load(ckpt_filename)
             assert ckpt['experiment']['fold_id'] == self._fold_id  # if not, something weird must have happened during a call to `store_checkpoint`...
+
+            # epoch ID
             epoch_id = ckpt['experiment']['epoch_id']
-            if not isinstance(net, torch.nn.DataParallel) and _state_dict_is_from_dataparallel(ckpt['net']):
-                # if the ckpt was created in a multi-GPU run and now we have
-                # only 1 GPU or are running on CPU, we need to strip 'module.'
-                # from the state_dict keys.
-                net_state_dict = _state_dict_dataparallel_to_module(ckpt['net'])
-            elif isinstance(net, torch.nn.DataParallel) and not _state_dict_is_from_dataparallel(ckpt['net']):
-                # ..conversely, if the ckpt was created in a single-GPU/CPU run
-                # and now we have multiple GPUs, we need to add 'module.' to
-                # the state_dict keys
-                net_state_dict = _state_dict_module_to_dataparallel(ckpt['net'])
-            else:
-                # otherwise, we can load the checkpoint as-is!
-                net_state_dict = ckpt['net']
-            net.load_state_dict(net_state_dict)
+
+            # network parameters
+            is_nndataparallel_state_dict = all(k.startswith('module.') for k in ckpt['net'].keys())
+            if platform.is_nndataparallel_run != is_nndataparallel_state_dict:
+                if not platform.is_nndataparallel_run:
+                    assert is_nndataparallel_state_dict
+                    ckpt['net'] = {"module.{}".format(k): v for k, v in ckpt['net'].items()}
+                else:
+                    assert platform.is_nndataparallel_run and (not is_nndataparallel_state_dict)
+                    ckpt['net'] = {k.replace("module."): v for k, v in ckpt['net'].items()}
+            net.load_state_dict(ckpt['net'])
+
+            # optimizer hyper-parameters
             opt.load_state_dict(ckpt['gd']['opt'])
             if lr_sched is not None:
                 assert ckpt['gd']['lr_sched'] is not None
@@ -345,6 +338,7 @@ class LogsManager(object):
             for c, sd in zip(qnt_ctrls, ckpt['qnt_ctrls']):
                 c.load_state_dict(sd)
 
+            # meter statistics
             if train_meter is not None:
                 train_meter.best_loss = ckpt['train_meter']['best_loss']
             if valid_meter is not None:
