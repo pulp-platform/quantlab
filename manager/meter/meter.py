@@ -111,8 +111,8 @@ class Meter(object):
 
     def toc(self, ygt: torch.Tensor) -> None:
         """Stop profiling."""
+        bs = ygt.shape[0]
         if self._profiling_statistic is not None:
-            bs = ygt.shape[0]
             self._profiling_statistic.maybe_stop_observing(bs)
 
     def stop_observing(self):
@@ -151,4 +151,3 @@ class Meter(object):
             self._is_best   = True
         else:
             self._is_best = False
-
