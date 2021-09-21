@@ -183,11 +183,11 @@ class DataAssistant(object):
 
         self._partition = partition
 
+        # database
+        self._path_data            = None
         # ingredients for dataset creation
         self._load_data_set_fun    = None
         self._load_data_set_kwargs = None
-        # database
-        self._path_data            = None
         # cross-validation
         self._n_folds              = None
         self._fold_id              = None
@@ -212,9 +212,15 @@ class DataAssistant(object):
 
         """
 
-        # ``Dataset`` - import function (mandatory)
+        # ``Dataset`` - data location on the filesystem
+        self._path_data = datamessage.path_data
+
+        # ``Dataset`` - import function (mandatory, but ``kwargs`` are optional)
         self._load_data_set_fun = getattr(datamessage.library.module, 'load_data_set')  # the `load_data_set` function MUST be implemented by EACH topology sub-package
-        self._path_data         = datamessage.path_data
+        try:
+            self._load_data_set_kwargs = datamessage.data_config['dataset']['load_data_set']['kwargs']
+        except KeyError:
+            self._load_data_set_kwargs = {}
 
         # ``Dataset`` - cross-validation details (mandatory, but ``dataset_cv_split_fun`` is optional)
         self._n_folds = datamessage.cv_config['n_folds']
@@ -223,12 +229,6 @@ class DataAssistant(object):
         # ``Dataset`` - pre-processing functions (mandatory)
         self._transform_class  = getattr(datamessage.library.module, datamessage.data_config['dataset']['transform']['class'])
         self._transform_kwargs = datamessage.data_config['dataset']['transform']['kwargs']
-
-        # load_data_set kwargs are optional for backward compatibility
-        try:
-            self._load_data_set_kwargs = datamessage.data_config['dataset']['kwargs']
-        except KeyError:
-            self._load_data_set_kwargs = {}
 
         # ``Sampler`` - seed
         try:
@@ -296,4 +296,3 @@ class DataAssistant(object):
         loader  = self.get_dataloader(platform, dataset, sampler)
 
         return loader
-

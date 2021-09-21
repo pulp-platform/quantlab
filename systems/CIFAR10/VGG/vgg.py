@@ -24,8 +24,8 @@ import torch.nn as nn
 
 
 _CONFIGS = {
-    'VGG8': ['M', 256, 256, 'M', 512, 512, 'M'],
-    'VGG9': [128, 'M', 256, 256, 'M', 512, 512, 'M'],
+    'VGG8':  ['M', 256, 256, 'M', 512, 512, 'M'],
+    'VGG9':  [128, 'M', 256, 256, 'M', 512, 512, 'M'],
     'VGG11': [128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M'],
     'VGG19': [64, 'M', 128, 128, 'M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
@@ -39,7 +39,7 @@ class VGG(nn.Module):
 
         self.pilot      = self._make_pilot(config, capacity, use_bn_features)
         self.features   = self._make_features(config, capacity, use_bn_features)
-        self.avgpool    = nn.AdaptiveAvgPool2d((4, 4)) if config != 'VGG19' else nn.AdaptiveAvgPool2d((1,1))
+        self.avgpool    = self._make_avgpool(config)
         self.classifier = self._make_classifier(config, capacity, use_bn_classifier, num_classes)
         if pretrained is not None:
             self.load_state_dict(torch.load(pretrained))
@@ -47,12 +47,12 @@ class VGG(nn.Module):
             self._initialize_weights(seed=seed)
 
     @staticmethod
-    def _make_pilot(config: list, capacity: int, use_bn_features: bool) -> nn.Sequential:
+    def _make_pilot(config: str, capacity: int, use_bn_features: bool) -> nn.Sequential:
 
-        out_ch = 64 if config == 'VGG19' else 128
+        out_channels = 64 if config == 'VGG19' else 128
         modules = []
-        modules += [nn.Conv2d(3, out_ch * capacity, kernel_size=3, padding=1, bias=not use_bn_features)]
-        modules += [nn.BatchNorm2d(out_ch * capacity)] if use_bn_features else []
+        modules += [nn.Conv2d(3, out_channels * capacity, kernel_size=3, padding=1, bias=not use_bn_features)]
+        modules += [nn.BatchNorm2d(out_channels * capacity)] if use_bn_features else []
         modules += [nn.ReLU(inplace=True)]
 
         return nn.Sequential(*modules)
@@ -60,10 +60,10 @@ class VGG(nn.Module):
     @staticmethod
     def _make_features(config: str, capacity: int, use_bn_features: bool) -> nn.Sequential:
 
-        modules = []
-        #in_channels = 128 * capacity
-        in_channels = 64 if config == 'VGG19' else 128
+        in_channels  = 64 if config == 'VGG19' else 128
         in_channels *= capacity
+
+        modules = []
         for v in _CONFIGS[config]:
             if v == 'M':
                 modules += [nn.MaxPool2d(kernel_size=2, stride=2)]
@@ -77,11 +77,15 @@ class VGG(nn.Module):
         return nn.Sequential(*modules)
 
     @staticmethod
+    def _make_avgpool(config: str):
+        return nn.AdaptiveAvgPool2d((4, 4)) if config != 'VGG19' else nn.AdaptiveAvgPool2d((1, 1))
+
+    @staticmethod
     def _make_classifier(config: str, capacity: int, use_bn_classifier: bool, num_classes: int) -> nn.Sequential:
 
         modules = []
         if config == 'VGG19':
-            modules += [nn.Linear(512*capacity, 10)]
+            modules += [nn.Linear(512 * capacity, num_classes)]
         else:
             modules += [nn.Linear(512 * capacity * 4 * 4, 1024, bias=not use_bn_classifier)]
             modules += [nn.BatchNorm1d(1024)] if use_bn_classifier else []
