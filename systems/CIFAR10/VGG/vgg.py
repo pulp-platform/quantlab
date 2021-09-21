@@ -33,7 +33,7 @@ _CONFIGS = {
 
 class VGG(nn.Module):
 
-    def __init__(self, config: str, capacity: int = 1, use_bn_features: bool = False, use_bn_classifier: bool = False, num_classes: int = 10, seed: int = -1) -> None:
+    def __init__(self, config: str, capacity: int = 1, use_bn_features: bool = False, use_bn_classifier: bool = False, pretrained : str = None, num_classes: int = 10, seed: int = -1) -> None:
 
         super(VGG, self).__init__()
 
@@ -41,8 +41,10 @@ class VGG(nn.Module):
         self.features   = self._make_features(config, capacity, use_bn_features)
         self.avgpool    = nn.AdaptiveAvgPool2d((4, 4)) if config != 'VGG19' else nn.AdaptiveAvgPool2d((1,1))
         self.classifier = self._make_classifier(config, capacity, use_bn_classifier, num_classes)
-
-        self._initialize_weights(seed=seed)
+        if pretrained is not None:
+            self.load_state_dict(torch.load(pretrained))
+        else:
+            self._initialize_weights(seed=seed)
 
     @staticmethod
     def _make_pilot(config: list, capacity: int, use_bn_features: bool) -> nn.Sequential:

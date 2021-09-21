@@ -25,7 +25,8 @@
             "capacity": 1,
             "config": "VGG9",
             "use_bn_features": true,
-            "use_bn_classifier": true
+            "use_bn_classifier": true,
+            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/CIFAR10/VGG/pretrained/vgg9_fp_val93.ckpt"
         },
         "quantize": {
             "function": "quantize_pact",
@@ -57,6 +58,7 @@
                     },
                     "PACTUnsignedAct": {
                         "init_clip": "std",
+                        "rounding": "true",
                         "n_levels": {
                             "pilot.2$": 4,
                             "features.2$": 4,
@@ -84,39 +86,31 @@
                 "class": "PACTAdam",
                 "takes_net": true,
                 "kwargs": {
-                    "pact_decay": 0.01,
+                    "pact_decay": 0.005,
                     "lr": 0.01
                 }
             },
             "lr_sched":{
-                "class": "HandScheduler",
+                "class": "CosineAnnealingLR",
                 "kwargs": {
-                    "schedule": {
-                        "0":  1,
-                        "80": 0.1,
-                        "110": 0.01,
-                        "130": 0.4,
-                        "160": 0.1,
-                        "190": 0.01,
-                        "220": 0.001
-                    }
+                    "T_max": 200,
+                    "eta_min": 0.00001
                 }
             }
         },
-        "n_epochs": 250,
+        "n_epochs": 200,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
                 "schedules": {
                     "linear": {
-                        "0": "verbose_on",
-                        "130": "start",
-                        "210": "freeze"
+                        "0": ["verbose_on", "start"],
+                        "150": "freeze"
                     },
                     "activation": {
                         "0": "verbose_on",
-                        "138": "start",
-                        "210": "freeze"
+                        "8": "start",
+                        "150": "freeze"
                     }
                 }
             }
