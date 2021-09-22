@@ -17,14 +17,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from torch import nn
 
 import quantlib.editing.lightweight as qlw
 from quantlib.editing.lightweight import LightweightGraph
 import quantlib.editing.lightweight.rules as qlr
 from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter
-from quantlib.editing.fx.passes.pact import CanonicalizePACTNetPass, PACT_symbolic_trace
+from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace
 
 from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
@@ -32,12 +31,14 @@ from quantlib.algorithms.pact.pact_controllers import *
 def pact_recipe(net : nn.Module,
                 config : dict):
 
-    # config is expected to contain 3 keys:
+    # config is expected to contain 3 keys for each layer type:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
     # their values are dicts with keys that will be used as NameFilter
     # arguments containing the kwargs for each layer.
     # An additional dict is expected to be stored under the key "kwargs", which
     # is used as the default kwargs.
+    # Under the key "harmonize", the configuration for the harmonization pass
+    # should be stored.
 
     filter_conv2d = TypeFilter(nn.Conv2d)
     filter_linear = TypeFilter(nn.Linear)
@@ -49,7 +50,7 @@ def pact_recipe(net : nn.Module,
     lin_cfg = config["PACTLinear"]
     act_cfg = config["PACTUnsignedAct"]
 
-    canonicalize_cfg = config["canonicalize"]
+    harmonize_cfg = config["harmonize"]
 
     def make_rules(cfg : dict,
                    rule : type):
@@ -79,36 +80,20 @@ def pact_recipe(net : nn.Module,
         lwe.set_lwr(rho)
         lwe.apply()
     lwe.shutdown()
-    try:
-        noisy = canonicalize_cfg["noisy"]
-    except KeyError:
-        noisy = False
-    try:
-        rounding = canonicalize_cfg["rounding"]
-    except KeyError:
-        rounding = False
-    # now canonicalize the graph
-    canonicalize_pass = CanonicalizePACTNetPass(n_levels=canonicalize_cfg["n_levels"], noisy=noisy, rounding=rounding, symm=True, learn_clip=False)
-    #canonicalize_pass = CanonicalizePACTNetPass(n_levels=canonicalize_cfg["n_levels"])
-    net_traced = PACT_symbolic_trace(lwg.net)
-    final_net = canonicalize_pass(net_traced)
+
+    # now harmonize the graph according to the configuration
+    harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
+    final_net = harmonize_pass(net)
 
     return final_net
 
 def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict = {}, kwargs_activation : dict = {}):
-    filter_fc = TypeFilter(PACTLinear)
-    filter_conv = TypeFilter(PACTConv2d)
-    filter_lin = filter_fc | filter_conv
-    filter_act = TypeFilter(PACTUnsignedAct) | TypeFilter(PACTAsymmetricAct)
     filter_intadd = TypeFilter(PACTIntegerAdd)
     net_nodes_intadds_dissolved = LightweightGraph.build_nodes_list(net)
     net_nodes_intadds_intact = LightweightGraph.build_nodes_list(net, leaf_types=(PACTIntegerAdd,))
-    lin_modules = [n.module for n in filter_lin(net_nodes_intadds_dissolved)]
-    act_modules = [n.module for n in filter_act(net_nodes_intadds_dissolved)]
-    intadd_modules = [n.module for n in filter_intadd(net_nodes_intadds_intact)]
-
-    print("act_modules")
-    print(act_modules)
+    lin_modules = PACTLinearController.get_modules(net)
+    act_modules = PACTActController.get_modules(net)
+    intadd_modules = PACTIntegerModulesController.get_modules(net)
 
     lin_ctrl = PACTLinearController(lin_modules, schedules["linear"], **kwargs_linear)
     act_ctrl = PACTActController(act_modules, schedules["activation"], **kwargs_activation)

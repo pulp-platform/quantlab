@@ -11,7 +11,7 @@
                 }
             },
             "dataloader": {
-                "bs": 256
+                "bs": 190
             }
         },
         "valid": {
@@ -24,7 +24,7 @@
                 }
             },
             "dataloader": {
-                "bs": 256
+                "bs": 190
             }
 
         }
@@ -192,11 +192,14 @@
                             "tqt": true
                         }
                     },
-                    "canonicalize": {
+                    "harmonize": {
                         "n_levels": 256,
+                        "init_clip": "max",
                         "noisy": false,
                         "rounding": true,
-                        "force_out_eps": false
+                        "force_out_eps": true,
+                        "tqt": true,
+                        "learn_clip": true
                     }
                 }
             }
@@ -209,13 +212,12 @@
         },
         "gd": {
             "opt": {
-                "class": "PACTSGD",
-                "takes_net": true,
+                "class": "SGD",
+                "takes_net": false,
                 "kwargs": {
-                    "pact_decay": 0.001,
-                    "lr": 0.002,
+                    "lr": 0.00075,
                     "momentum": 0.9,
-                    "weight_decay": 4e-05
+                    "weight_decay": 4e-5
                 }
             },
             "lr_sched": {
@@ -223,24 +225,22 @@
                 "kwargs": {
                     "schedule": {
                         "0": 1,
-                        "3": 0.1,
-                        "5": 0.01
+                        "4": 0.1,
+                        "7": 0.01
                     }
                 }
             }
         },
-        "n_epochs": 20,
+        "n_epochs": 12,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
                 "schedules": {
                     "linear": {
-                        "0": ["start", "verbose_on"],
-                        "4": "freeze"
+                        "0": ["start", "verbose_on"]
                     },
                     "activation": {
-                        "1": ["start", "verbose_on"],
-                        "5": "freeze"
+                        "1": ["start", "verbose_on"]
                     }
                 },
                 "kwargs_linear": {
@@ -254,14 +254,11 @@
     },
     "meters": {
         "train": {
-            "compute_profiling_statistic": true,
+            "compute_profiling_statistic": false,
             "compute_task_statistic": true
         },
         "valid": {
             "compute_profiling_statistic": true
         }
-    },
-    "experiment": {
-        "ckpt_period": 1
     }
 }
