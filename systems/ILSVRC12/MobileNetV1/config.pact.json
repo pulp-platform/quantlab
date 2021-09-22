@@ -1,0 +1,136 @@
+{
+    "description": {},
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": true
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+
+        }
+    },
+    "network": {
+        "class": "MobileNetV1",
+        "kwargs": {
+            "config": "standard",
+            "capacity": 0.75
+        },
+        "quantize": {
+            "function": "quantize_pact",
+            "kwargs": {
+                "config": {
+                    "mixed_precision_search": {
+                        "enable": true,
+                        "min_wt_bits": 2,
+                        "min_act_bits": 2,
+                        "in_size": 224,
+                        "delta": 0.05,
+                        "mem_rw": 524288,
+                        "mem_ro": 2097152,
+                        "linear_layer_split_factor": 5,
+                        "method": "pulp"
+                    },
+                    "PACTConv2d": {
+                        "quantize": "per_layer",
+                        "init_clip": "sawb_asymm",
+                        "learn_clip": false
+                    },
+                    "PACTLinear": {
+                        "quantize": "per_layer",
+                        "init_clip": "sawb_asymm",
+                        "learn_clip": false,
+                        "symm_wts": true
+                    },
+                    "PACTUnsignedAct": {
+                        "init_clip": "std",
+                        "nb_std": 3
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "PACTSGD",
+                "kwargs": {
+                    "pact_decay": 0.01,
+                    "lr": 0.045,
+                    "momentum": 0.9,
+                    "weight_decay": 4e-05
+                },
+                "takes_net": true
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0": 1,
+                        "40": 0.1,
+                        "70": 0.01,
+                        "90": 0.001
+                    }
+                }
+            }
+        },
+        "n_epochs": 100,
+        "quantize": {
+            "function": "get_pact_controllers",
+            "kwargs": {
+                "schedules": {
+                    "linear": {
+                        "0": [
+                            "verbose_on",
+                            "start"
+                        ],
+                        "85": "freeze"
+                    },
+                    "activation": {
+                        "0": [
+                            "verbose_on"
+                        ],
+                        "10": "start",
+                        "85": "freeze"
+                    }
+                },
+                "init_act_clip_hi": 6.0
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+            ]
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    },
+    "experiment": {}
+}
