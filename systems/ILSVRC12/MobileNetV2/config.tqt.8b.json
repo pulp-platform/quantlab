@@ -131,9 +131,9 @@
                             "n_levels": 256,
                             "quantize": "per_channel",
                             "init_clip": "max",
-                            "learn_clip": false,
+                            "learn_clip": true,
                             "symm_wts": true,
-                            "tqt": false
+                            "tqt": true
                         }
                     },
                     "PACTLinear": {
@@ -142,9 +142,9 @@
                             "n_levels": 256,
                             "quantize": "per_layer",
                             "init_clip": "max",
-                            "learn_clip": false,
+                            "learn_clip": true,
                             "symm_wts": true,
-                            "tqt": false
+                            "tqt": true
                         }
                     },
                     "PACTUnsignedAct": {
@@ -189,7 +189,7 @@
                             "noisy": false,
                             "rounding": true,
                             "learn_clip": true,
-                            "tqt": false
+                            "tqt": true
                         }
                     },
                     "harmonize": {
@@ -197,9 +197,9 @@
                         "init_clip": "max",
                         "noisy": false,
                         "rounding": true,
-                        "force_out_eps": false,
-                        "tqt": false,
-                        "learn_clip": false
+                        "force_out_eps": true,
+                        "tqt": true,
+                        "learn_clip": true
                     }
                 }
             }
@@ -212,11 +212,10 @@
         },
         "gd": {
             "opt": {
-                "class": "PACTSGD",
-                "takes_net": true,
+                "class": "SGD",
+                "takes_net": false,
                 "kwargs": {
-                    "pact_decay": 0.001,
-                    "lr": 0.0005,
+                    "lr": 0.00075,
                     "momentum": 0.9,
                     "weight_decay": 4e-5
                 }
@@ -226,24 +225,22 @@
                 "kwargs": {
                     "schedule": {
                         "0": 1,
-                        "3": 0.1,
-                        "5": 0.01
+                        "4": 0.1,
+                        "7": 0.01
                     }
                 }
             }
         },
-        "n_epochs": 10,
+        "n_epochs": 12,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
                 "schedules": {
                     "linear": {
-                        "0": ["start", "verbose_on"],
-                        "4": "freeze"
+                        "0": ["start", "verbose_on"]
                     },
                     "activation": {
-                        "1": ["start", "verbose_on"],
-                        "5": "freeze"
+                        "1": ["start", "verbose_on"]
                     }
                 },
                 "kwargs_linear": {

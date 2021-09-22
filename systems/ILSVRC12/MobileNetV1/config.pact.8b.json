@@ -37,11 +37,11 @@
             "capacity": 0.75
         },
         "quantize": {
-            "function": "quantize_pact",
+            "function": "pact_recipe",
             "kwargs": {
                 "config": {
                     "mixed_precision_search": {
-                        "enable": true,
+                        "enable": false,
                         "min_wt_bits": 4,
                         "min_act_bits": 2,
                         "in_size": 224,
@@ -108,10 +108,10 @@
                         "kwargs": {
                             "n_levels": 256,
                             "quantize": "per_channel",
-                            "init_clip": "sawb_asymm",
-                            "learn_clip": true,
+                            "init_clip": "max",
+                            "learn_clip": false,
                             "symm_wts": true,
-                            "tqt": true
+                            "tqt": false
                         }
                     },
 
@@ -120,10 +120,10 @@
                         "kwargs": {
                             "n_levels": 256,
                             "quantize": "per_layer",
-                            "init_clip": "sawb_asymm",
-                            "learn_clip": true,
+                            "init_clip": "max",
+                            "learn_clip": false,
                             "symm_wts": true,
-                            "tqt": true
+                            "tqt": false
                         }
                     },
                     "PACTUnsignedAct": {
@@ -160,7 +160,7 @@
                             "nb_std": 3,
                             "act_kind": "relu6",
                             "noisy": false,
-                            "tqt": true,
+                            "tqt": false,
                             "learn_clip": true,
                             "rounding": true
                         }
@@ -176,12 +176,13 @@
         },
         "gd": {
             "opt": {
-                "class": "SGD",
+                "class": "PACTSGD",
                 "kwargs": {
+                    "pact_decay": 0.001,
                     "lr": 0.001,
                     "momentum": 0.9
                 },
-                "takes_net": false
+                "takes_net": true
             },
             "lr_sched": {
                 "class": "HandScheduler",
@@ -199,33 +200,37 @@
             "function": "get_pact_controllers",
             "kwargs": {
                 "schedules": {
-                    "linear": {
+                    "activation": {
                         "0": [
                             "verbose_on",
                             "start"
                         ]
                     },
-                    "activation": {
+                    "linear": {
                         "0": [
                             "verbose_on",
                             "start"
                         ]
                     }
                 },
-                "init_act_clip_hi": 6.0,
-                "update_every": "batch"
+                "kwargs_linear": {
+                    "update_every": "batch"
+                },
+                "kwargs_activation": {
+                    "init_clip_hi": 6.0
+                }
             }
         }
     },
     "meters": {
         "train": {
-            "compute_profiling_statistic": true,
+            "compute_profiling_statistic": false,
             "compute_task_statistic": true,
             "tensor_statistics": [
             ]
         },
         "valid": {
-            "compute_profiling_statistic": true
+            "compute_profiling_statistic": false
         }
     },
     "experiment": {

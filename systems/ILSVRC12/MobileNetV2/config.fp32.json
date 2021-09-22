@@ -62,18 +62,11 @@
     },
     "meters": {
         "train": {
-            "compute_profiling_statistic": true,
-            "compute_task_statistic": true,
-            "tensor_statistics": [
-                {"class": "DistributionOutputFeaturesNorm",         "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
-                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
-                {"class": "DistributionOutgoingGradientNorm",       "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
-                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
-                {"class": "MeanUpdateNormWeightNormRatio",          "kwargs": {"name": "pilot.0", "start": 0, "period": 100}}
-            ]
+            "compute_profiling_statistic": false,
+            "compute_task_statistic": true
         },
         "valid": {
-            "compute_profiling_statistic": true
+            "compute_profiling_statistic": false
         }
     },
     "experiment": {}
