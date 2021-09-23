@@ -1,0 +1,153 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": true
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 512
+            }
+        }
+    },
+    "network": {
+        "class": "VGG",
+        "kwargs": {
+            "capacity": 1,
+            "config": "VGG9",
+            "use_bn_features": true,
+            "use_bn_classifier": true,
+            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/CIFAR10/VGG/pretrained/vgg9_fp_val93.ckpt"
+        },
+        "quantize": {
+            "function": "pact_recipe",
+            "kwargs": {
+                "config": {
+                    "PACTConv2d": {
+                        "pilot.0$": {
+                            "n_levels": 256
+                        },
+                        "features.0$": {},
+                        "features.4$": {},
+                        "features.7$": {},
+                        "features.11$": {},
+                        "features.14$": {},
+                        "kwargs": {
+                            "quantize": "per_channel",
+                            "init_clip": "sawb_asymm",
+                            "learn_clip": false,
+                            "symm_wts": true,
+                            "tqt": false,
+                            "n_levels": 4
+                        }
+                    },
+                    "PACTLinear": {
+                        "classifier.0$": {},
+                        "classifier.3$": {},
+                        "classifier.6$": {
+                            "n_levels": 256
+                        },
+                        "kwargs": {
+                            "quantize": "per_layer",
+                            "init_clip": "sawb_asymm",
+                            "learn_clip": false,
+                            "symm_wts": true,
+                            "tqt": false,
+                            "n_levels": 4
+                        }
+                    },
+                    "PACTUnsignedAct": {
+                        "pilot.2$": {},
+                        "features.2$": {},
+                        "features.6$": {},
+                        "features.9$": {},
+                        "features.13$": {},
+                        "features.16$": {},
+                        "classifier.2$": {},
+                        "classifier.5$": {
+                            "n_levels": 256
+                        },
+                        "kwargs": {
+                            "init_clip": "std",
+                            "rounding": true,
+                            "learn_clip": true,
+                            "tqt": false,
+                            "n_levels": 4,
+                            "nb_std": 3
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "takes_net": false,
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "PACTAdam",
+                "takes_net": true,
+                "kwargs": {
+                    "pact_decay": 0.001,
+                    "lr": 0.004
+                }
+            },
+            "lr_sched": {
+                "class": "CosineAnnealingLR",
+                "kwargs": {
+                    "T_max": 250,
+                    "eta_min": 1e-05
+                }
+            }
+        },
+        "n_epochs": 250,
+        "quantize": {
+            "function": "get_pact_controllers",
+            "kwargs": {
+                "schedules": {
+                    "linear": {
+                        "0": [
+                            "verbose_on",
+                            "start"
+                        ]
+                    },
+                    "activation": {
+                        "0": "verbose_on",
+                        "8": "start"
+                    }
+                }
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": false,
+            "compute_task_statistic": true,
+            "tensor_statistics": []
+        },
+        "valid": {
+            "compute_profiling_statistic": true,
+            "tensor_statistics": []
+        }
+    }
+}
