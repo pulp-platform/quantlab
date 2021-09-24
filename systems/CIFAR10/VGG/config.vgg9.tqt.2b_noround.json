@@ -145,7 +145,7 @@
             "tensor_statistics": []
         },
         "valid": {
-            "compute_profiling_statistic": true,
+            "compute_profiling_statistic": false,
             "tensor_statistics": []
         }
     }
