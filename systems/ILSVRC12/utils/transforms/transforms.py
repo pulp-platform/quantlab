@@ -23,6 +23,12 @@ import torch
 from torchvision.transforms import Normalize
 
 
+from torchvision.transforms import Compose
+from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
+from torchvision.transforms import RandomResizedCrop  # "evil" transforms combining statistical augmentation with structural aspects
+from torchvision.transforms import Resize, CenterCrop, ToTensor  # structural transforms
+
+
 ILSVRC12STATS = \
     {
         'normalize':
@@ -36,6 +42,12 @@ ILSVRC12STATS = \
                 'eigvecs': torch.Tensor([[-0.5675,  0.7192,  0.4009],
                                          [-0.5808, -0.0045, -0.8140],
                                          [-0.5836, -0.6948,  0.4203]])
+            },
+        'quantize':
+            {
+                'min': -2.1179039478,
+                'max': 2.6400001049,
+                'eps': 0.020625000819563866
             }
     }
 
@@ -152,3 +164,44 @@ class ILSVRC12Lighting(Lighting):
 class ILSVRC12Normalize(Normalize):
     def __init__(self):
         super(ILSVRC12Normalize, self).__init__(**ILSVRC12STATS['normalize'])
+
+class ILSVRC12AugmentTransform(Compose):
+
+    def __init__(self, augment: bool):
+
+
+        if augment:
+            transforms = [RandomResizedCrop(224),
+                          RandomHorizontalFlip(),
+                          ToTensor(),
+                          ColorJitter(),
+                          ILSVRC12Lighting(),
+                          ILSVRC12Normalize()]
+        else:
+            transforms = [Resize(256),
+                          CenterCrop(224),
+                          ToTensor(),
+                          ILSVRC12Normalize()]
+
+        super(TransformA, self).__init__(transforms)
+
+class ILSVRC12QuantTransform(Compose):
+
+    def __init__(self, augment: bool, quantize: str = 'none', n_q: int = 256):
+        transforms = [ILSVRC12AugmentTransform(False)]
+
+        if quantize in ['fake', 'int']:
+            transforms.append(PACTAsymmetricAct(n_levels=n_q, symm=True, learn_clip=False, init_clip='max', act_kind='identity'))
+            quantizer = transforms[-1]
+            # set clip_lo to negative max abs of CIFAR10
+            maximum_abs = torch.max(torch.tensor([v for v in ILSVRC12STATS['quantize'].values()]).abs())
+            clip_lo, clip_hi = almost_symm_quant(maximum_abs, n_q)
+            quantizer.clip_lo.data = clip_lo
+            quantizer.clip_hi.data = clip_hi
+            quantizer.started |= True
+        if quantize == 'int':
+            eps = transforms[-1].get_eps()
+            div_by_eps = lambda x: (x/eps).round()
+            transforms.append(Lambda(div_by_eps))
+
+        super(ILSVRC12QuantTransform, self).__init__(transforms)

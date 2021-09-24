@@ -19,5 +19,5 @@
 # limitations under the License.
 # 
 
-from .transforms import CIFAR10Normalize
+from .transforms import CIFAR10Normalize, CIFAR10AugmentTransform, CIFAR10PACTQuantTransform
 
