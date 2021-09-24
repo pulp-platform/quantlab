@@ -19,13 +19,13 @@
 # limitations under the License.
 # 
 
-from .transform_a import TransformA, CIFARPACTQuantTransform
+from .transform_a import TransformA, CIFAR10PACTQuantTransform
 
 from systems.CIFAR10.utils.data import load_cifar10 as load_data_set
 
 __all__ = [
     'load_data_set',
     'TransformA',
-    'CIFARPACTQuantTransform',
+    'CIFAR10PACTQuantTransform',
 ]
 

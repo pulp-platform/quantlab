@@ -20,4 +20,4 @@
 # 
 
 from systems.CIFAR10.utils.transforms import CIFAR10AugmentTransform as TransformA  # public CIFAR-10 transforms
-
+from systems.CIFAR10.utils.transforms import CIFAR10PACTQuantTransform

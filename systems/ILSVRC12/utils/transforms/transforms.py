@@ -25,9 +25,13 @@ from torchvision.transforms import Normalize
 
 from torchvision.transforms import Compose
 from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
-from torchvision.transforms import RandomResizedCrop  # "evil" transforms combining statistical augmentation with structural aspects
+from torchvision.transforms import RandomResizedCrop  # "evil" transforms
+# combining statistical augmentation with structural aspects
+from torchvision.transforms import Lambda
 from torchvision.transforms import Resize, CenterCrop, ToTensor  # structural transforms
 
+from quantlib.algorithms.pact import PACTAsymmetricAct
+from quantlib.algorithms.pact.util import almost_symm_quant
 
 ILSVRC12STATS = \
     {
@@ -183,12 +187,12 @@ class ILSVRC12AugmentTransform(Compose):
                           ToTensor(),
                           ILSVRC12Normalize()]
 
-        super(TransformA, self).__init__(transforms)
+        super(ILSVRC12AugmentTransform, self).__init__(transforms)
 
-class ILSVRC12QuantTransform(Compose):
+class ILSVRC12PACTQuantTransform(Compose):
 
     def __init__(self, augment: bool, quantize: str = 'none', n_q: int = 256):
-        transforms = [ILSVRC12AugmentTransform(False)]
+        transforms = [ILSVRC12AugmentTransform(augment)]
 
         if quantize in ['fake', 'int']:
             transforms.append(PACTAsymmetricAct(n_levels=n_q, symm=True, learn_clip=False, init_clip='max', act_kind='identity'))
@@ -204,4 +208,4 @@ class ILSVRC12QuantTransform(Compose):
             div_by_eps = lambda x: (x/eps).round()
             transforms.append(Lambda(div_by_eps))
 
-        super(ILSVRC12QuantTransform, self).__init__(transforms)
+        super(ILSVRC12PACTQuantTransform, self).__init__(transforms)

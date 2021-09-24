@@ -26,6 +26,7 @@ from torchvision.transforms import Compose
 from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
 from torchvision.transforms import RandomCrop            # "evil" transforms combining statistical augmentation with structural aspects
 from torchvision.transforms import ToTensor              # structural transforms
+from torchvision.transforms import Lambda
 
 from quantlib.algorithms.pact import PACTAsymmetricAct
 from quantlib.algorithms.pact.util import almost_symm_quant
@@ -76,7 +77,7 @@ class CIFAR10PACTQuantTransform(Compose):
         transforms = []
         transforms.append(CIFAR10AugmentTransform(augment))
         if quantize in ['fake', 'int']:
-            transforms.append(PACTAsymmetricAct(n_levels=n_q, symm=True, learn_clip=False))
+            transforms.append(PACTAsymmetricAct(n_levels=n_q, symm=True, learn_clip=False, init_clip='max', act_kind='identity'))
             quantizer = transforms[-1]
             # set clip_lo to negative max abs of CIFAR10
             maximum_abs = torch.max(torch.tensor([v for v in CIFAR10STATS['quantize'].values()]).abs())
@@ -89,4 +90,4 @@ class CIFAR10PACTQuantTransform(Compose):
             div_by_eps = lambda x: x/eps
             transforms.append(Lambda(div_by_eps))
 
-        super(CIFAR10AugmentTransform, self).__init__(transforms)
+        super(CIFAR10PACTQuantTransform, self).__init__(transforms)

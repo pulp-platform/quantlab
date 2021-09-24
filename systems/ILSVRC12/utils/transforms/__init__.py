@@ -19,4 +19,4 @@
 # limitations under the License.
 # 
 
-from .transforms import ILSVRC12Lighting, ILSVRC12Normalize, ILSVRC12AugmentTransform, ILSVRC12QuantTransform
+from .transforms import ILSVRC12Lighting, ILSVRC12Normalize, ILSVRC12AugmentTransform, ILSVRC12PACTQuantTransform
