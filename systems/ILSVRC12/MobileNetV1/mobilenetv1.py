@@ -1,8 +1,8 @@
-# 
-# mobilenetv2.py
+#
+# mobilenetv1.py
 # 
 # Author(s):
-# Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
+# Georg Rutishauser <georgr@iis.ee.ethz.ch>
 # 
 # Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
 # 
@@ -17,7 +17,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# 
+#
 
 import torch
 import torch.nn as nn
