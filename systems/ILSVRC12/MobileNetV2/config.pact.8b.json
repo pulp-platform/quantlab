@@ -6,12 +6,12 @@
                 "transform": {
                     "class": "TransformA",
                     "kwargs": {
-                        "augment": true
+                        "augment": false
                     }
                 }
             },
             "dataloader": {
-                "bs": 256
+                "bs": 190
             }
         },
         "valid": {
@@ -24,7 +24,7 @@
                 }
             },
             "dataloader": {
-                "bs": 256
+                "bs": 190
             }
 
         }
@@ -130,9 +130,10 @@
                         "kwargs": {
                             "n_levels": 256,
                             "quantize": "per_channel",
-                            "init_clip": "sawb_asymm",
+                            "init_clip": "max",
                             "learn_clip": false,
-                            "symm_wts": true
+                            "symm_wts": true,
+                            "tqt": false
                         }
                     },
                     "PACTLinear": {
@@ -140,9 +141,10 @@
                         "kwargs": {
                             "n_levels": 256,
                             "quantize": "per_layer",
-                            "init_clip": "sawb_asymm",
+                            "init_clip": "max",
                             "learn_clip": false,
-                            "symm_wts": true
+                            "symm_wts": true,
+                            "tqt": false
                         }
                     },
                     "PACTUnsignedAct": {
@@ -183,8 +185,21 @@
                         "features.17.2$": {},
                         "kwargs": {
                             "n_levels": 256,
-                            "init_clip": "const"
+                            "init_clip": "const",
+                            "noisy": false,
+                            "rounding": true,
+                            "learn_clip": true,
+                            "tqt": false
                         }
+                    },
+                    "harmonize": {
+                        "n_levels": 256,
+                        "init_clip": "max",
+                        "noisy": false,
+                        "rounding": true,
+                        "force_out_eps": false,
+                        "tqt": false,
+                        "learn_clip": false
                     }
                 }
             }
@@ -200,10 +215,10 @@
                 "class": "PACTSGD",
                 "takes_net": true,
                 "kwargs": {
-                    "pact_decay": 0.01,
-                    "lr": 0.005,
+                    "pact_decay": 0.001,
+                    "lr": 0.0005,
                     "momentum": 0.9,
-                    "weight_decay": 4e-05
+                    "weight_decay": 4e-5
                 }
             },
             "lr_sched": {
@@ -211,25 +226,24 @@
                 "kwargs": {
                     "schedule": {
                         "0": 1,
-                        "5": 0.1,
-                        "10": 0.01,
-                        "15": 0.001
+                        "3": 0.1,
+                        "5": 0.01
                     }
                 }
             }
         },
-        "n_epochs": 20,
+        "n_epochs": 10,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
                 "schedules": {
                     "linear": {
                         "0": ["start", "verbose_on"],
-                        "15": "freeze"
+                        "4": "freeze"
                     },
                     "activation": {
-                        "0": ["start", "verbose_on"],
-                        "15": "freeze"
+                        "1": ["start", "verbose_on"],
+                        "5": "freeze"
                     }
                 },
                 "kwargs_linear": {
@@ -243,12 +257,11 @@
     },
     "meters": {
         "train": {
-            "compute_profiling_statistic": true,
+            "compute_profiling_statistic": false,
             "compute_task_statistic": true
         },
         "valid": {
             "compute_profiling_statistic": true
         }
-    },
-    "experiment": {}
+    }
 }

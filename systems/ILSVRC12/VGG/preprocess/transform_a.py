@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,29 +19,4 @@
 # limitations under the License.
 # 
 
-from torchvision.transforms import Compose
-from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
-from torchvision.transforms import RandomResizedCrop  # "evil" transforms combining statistical augmentation with structural aspects
-from torchvision.transforms import Resize, CenterCrop, ToTensor  # structural transforms
-
-from systems.ILSVRC12.utils.transforms.transforms import ColorJitter, ILSVRC12Lighting, ILSVRC12Normalize  # public ILSVRC12 transforms
-
-class TransformA(Compose):
-
-    def __init__(self, augment: bool):
-
-
-        if augment:
-            transforms = [RandomResizedCrop(224),
-                          RandomHorizontalFlip(),
-                          ToTensor(),
-                          ColorJitter(),
-                          ILSVRC12Lighting(),
-                          ILSVRC12Normalize()]
-        else:
-            transforms = [Resize(256),
-                          CenterCrop(224),
-                          ToTensor(),
-                          ILSVRC12Normalize()]
-
-        super(TransformA, self).__init__(transforms)
+from systems.ILSVRC12.utils.transforms.transforms import ILSVRC12AugmentTransform as TransformA

@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,4 @@
 # limitations under the License.
 # 
 
-from .transforms import ILSVRC12Lighting
-from .transforms import ILSVRC12Normalize
-
+from .transforms import ILSVRC12Lighting, ILSVRC12Normalize, ILSVRC12AugmentTransform, ILSVRC12PACTQuantTransform
