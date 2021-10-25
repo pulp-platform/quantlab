@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -173,17 +173,18 @@ class Logbook(object):
         self.config['data']['cv']['n_folds'] = n_folds
         self.config['data']['cv']['seed']    = cv_seed if cv_seed >= 0 else random.randint(0, _MAX_SEED)
 
-        # self.config['data']['train']['sampler'] = {}
-        # # if fix_sampler:
-        # #     if sampler_seed >= 0:
-        # #         sampler_seeds = [sampler_seed] * n_folds
-        # #     else:
-        # #         sampler_seeds = [random.randint(0, _MAX_SEED)] * n_folds
-        # # else:
-        # #     sampler_seeds = [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
-        # self.config['data']['sampler']['seeds'] = [sampler_seed if sampler_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds if fix_sampler else [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
+        self.config['data']['train']['sampler'] = {}
+        if fix_sampler:
+            sampler_seeds = [sampler_seed if sampler_seed >=0 else random.randint(0, _MAX_SEED)] * n_folds
+        else:
+            sampler_seeds = [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
+        self.config['data']['train']['sampler']['seeds'] = sampler_seeds
 
-        self.config['network']['seeds'] = [network_seed if network_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds if fix_network else [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
+        if fix_network:
+            network_seeds = [network_seed if network_seed >= 0 else random.randint(0, _MAX_SEED)] * n_folds
+        else:
+            network_seeds = [random.randint(0, _MAX_SEED) for _ in range(0, n_folds)]
+        self.config['network']['seeds'] = network_seeds
 
         # TODO: validate configuration using JSON Schema (Python package ``jsonschema``)
 

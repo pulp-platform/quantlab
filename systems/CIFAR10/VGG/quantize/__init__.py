@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,5 +19,5 @@
 # limitations under the License.
 # 
 
-from .ana import all_ana_recipe, all_ana_controller
-
+from .all_ana import all_ana_recipe, all_ana_controller
+from .pact import pact_recipe, get_pact_controllers

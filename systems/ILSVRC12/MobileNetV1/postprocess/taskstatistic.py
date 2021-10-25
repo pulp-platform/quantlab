@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 
 import torch
 
-from systems.CIFAR10.utils.statistics import CIFAR10Statistic
+from systems.ILSVRC12.utils.statistics import ILSVRC12Statistic
 
 from manager.platform import PlatformManager
 from manager.meter import WriterStub
@@ -32,17 +32,17 @@ def _postprocess_gt(ygt: torch.Tensor) -> torch.Tensor:
 
 
 def _postprocess_pr(ypr: torch.Tensor) -> torch.Tensor:
-    return ypr.argmax(dim=1).unsqueeze(-1)
+    return ypr
 
 
-class VGGPACTStatistic(CIFAR10Statistic):
+class MobileNetV1Statistic(ILSVRC12Statistic):
 
     def __init__(self,
                  platform: PlatformManager, writerstub: WriterStub,
                  n_epochs: int, n_batches: int,
                  train: bool):
-        super(VGGPACTStatistic, self).__init__(platform=platform, writerstub=writerstub,
-                                               n_epochs=n_epochs, n_batches=n_batches,
-                                               train=train,
-                                               postprocess_gt_fun=_postprocess_gt, postprocess_pr_fun=_postprocess_pr)
+        super(MobileNetV1Statistic, self).__init__(platform=platform, writerstub=writerstub,
+                                                   n_epochs=n_epochs, n_batches=n_batches,
+                                                   train=train,
+                                                   postprocess_gt_fun=_postprocess_gt, postprocess_pr_fun=_postprocess_pr)
 

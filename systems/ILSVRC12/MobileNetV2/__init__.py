@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,4 +22,4 @@
 from .preprocess import *
 from .mobilenetv2 import MobileNetV2
 from .postprocess import *
-
+from quantlib.algorithms.pact import PACTAdam, PACTAdagrad, PACTSGD

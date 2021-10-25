@@ -1,5 +1,5 @@
 # 
-# transform_a.py
+# transform_b.py
 # 
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
@@ -24,10 +24,10 @@ from torchvision.transforms import RandomHorizontalFlip  # statistical augmentat
 from torchvision.transforms import RandomCrop            # "evil" transforms combining statistical augmentation with structural aspects
 from torchvision.transforms import ToTensor              # structural transforms
 
-from systems.CIFAR10.utils.transforms import CIFAR10Normalize  # public CIFAR-10 transforms
+from systems.CIFAR10.utils.transforms import CIFAR10NormalizeHomogeneous  # public CIFAR-10 statistics
 
 
-class TransformA(Compose):
+class TransformB(Compose):
 
     def __init__(self, augment: bool):
 
@@ -37,7 +37,6 @@ class TransformA(Compose):
             transforms.append(RandomHorizontalFlip())
 
         transforms.append(ToTensor())
-        transforms.append(CIFAR10Normalize())
+        transforms.append(CIFAR10NormalizeHomogeneous())
 
-        super(TransformA, self).__init__(transforms)
-
+        super(TransformB, self).__init__(transforms)

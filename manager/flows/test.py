@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -85,7 +85,7 @@ def test(args):
 
     # master-workers synchronisation point: load the desired checkpoint from the fold's logs folder
     if (not platform.is_horovod_run) or platform.is_master:
-        logbook.epoch_id = logbook.logs_manager.load_checkpoint(net, gd.opt, gd.lr_sched, qnt_ctrls, ckpt_id=args.ckpt_id)
+        logbook.epoch_id = logbook.logs_manager.load_checkpoint(platform, net, gd.opt, gd.lr_sched, qnt_ctrls, ckpt_id=args.ckpt_id)
     if platform.is_horovod_run:
         logbook.epoch_id = platform.hvd.broadcast_object(logbook.epoch_id, root_rank=platform.master_rank, name='epoch_id')
         platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)

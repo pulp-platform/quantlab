@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -183,17 +183,18 @@ class DataAssistant(object):
 
         self._partition = partition
 
-        # ingredients for dataset creation
-        self._load_data_set_fun = None
         # database
-        self._path_data         = None
+        self._path_data            = None
+        # ingredients for dataset creation
+        self._load_data_set_fun    = None
+        self._load_data_set_kwargs = None
         # cross-validation
-        self._n_folds           = None
-        self._fold_id           = None
-        self._cv_seed           = None
+        self._n_folds              = None
+        self._fold_id              = None
+        self._cv_seed              = None
         # transform
-        self._transform_class   = None
-        self._transform_kwargs  = None
+        self._transform_class      = None
+        self._transform_kwargs     = None
 
         # ingredients for sampler creation
         self._sampler_seeds = None
@@ -211,9 +212,15 @@ class DataAssistant(object):
 
         """
 
-        # ``Dataset`` - import function (mandatory)
+        # ``Dataset`` - data location on the filesystem
+        self._path_data = datamessage.path_data
+
+        # ``Dataset`` - import function (mandatory, but ``kwargs`` are optional)
         self._load_data_set_fun = getattr(datamessage.library.module, 'load_data_set')  # the `load_data_set` function MUST be implemented by EACH topology sub-package
-        self._path_data         = datamessage.path_data
+        try:
+            self._load_data_set_kwargs = datamessage.data_config['dataset']['load_data_set']['kwargs']
+        except KeyError:
+            self._load_data_set_kwargs = {}
 
         # ``Dataset`` - cross-validation details (mandatory, but ``dataset_cv_split_fun`` is optional)
         self._n_folds = datamessage.cv_config['n_folds']
@@ -235,7 +242,7 @@ class DataAssistant(object):
     def get_dataset(self) -> torch.utils.data.Dataset:
 
         transform = self._transform_class(**self._transform_kwargs)
-        dataset   = self._load_data_set_fun(self._partition, self._path_data, n_folds=self._n_folds, current_fold_id=self._fold_id, cv_seed=self._cv_seed, transform=transform)
+        dataset   = self._load_data_set_fun(self._partition, self._path_data, n_folds=self._n_folds, current_fold_id=self._fold_id, cv_seed=self._cv_seed, transform=transform, **self._load_data_set_kwargs)
 
         return dataset
 
@@ -244,11 +251,11 @@ class DataAssistant(object):
                     dataset: torch.utils.data.Dataset) -> torch.utils.data.Sampler:
 
         if platform.is_horovod_run:
-            sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=platform.global_size, rank=platform.global_rank, shuffle=True if self._partition == 'train' else False)  # TODO: PyTorch 1.5.0 does not allow to seed ``DistributedSampler``s
+            sampler = torch.utils.data.distributed.DistributedSampler(dataset, num_replicas=platform.global_size, rank=platform.global_rank, shuffle=True if self._partition == 'train' else False, seed=self._sampler_seeds[self._fold_id] if self._partition == 'train' else 0)
         else:
-            # generator = torch.Generator()
-            # generator.manual_seed(self._sampler_seeds[self._fold_id])  # TODO: PyTorch 1.5.0 does not allow to seed ``RandomSampler``s
-            sampler = torch.utils.data.RandomSampler(dataset) if self._partition == 'train' else torch.utils.data.SequentialSampler(dataset)
+            generator = torch.Generator()
+            generator.manual_seed(self._sampler_seeds[self._fold_id] if self._partition == 'train' else 0)
+            sampler = torch.utils.data.RandomSampler(dataset, generator=generator) if self._partition == 'train' else torch.utils.data.SequentialSampler(dataset)
 
         return sampler
 
@@ -289,4 +296,3 @@ class DataAssistant(object):
         loader  = self.get_dataloader(platform, dataset, sampler)
 
         return loader
-

@@ -1,0 +1,267 @@
+{
+    "description": {},
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 190
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 190
+            }
+
+        }
+    },
+    "network": {
+        "class": "MobileNetV2",
+        "kwargs": {
+            "config": "standard",
+            "capacity": 1.0,
+            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/ILSVRC12/MobileNetV2/pretrained/MNv2_224_1.0.ckpt"
+        },
+        "quantize": {
+            "function": "pact_recipe",
+            "kwargs": {
+                "config": {
+                    "PACTConv2d": {
+                        "pilot.0$": {},
+                        "features.0.residual_branch.0.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.0.residual_branch.1.0$": {},
+                        "features.1.residual_branch.0.0$": {},
+                        "features.1.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.1.residual_branch.2.0$": {},
+                        "features.2.residual_branch.0.0$": {},
+                        "features.2.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.2.residual_branch.2.0$": {},
+                        "features.3.residual_branch.0.0$": {},
+                        "features.3.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.3.residual_branch.2.0$": {},
+                        "features.4.residual_branch.0.0$": {},
+                        "features.4.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.4.residual_branch.2.0$": {},
+                        "features.5.residual_branch.0.0$": {},
+                        "features.5.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.5.residual_branch.2.0$": {},
+                        "features.6.residual_branch.0.0$": {},
+                        "features.6.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.6.residual_branch.2.0$": {},
+                        "features.7.residual_branch.0.0$": {},
+                        "features.7.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.7.residual_branch.2.0$": {},
+                        "features.8.residual_branch.0.0$": {},
+                        "features.8.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.8.residual_branch.2.0$": {},
+                        "features.9.residual_branch.0.0$": {},
+                        "features.9.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.9.residual_branch.2.0$": {},
+                        "features.10.residual_branch.0.0$": {},
+                        "features.10.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.10.residual_branch.2.0$": {},
+                        "features.11.residual_branch.0.0$": {},
+                        "features.11.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.11.residual_branch.2.0$": {},
+                        "features.12.residual_branch.0.0$": {},
+                        "features.12.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.12.residual_branch.2.0$": {},
+                        "features.13.residual_branch.0.0$": {},
+                        "features.13.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.13.residual_branch.2.0$": {},
+                        "features.14.residual_branch.0.0$": {},
+                        "features.14.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.14.residual_branch.2.0$": {},
+                        "features.15.residual_branch.0.0$": {},
+                        "features.15.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.15.residual_branch.2.0$": {},
+                        "features.16.residual_branch.0.0$": {},
+                        "features.16.residual_branch.1.0$": {
+                            "init_clip": "max"
+                        },
+                        "features.16.residual_branch.2.0$": {},
+                        "features.17.0$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "quantize": "per_channel",
+                            "init_clip": "max",
+                            "learn_clip": false,
+                            "symm_wts": true,
+                            "tqt": false
+                        }
+                    },
+                    "PACTLinear": {
+                        "classifier.1$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "quantize": "per_layer",
+                            "init_clip": "max",
+                            "learn_clip": false,
+                            "symm_wts": true,
+                            "tqt": false
+                        }
+                    },
+                    "PACTUnsignedAct": {
+                        "pilot.2$": {},
+                        "features.0.residual_branch.0.2$": {},
+                        "features.1.residual_branch.0.2$": {},
+                        "features.1.residual_branch.1.2$": {},
+                        "features.2.residual_branch.0.2$": {},
+                        "features.2.residual_branch.1.2$": {},
+                        "features.3.residual_branch.0.2$": {},
+                        "features.3.residual_branch.1.2$": {},
+                        "features.4.residual_branch.0.2$": {},
+                        "features.4.residual_branch.1.2$": {},
+                        "features.5.residual_branch.0.2$": {},
+                        "features.5.residual_branch.1.2$": {},
+                        "features.6.residual_branch.0.2$": {},
+                        "features.6.residual_branch.1.2$": {},
+                        "features.7.residual_branch.0.2$": {},
+                        "features.7.residual_branch.1.2$": {},
+                        "features.8.residual_branch.0.2$": {},
+                        "features.8.residual_branch.1.2$": {},
+                        "features.9.residual_branch.0.2$": {},
+                        "features.9.residual_branch.1.2$": {},
+                        "features.10.residual_branch.0.2$": {},
+                        "features.10.residual_branch.1.2$": {},
+                        "features.11.residual_branch.0.2$": {},
+                        "features.11.residual_branch.1.2$": {},
+                        "features.12.residual_branch.0.2$": {},
+                        "features.12.residual_branch.1.2$": {},
+                        "features.13.residual_branch.0.2$": {},
+                        "features.13.residual_branch.1.2$": {},
+                        "features.14.residual_branch.0.2$": {},
+                        "features.14.residual_branch.1.2$": {},
+                        "features.15.residual_branch.0.2$": {},
+                        "features.15.residual_branch.1.2$": {},
+                        "features.16.residual_branch.0.2$": {},
+                        "features.16.residual_branch.1.2$": {},
+                        "features.17.2$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "init_clip": "const",
+                            "noisy": false,
+                            "rounding": true,
+                            "learn_clip": true,
+                            "tqt": false
+                        }
+                    },
+                    "harmonize": {
+                        "n_levels": 256,
+                        "init_clip": "max",
+                        "noisy": false,
+                        "rounding": true,
+                        "force_out_eps": false,
+                        "tqt": false,
+                        "learn_clip": false
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "PACTSGD",
+                "takes_net": true,
+                "kwargs": {
+                    "pact_decay": 0.001,
+                    "lr": 0.0005,
+                    "momentum": 0.9,
+                    "weight_decay": 4e-5
+                }
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0": 1,
+                        "3": 0.1,
+                        "5": 0.01
+                    }
+                }
+            }
+        },
+        "n_epochs": 10,
+        "quantize": {
+            "function": "get_pact_controllers",
+            "kwargs": {
+                "schedules": {
+                    "linear": {
+                        "0": ["start", "verbose_on"],
+                        "4": "freeze"
+                    },
+                    "activation": {
+                        "1": ["start", "verbose_on"],
+                        "5": "freeze"
+                    }
+                },
+                "kwargs_linear": {
+                },
+                "kwargs_activation": {
+                    "init_clip_hi": 6.0
+                }
+            }
+
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": false,
+            "compute_task_statistic": true
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    }
+}

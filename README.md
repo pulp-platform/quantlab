@@ -36,10 +36,10 @@ $ conda activate quantlab
 (quantlab) $ cd quantlib
 (quantlab) $ python setup.py install
 (quantlab) $ python
-(quantlab) $ >>> import quantlib
-(quantlab) $ >>> quantlib.editing.graphs.traces.trace.trace_pytorch_modules()
-(quantlab) $ >>> quantlib.editing.graphs.traces.trace.trace_quantlib_modules()
-(quantlab) $ >>> exit()
+(quantlab) >>> import quantlib
+(quantlab) >>> quantlib.editing.graphs.traces.trace.trace_pytorch_modules()
+(quantlab) >>> quantlib.editing.graphs.traces.trace.trace_quantlib_modules()
+(quantlab) >>> exit()
 (quantlab) $ cd ..
 ```
 Also, this installation is mandatory in case you intend to run some of the Jupyter notebooks contained in the `examples` folder.
@@ -101,6 +101,7 @@ $
 (quantlab) $ 
 ```
 so that the tool will fetch your data from the SSD drive and write logs to the HDD drive.
+Note that you must specify absolute (not relative) paths.
 Running the `storage.sh` script creates *mock-up QuantLab homes* under both folders:
 ```
 (quantlab) $ bash configure/storage.sh

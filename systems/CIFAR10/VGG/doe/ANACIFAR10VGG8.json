@@ -1,0 +1,113 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {"augment": true}
+                }
+            },
+            "dataloader": {"bs": 256}
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {"augment": false}
+                }
+            },
+            "dataloader": {"bs": 256}
+        }
+    },
+    "network": {
+        "class": "VGG",
+        "kwargs": {
+            "config": "VGG8",
+            "capacity": 1,
+            "use_bn_features": true,
+            "use_bn_classifier": true
+        },
+        "quantize": {
+            "function": "all_ana_recipe",
+            "kwargs": {
+                "quantizer_spec": {
+                    "nbits":    2,
+                    "signed":   true,
+                    "balanced": true,
+                    "eps":      1.0
+                },
+                "noise_type": "uniform",
+                "strategy":   "expectation"
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "Adam",
+                "kwargs": {"lr": 0.001}
+            }
+        },
+        "n_epochs": 200,
+        "quantize": {
+            "function": "all_ana_controller",
+            "kwargs": {
+                "ctrl_spec": [
+                    {
+                        "modules": ["pilot.0", "pilot.2"],
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  7}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 14}}
+                    },
+                    {
+                        "modules": ["features.1", "features.3"],
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 12}}
+                    },
+                    {
+                        "modules": ["features.4", "features.6"],
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  5}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha": 10}}
+                    },
+                    {
+                        "modules": ["features.8", "features.10"],
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  8}}
+                    },
+                    {
+                        "modules": ["features.11", "features.13"],
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  3}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  6}}
+                    },
+                    {
+                        "modules": ["classifier.0", "classifier.2"],
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  4}}
+                    },
+                    {
+                        "modules": ["classifier.3", "classifier.5"],
+                        "mi":      {"beta": 0.0, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  1}},
+                        "sigma":   {"beta": 0.5, "fun": "bws", "kwargs": {"tstart": 0, "tend": 200, "alpha":  2}}
+                    }
+                ]
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 157}},
+                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 157}},
+                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 157, "n_inputs": 4}}
+            ]
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    }
+}

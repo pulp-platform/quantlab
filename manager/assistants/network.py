@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -121,7 +121,7 @@ class NetworkAssistant(object):
         self._network_seeds  = networkmessage.config['seeds']
 
         # quantization recipe (optional)
-        if 'quantize' in networkmessage.config.keys():
+        if ('quantize' in networkmessage.config.keys()) and (networkmessage.config['quantize'] is not None):
             qnt_library = importlib.import_module('.quantize', package=networkmessage.library.package)
             self._qnt_recipe_fun    = getattr(qnt_library, networkmessage.config['quantize']['function'])
             self._qnt_recipe_kwargs = networkmessage.config['quantize']['kwargs']
@@ -146,7 +146,7 @@ class NetworkAssistant(object):
 
         """
 
-        net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id])
+        net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id])  # WARNING: all QuantLab networks require a seed now!
 
         if self._qnt_recipe_fun:
             net = self._qnt_recipe_fun(net, **self._qnt_recipe_kwargs)
@@ -163,4 +163,3 @@ class NetworkAssistant(object):
             platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
         return net
-

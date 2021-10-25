@@ -1,0 +1,73 @@
+{
+    "description": {},
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": true
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+
+        }
+    },
+    "network": {
+        "class": "MobileNetV2",
+        "kwargs": {
+            "config": "standard",
+            "capacity": 1.0
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "SGD",
+                "kwargs": {
+                    "lr": 0.045,
+                    "momentum": 0.9,
+                    "weight_decay": 4e-05
+                }
+            },
+            "lr_sched": {
+                "class": "StepLR",
+                "kwargs": {
+                    "step_size": 1,
+                    "gamma": 0.98
+                }
+            }
+        },
+        "n_epochs": 100
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": false,
+            "compute_task_statistic": true
+        },
+        "valid": {
+            "compute_profiling_statistic": false
+        }
+    },
+    "experiment": {}
+}

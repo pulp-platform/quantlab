@@ -3,8 +3,9 @@
 # 
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
+# Georg Rutishauser <georgr@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +20,18 @@
 # limitations under the License.
 # 
 
-from .taskstatistic import VGGPACTStatistic
+import os
+import torch
+import torchvision
+from systems.ILSVRC12.utils.data import load_ilsvrc12
+
+from .transform_a import TransformA
 
 
-__all__ = ['VGGPACTStatistic']
+__all__ = [
+    'load_data_set',
+    'TransformA',
+]
 
+
+load_data_set = load_ilsvrc12

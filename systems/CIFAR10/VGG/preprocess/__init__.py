@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,12 +22,18 @@
 import torch
 import torchvision
 
-from .transform_a import TransformA
 from systems.utils.data import default_dataset_cv_split
+from systems.CIFAR10.utils.transforms import CIFAR10PACTQuantTransform
+
+from .transform_a import TransformA
+from .transform_b import TransformB
+
 
 __all__ = [
     'load_data_set',
     'TransformA',
+    'TransformB',
+    'CIFAR10PACTQuantTransform',
 ]
 
 
@@ -58,4 +64,3 @@ def load_data_set(partition: str,
         raise NotImplementedError
 
     return dataset
-

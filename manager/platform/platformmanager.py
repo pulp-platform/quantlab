@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -141,7 +141,20 @@ class PlatformManager(object):
 
         # get host machine information
         self.hostname = socket.gethostname()
-        self.host_ip  = socket.gethostbyname(self.hostname)
+        try:
+            self.host_ip = socket.gethostbyname(self.hostname)
+        except socket.gaierror:
+            # When this method is created inside a Python `subprocess` (e.g.,
+            # during the `configure` DoE flow) on my machine (MacBook Air,
+            # Retina, 13", 2020 - macOS Big Sur 11.1), the hostname can not be
+            # resolved properly:
+            #
+            #     https://stackoverflow.com/a/43549848
+            #
+            # With this `try-except` construct I can work around the issue,
+            # although the reported IP won't be relevant since it will very
+            # likely by `127.0.0.1`.
+            self.host_ip = socket.gethostbyname('localhost')
         self.n_cpus   = multiprocessing.cpu_count()
         self.n_gpus   = torch.cuda.device_count() if torch.cuda.is_available() else 0
         assert self.n_gpus <= self.n_cpus  # max one GPU per core

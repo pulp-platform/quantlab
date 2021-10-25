@@ -3,20 +3,28 @@
         "train": {
             "dataset": {
                 "transform": {
-                    "class": "TransformA",
-                    "kwargs": {"augment": true}
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": true
+                    }
                 }
             },
-            "dataloader": {"bs": 512}
+            "dataloader": {
+                "bs": 256
+            }
         },
         "valid": {
             "dataset": {
                 "transform": {
-                    "class": "TransformA",
-                    "kwargs": {"augment": false}
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": false
+                    }
                 }
             },
-            "dataloader": {"bs": 512}
+            "dataloader": {
+                "bs": 256
+            }
         }
     },
     "network": {
@@ -36,7 +44,8 @@
                     "balanced": true,
                     "eps": 1.0
                 },
-                "noise_type": "uniform"
+                "noise_type": "logistic",
+                "strategy": "mode"
             }
         }
     },
@@ -48,89 +57,190 @@
         "gd": {
             "opt": {
                 "class": "Adam",
-                "kwargs": {"lr": 0.001}
+                "kwargs": {
+                    "lr": 0.001
+                }
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "400": 0.1
+                    }
+                }
             }
         },
-        "n_epochs": 60,
+        "n_epochs": 500,
         "quantize": {
             "function": "all_ana_controller",
             "kwargs": {
                 "ctrl_spec": [
                     {
-                        "modules": ["pilot.0", "pilot.2"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 2}}
+                        "modules": [
+                            "pilot.0",
+                            "pilot.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 0,
+                                "tend": 50,
+                                "alpha": 0
+                            }
                         },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 0, "tend": 50, "alpha": 2}}
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 0,
+                                "tend": 50,
+                                "alpha": 14
+                            }
                         }
                     },
                     {
-                        "modules": ["features.1", "features.3"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 2}}
+                        "modules": [
+                            "features.1",
+                            "features.3"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 50,
+                                "tend": 100,
+                                "alpha": 0
+                            }
                         },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 5, "tend": 50, "alpha": 2}}
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 50,
+                                "tend": 100,
+                                "alpha": 12
+                            }
                         }
                     },
                     {
-                        "modules": ["features.4", "features.6"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 2}}
+                        "modules": [
+                            "features.4",
+                            "features.6"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 100,
+                                "tend": 150,
+                                "alpha": 0
+                            }
                         },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 10, "tend": 50, "alpha": 2}}
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 100,
+                                "tend": 150,
+                                "alpha": 10
+                            }
                         }
                     },
                     {
-                        "modules": ["features.8", "features.10"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 2}}
+                        "modules": [
+                            "features.8",
+                            "features.10"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 150,
+                                "tend": 200,
+                                "alpha": 0
+                            }
                         },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 15, "tend": 50, "alpha": 2}}
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 150,
+                                "tend": 200,
+                                "alpha": 8
+                            }
                         }
                     },
                     {
-                        "modules": ["features.11", "features.13"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 20, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 20, "tend": 50, "alpha": 2}}
+                        "modules": [
+                            "features.11",
+                            "features.13"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 200,
+                                "tend": 250,
+                                "alpha": 0
+                            }
                         },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 25, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 25, "tend": 50, "alpha": 2}}
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 200,
+                                "tend": 250,
+                                "alpha": 6
+                            }
                         }
                     },
                     {
-                        "modules": ["classifier.0", "classifier.2"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 2}}
+                        "modules": [
+                            "classifier.0",
+                            "classifier.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 250,
+                                "tend": 300,
+                                "alpha": 0
+                            }
                         },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 30, "tend": 50, "alpha": 2}}
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 250,
+                                "tend": 300,
+                                "alpha": 4
+                            }
                         }
                     },
                     {
-                        "modules": ["classifier.3", "classifier.5"],
-                        "fnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 2}}
+                        "modules": [
+                            "classifier.3",
+                            "classifier.5"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 300,
+                                "tend": 350,
+                                "alpha": 0
+                            }
                         },
-                        "bnoise": {
-                            "mi":    {"base": -0.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 1}},
-                            "sigma": {"base":  1.0, "fun": "lws", "kwargs": {"tstart": 35, "tend": 50, "alpha": 2}}
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 300,
+                                "tend": 350,
+                                "alpha": 2
+                            }
                         }
                     }
                 ]
@@ -142,11 +252,31 @@
             "compute_profiling_statistic": true,
             "compute_task_statistic": true,
             "tensor_statistics": [
-                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
-                {"class": "MeanUpdateNormWeightNormRatio",          "kwargs": {"name": "pilot.0", "start": 0, "period": 100}},
-                {"class": "DistributionOutgoingGradientNorm",       "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
-                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 100}},
-                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 100, "n_inputs": 4}}
+                {
+                    "class": "DistributionOutputFeaturesComponents",
+                    "kwargs": {
+                        "name": "pilot.0",
+                        "start": 0,
+                        "period": 157
+                    }
+                },
+                {
+                    "class": "DistributionOutgoingGradientComponents",
+                    "kwargs": {
+                        "name": "pilot.1",
+                        "start": 0,
+                        "period": 157
+                    }
+                },
+                {
+                    "class": "OutputFeaturesSnapshot",
+                    "kwargs": {
+                        "name": "pilot.2",
+                        "start": 0,
+                        "period": 157,
+                        "n_inputs": 4
+                    }
+                }
             ]
         },
         "valid": {

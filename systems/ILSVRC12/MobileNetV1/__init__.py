@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,8 +19,6 @@
 # limitations under the License.
 # 
 
-# we need to import these so quantlab can find them
 from .preprocess import *
+from .mobilenetv1 import MobileNetV1
 from .postprocess import *
-from .vgg_pact import VGG7
-from quantlib.algorithms.pact import PACTAdam, PACTAdagrad, PACTSGD

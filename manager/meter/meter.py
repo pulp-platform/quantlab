@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2021 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -97,7 +97,8 @@ class Meter(object):
 
     def tic(self):
         """Start profiling."""
-        self._profiling_statistic.maybe_start_observing(self._global_step)
+        if self._profiling_statistic is not None:
+            self._profiling_statistic.maybe_start_observing(self._global_step)
 
     def update(self, ygt: torch.Tensor, ypr: torch.Tensor, loss: torch.Tensor) -> None:
         """Update running statistics."""
@@ -111,7 +112,8 @@ class Meter(object):
     def toc(self, ygt: torch.Tensor) -> None:
         """Stop profiling."""
         bs = ygt.shape[0]
-        self._profiling_statistic.maybe_stop_observing(bs)
+        if self._profiling_statistic is not None:
+            self._profiling_statistic.maybe_stop_observing(bs)
 
     def stop_observing(self):
 
@@ -149,4 +151,3 @@ class Meter(object):
             self._is_best   = True
         else:
             self._is_best = False
-
