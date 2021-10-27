@@ -11,7 +11,7 @@
 # ignore topology-specific logs and problem-specific data (but not `data` utilities)
 **/logs
 **/data
-!./systems/utils/data
+!/**/utils/data
 
 # ignore PyTorch JIT traces
 **/.libtraces
