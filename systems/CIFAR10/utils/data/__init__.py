@@ -19,6 +19,5 @@
 # limitations under the License.
 # 
 
-from .transforms import CIFAR10Normalize
-from .transforms import CIFAR10NormalizeHomogeneous
-from .transforms import TransformA, TransformB, CIFAR10PACTQuantTransform
+from .data import load_data_set
+
