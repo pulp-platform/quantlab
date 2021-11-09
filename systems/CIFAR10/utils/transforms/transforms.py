@@ -22,6 +22,11 @@
 import torch
 from torchvision.transforms import Normalize
 
+from torchvision.transforms import Compose
+from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
+from torchvision.transforms import RandomCrop            # "evil" transforms combining statistical augmentation with structural aspects
+from torchvision.transforms import ToTensor              # structural transforms
+
 
 CIFAR10STATS =\
     {
@@ -50,16 +55,37 @@ class CIFAR10NormalizeHomogeneous(Normalize):
         std  = torch.mean(torch.Tensor(CIFAR10STATS['normalize']['std']))
         super(CIFAR10NormalizeHomogeneous, self).__init__(mean=mean, std=std)
 
+class TransformA(Compose):
+    r"""CIFAR10 normalizing transform with optional augmentation. Uses per-channel
+    normalization parameters.
+    """
+    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 4):
 
-# TODO: move the following definition to the VGG topology package
-from torchvision.transforms import Compose
-from torchvision.transforms import Lambda
+        transforms = []
+        if augment:
+            transforms.append(RandomCrop(crop_size, padding=padding))
+            transforms.append(RandomHorizontalFlip())
 
-from quantlib.algorithms.pact import PACTAsymmetricAct
-from quantlib.algorithms.pact.util import almost_symm_quant
+        transforms.append(ToTensor())
+        transforms.append(CIFAR10Normalize())
 
-from ....CIFAR10.VGG.preprocess import TransformA
+        super(TransformA, self).__init__(transforms)
 
+class TransformB(Compose):
+    r"""CIFAR10 normalizing transform with optional augmentation. Uses homogeneous
+    normalization parameters instead of per-channel parameters.
+    """
+    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 4):
+
+        transforms = []
+        if augment:
+            transforms.append(RandomCrop(crop_size, padding=padding))
+            transforms.append(RandomHorizontalFlip())
+
+        transforms.append(ToTensor())
+        transforms.append(CIFAR10NormalizeHomogeneous())
+
+        super(TransformB, self).__init__(transforms)
 
 class CIFAR10PACTQuantTransform(Compose):
 
@@ -68,10 +94,10 @@ class CIFAR10PACTQuantTransform(Compose):
     The input can be fake-quantized (`quantize == 'fake'`) or true-quantized
     (`quantize == 'int'`).
     """
-    def __init__(self, augment: bool, quantize='none', n_q=256):
+    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 4, quantize='none', n_q=256):
 
         transforms = []
-        transforms.append(TransformA(augment))
+        transforms.append(TransformA(augment, crop_size=crop_size, padding=padding))
         if quantize in ['fake', 'int']:
             transforms.append(PACTAsymmetricAct(n_levels=n_q, symm=True, learn_clip=False, init_clip='max', act_kind='identity'))
             quantizer = transforms[-1]
