@@ -19,6 +19,7 @@ dependencies:
   - python-graphviz=0.16
   - Mako=1.1.4
   - packaging=20.9
+  - yapf=0.31.0
   - jsonschema=3.2.0
   - sphinx=4.0.2
   - sphinx_rtd_theme=0.4.3
