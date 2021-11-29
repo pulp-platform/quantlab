@@ -6,6 +6,9 @@ __CNN_CFGS__ = {
     'first_try' : [128, 128, 128, 128],
     'ninetysix_ch' : [96, 96, 96, 96],
     'reduced_channels' : [64, 64, 64, 64],
+    '128_channels' : [128, 128, 128, 128],
+    '96_channels' : [96, 96, 96, 96],
+    '64_channels' : [64, 64, 64, 64],
     '32_channels' : [32, 32, 32, 32]
 }
 
@@ -13,8 +16,11 @@ __CNN_CFGS__ = {
 # (kernel_size, dilation, output_channels)
 __TCN_CFGS__ = {
     'first_try' : [(2, 1, 64), (2, 2, 64), (2, 4, 64)],
+    '64_channels' : [(2, 1, 64), (2, 2, 64), (2, 4, 64)],
     'ninetysix_ch' : [(2, 1, 96), (2, 2, 96), (2, 4, 96)],
+    '96_channels' : [(2, 1, 96), (2, 2, 96), (2, 4, 96)],
     '128_ch' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
+    '128_channels' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
     'k3' : [(3, 1, 64), (3, 2, 64), (3, 4, 64)],
     '32_channels' : [(2, 1, 32), (2, 2, 32), (2, 4, 32)]
 }
@@ -49,6 +55,7 @@ class CausalConv1d(torch.nn.Conv1d):
 
 
 class Pad2d(nn.Module):
+
     def __init__(self, k_x : int, k_y : int):
         super(Pad2d, self).__init__()
         pad_x = k_x-1
@@ -252,6 +259,7 @@ class DVSHybridNet(nn.Module):
         embedding_size = cnn_cfg[-1]
         self.cnn_window = cnn_window
         self.tcn_window = tcn_window
+        self.sequence_length = tcn_window
         self.cnn = DVSNet2D(cnn_cfg_key=cnn_cfg_key, cnn_window=cnn_window, use_classifier=False, activation=activation, k=k_cnn, last_conv_nopad=last_conv_nopad, **kwargs)
         self.tcn = DVSTCN(tcn_cfg_key=tcn_cfg_key, in_channels=embedding_size, n_classes=n_classes, activation=activation, sequence_length=tcn_window, **kwargs)
 

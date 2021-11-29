@@ -6,12 +6,13 @@
                     "class": "DVSAugmentTransform",
                     "kwargs": {
                         "augment": true,
-                        "downsample": 1,
+                        "downsample": 4,
                         "p_flip": 0.1
                     }
                 },
                 "kwargs": {
                     "window_stride": 2,
+                    "cnn_stride": 1,
                     "cnn_win": 8,
                     "tcn_win": 5,
                     "n_val_subjects": 6
@@ -27,11 +28,12 @@
                     "class": "DVSAugmentTransform",
                     "kwargs": {
                         "augment": false,
-                        "downsample": 1
+                        "downsample": 4
                     }
                 },
                 "kwargs": {
-                    "window_stride": 2,
+                    "window_stride": 1,
+                    "cnn_stride": 3,
                     "cnn_win": 8,
                     "tcn_win": 5,
                     "n_val_subjects": 6
@@ -45,22 +47,22 @@
     "network": {
         "class": "DVSHybridNet",
         "kwargs": {
-            "cnn_cfg_key": "reduced_channels",
-            "tcn_cfg_key": "first_try",
+            "cnn_cfg_key": "128_channels",
+            "tcn_cfg_key": "128_channels",
             "pool_type": "max_pool",
             "cnn_window": 8,
             "tcn_window": 5,
             "activation": "htanh",
             "n_classes": 11,
             "classifier_bias": false,
-            "fix_cnn_pool": true,
             "twn_classifier": false,
             "k_cnn": 3,
             "classifier_type": "linear",
             "classifier_out": "last",
             "layer_order": "bn_pool",
-            "last_conv_nopad": true,
-            "pretrained": "/home/georgr/projects/TNN/dvs-ql-new/systems/DVS128/dvs_cnn/pretrained/FP32_ds4x_32ch.ckpt"
+            "pretrained": "/home/georgr/projects/TNN/dvs-ql-new/systems/DVS128/dvs_cnn/pretrained/FP32_ds4x_128ch_cnnstride_1.ckpt",
+            "fix_cnn_pool": false,
+            "last_conv_nopad": false
         },
         "quantize": {
             "function": "layers_ste_inq",
@@ -97,28 +99,29 @@
                 "class":  "HandScheduler",
                 "kwargs": {
                     "schedule": {
-                        "0": 1,
+                        "0": 0.5,
                         "11": 0.1,
-                        "15": 1,
-                        "21": 0.1,
-                        "25": 1,
-                        "31": 0.1,
-                        "35": 1,
-                        "41": 0.1,
-                        "45": 1,
-                        "51": 0.1,
-                        "55": 1,
-                        "58": 0.1,
-                        "60": 1,
-                        "63": 0.1,
-                        "65": 1,
-                        "68": 0.1,
-                        "71": 0.01
+                        "15": 0.5,
+                        "24": 0.1,
+                        "30": 0.5,
+                        "39": 0.1,
+                        "45": 0.5,
+                        "54": 0.1,
+                        "60": 0.5,
+                        "69": 0.1,
+                        "75": 0.5,
+                        "84": 0.1,
+                        "90": 0.5,
+                        "99": 0.1,
+                        "105": 0.5,
+                        "114": 0.1,
+                        "120": 0.01
                     }
                 }
             }
+
         },
-        "n_epochs": 75,
+        "n_epochs": 130,
         "quantize": {
             "function": "layers_ste_inq_get_controllers",
             "kwargs": {
@@ -131,12 +134,12 @@
                         "schedule": {
                             "5": 0.2,
                             "15": 0.4,
-                            "25": 0.6,
-                            "35": 0.8,
-                            "45": 0.9,
-                            "55": 0.95,
-                            "60": 0.975,
-                            "65": 1
+                            "30": 0.6,
+                            "45": 0.8,
+                            "60": 0.9,
+                            "75": 0.95,
+                            "90": 0.975,
+                            "105": 1
                         },
                         "clear_optim_state_on_step": false
                     }
