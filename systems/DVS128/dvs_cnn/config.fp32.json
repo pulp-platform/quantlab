@@ -1,0 +1,112 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "DVSAugmentTransform",
+                    "kwargs": {
+                        "augment": true,
+                        "downsample": 2,
+                        "p_flip": 0.0
+                    }
+                },
+                "load_data_set":{
+                    "kwargs": {
+                        "window_stride": 2,
+                        "cnn_win": 8,
+                        "tcn_win": 5,
+                        "n_val_subjects": 6
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 128
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "DVSAugmentTransform",
+                    "kwargs": {
+                        "augment": false,
+                        "downsample": 2
+                    }
+                },
+                "load_data_set": {
+                    "kwargs": {
+                        "window_stride": 2,
+                        "cnn_win": 8,
+                        "tcn_win": 5,
+                        "n_val_subjects": 6
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        }
+    },
+    "network": {
+        "class": "DVSHybridNet",
+        "kwargs": {
+            "cnn_cfg_key": "ninetysix_ch",
+            "tcn_cfg_key": "ninetysix_ch",
+            "pool_type": "max_pool",
+            "cnn_window": 8,
+            "tcn_window": 5,
+            "activation": "htanh",
+            "n_classes": 11,
+            "classifier_bias": false,
+            "fix_cnn_pool": true,
+            "twn_classifier": false,
+            "k_cnn": 3,
+            "classifier_type": "linear",
+            "classifier_out": "last",
+            "layer_order": "bn_pool",
+            "last_conv_nopad": true
+        },
+        "quantize": null
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "takes_net": false,
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "Adam",
+                "takes_net": false,
+                "kwargs": {
+                    "lr": 0.01
+                }
+            },
+            "lr_sched": {
+                "class": "CosineAnnealingLR",
+                "kwargs": {
+                    "T_max": 100,
+                    "eta_min": 0.00001
+                }
+            }
+        },
+        "n_epochs": 100,
+        "quantize": null
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": false,
+            "compute_task_statistic": true,
+            "tensor_statistics": []
+        },
+        "valid": {
+            "compute_profiling_statistic": false,
+            "tensor_statistics": []
+        }
+    },
+    "experiment": {
+        "n_folds": 1,
+        "metrics": {
+            "target_metric": "valid"
+        }
+    }
+}
