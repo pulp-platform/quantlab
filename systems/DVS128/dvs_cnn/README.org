@@ -1,0 +1,26 @@
+* DVS128 in QuantLab
+  This folder contains a QuantLab Problem for the [[https://www.research.ibm.com/dvsgesture/][DVS128 Dataset by IBM]]. We
+  provide a single topology, ~dvs_cnn~ to solve the gesture classification
+  problem using a fully ternarized CNN+TCN hybrid architecture.
+** Setup
+   To run the experiments, you first need to run the ~make_dataset.py~ script
+   from this folder:
+   1. The data conversion script uses OpenCV, which is not compatible with
+      Python 3.8, so you will need to use a different virtual environment. The
+      ~opencv.yml~ contains a [[https://docs.conda.io/en/latest/miniconda.html][Conda]] environment specification containing all
+      required packages.
+   2. Unpack the dataset to ~my/data/folder~
+   3. Create a symlink called ~dvs128~ to the dataset from this folder:
+      ~ln -s my/data/folder ./dvs128~
+   4. Run the script - it will create about 50GB of data in a subfolder of the
+      dataset, i.e., ~my/data/folder/processed~:
+      ~python ./make_dataset.py~
+      This will take a while and create a bunch of NumPy files containing the
+      raw frames extracted from the event data.
+   5. Link the ~data~ folder in your "hard storage" directory to the ~processed~
+      dataset folder.
+** Network
+   - Link to paper when it's out
+   - Architecture picture
+   - Results table
+   - Config options
