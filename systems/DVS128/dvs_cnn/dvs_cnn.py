@@ -247,8 +247,6 @@ class DVSTCN(nn.Module):
         x = self.classifier(x)
         if self.classifier_out == "last":
             return x[:, :, -1]
-        elif self.classifier_out == "linear":
-            return x.squeeze(2)
         return x
 
 
