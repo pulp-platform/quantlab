@@ -20,4 +20,4 @@
 # 
 
 from .all_ana import all_ana_recipe, all_ana_controller
-from .pact import pact_recipe, get_pact_controllers
+# from .pact import pact_recipe, get_pact_controllers

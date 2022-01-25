@@ -55,10 +55,26 @@ class CIFAR10NormalizeHomogeneous(Normalize):
 from torchvision.transforms import Compose
 from torchvision.transforms import Lambda
 
-from quantlib.algorithms.pact import PACTAsymmetricAct
-from quantlib.algorithms.pact.util import almost_symm_quant
+# from quantlib.algorithms.pact import PACTAsymmetricAct
+# from quantlib.algorithms.pact.util import almost_symm_quant
 
-from ....CIFAR10.VGG.preprocess import TransformA
+# from ....CIFAR10.VGG.preprocess import TransformA
+from torchvision.transforms import RandomCrop, RandomHorizontalFlip, ToTensor
+
+
+class TransformA(Compose):
+
+    def __init__(self, augment: bool):
+
+        transforms = []
+        if augment:
+            transforms.append(RandomCrop(32, padding=4))
+            transforms.append(RandomHorizontalFlip())
+
+        transforms.append(ToTensor())
+        transforms.append(CIFAR10Normalize())
+
+        super(TransformA, self).__init__(transforms)
 
 
 class CIFAR10PACTQuantTransform(Compose):
