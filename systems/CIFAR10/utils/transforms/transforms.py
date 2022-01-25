@@ -28,9 +28,19 @@ CIFAR10STATS =\
         'normalize':
             {
                 'mean': (0.4914, 0.4822, 0.4465),
-                'std':  (0.2470, 0.2430, 0.2610)
+                'std':  (0.2470, 0.2430, 0.2610)  # 'std': (0.2470, 0.2435, 0.2616)
             }
     }
+
+
+# CIFAR10IMAGESTATS =\
+#     {
+#         'normalize':
+#             {
+#                 'mean': (0.4734,),
+#                 'std':  (0.2516,)
+#             }
+#     }
 
 
 class CIFAR10Normalize(Normalize):
@@ -43,3 +53,8 @@ class CIFAR10NormalizeHomogeneous(Normalize):
         mean = torch.mean(torch.Tensor(CIFAR10STATS['normalize']['mean']))
         std  = torch.mean(torch.Tensor(CIFAR10STATS['normalize']['std']))
         super(CIFAR10NormalizeHomogeneous, self).__init__(mean=mean, std=std)
+
+
+# class CIFAR10NormalizeHomogeneous(Normalize):
+#     def __init__(self):
+#         super(CIFAR10NormalizeHomogeneous, self).__init__(**CIFAR10IMAGESTATS['normalize'])
