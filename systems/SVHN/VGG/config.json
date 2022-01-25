@@ -1,0 +1,71 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": true
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        }
+    },
+    "network": {
+        "class": "VGG",
+        "kwargs": {
+            "config": "VGG8",
+            "capacity": 1,
+            "use_bn_features": true,
+            "use_bn_classifier": true
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "Adam",
+                "kwargs": {
+                    "lr": 0.001
+                }
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "400": 0.1
+                    }
+                }
+            }
+        },
+        "n_epochs": 500
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    }
+}
