@@ -27,10 +27,11 @@ import quantlib.editing.lightweight as qlw
 from typing import List
 
 
-def all_ana_recipe(net:            nn.Module,
-                   quantizer_spec: dict,
-                   noise_type:     str,
-                   strategy:       str) -> nn.Module:
+def all_ana_recipe(net:                 nn.Module,
+                   quantizer_spec_conv: dict,
+                   quantizer_spec_act:  dict,
+                   noise_type:          str,
+                   strategy:            str) -> nn.Module:
 
     # define filters
     # type-based filters
@@ -45,13 +46,13 @@ def all_ana_recipe(net:            nn.Module,
     # define rules
     # 2D convolutions
     filter_conv2d_pilot_or_features = filter_conv2d & (filter_pilot | filter_features)
-    rho_conv2d = qlw.rules.ana.ReplaceConv2dANAConv2dRule(filter_=filter_conv2d_pilot_or_features, quantizer_spec=quantizer_spec, noise_type=noise_type, strategy=strategy)
+    rho_conv2d = qlw.rules.ana.ReplaceConv2dANAConv2dRule(filter_=filter_conv2d_pilot_or_features, quantizer_spec=quantizer_spec_conv, noise_type=noise_type, strategy=strategy)
     # ReLUs
     filter_relu_pilot_or_features = filter_relu & (filter_pilot | filter_features)
-    rho_relu = qlw.rules.ana.ReplaceReLUANAActivationRule(filter_relu_pilot_or_features, quantizer_spec=quantizer_spec, noise_type=noise_type, strategy=strategy)
+    rho_relu = qlw.rules.ana.ReplaceReLUANAActivationRule(filter_relu_pilot_or_features, quantizer_spec=quantizer_spec_act, noise_type=noise_type, strategy=strategy)
     # eps-harmonisation of the downsampling branches
     filter_bn_features_downsample = filter_bn2d & (filter_features & filter_downsample)
-    rho_bn = qlw.rules.ana.ReplaceBN2dBN2dANAActivationRule(filter_bn_features_downsample, quantizer_spec=quantizer_spec, noise_type=noise_type, strategy=strategy)
+    rho_bn = qlw.rules.ana.ReplaceBN2dBN2dANAActivationRule(filter_bn_features_downsample, quantizer_spec=quantizer_spec_act, noise_type=noise_type, strategy=strategy)
 
     # edit
     lwgraph  = qlw.LightweightGraph(net)

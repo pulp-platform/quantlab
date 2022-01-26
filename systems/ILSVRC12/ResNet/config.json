@@ -10,7 +10,7 @@
                 }
             },
             "dataloader": {
-                "bs": 128
+                "bs": 360
             }
         },
         "valid": {
@@ -23,7 +23,7 @@
                 }
             },
             "dataloader": {
-                "bs": 128
+                "bs": 360
             }
         }
     },
@@ -35,7 +35,13 @@
         "quantize": {
             "function": "all_ana_recipe",
             "kwargs": {
-                "quantizer_spec": {
+                "quantizer_spec_conv": {
+                    "nbits": 4,
+                    "signed": true,
+                    "balanced": false,
+                    "eps": 0.07
+                },
+                "quantizer_spec_act": {
                     "nbits": 4,
                     "signed": false,
                     "balanced": false,
@@ -55,7 +61,7 @@
             "opt": {
                 "class": "Adam",
                 "kwargs": {
-                    "lr": 0.001
+                    "lr": 0.01
                 }
             },
             "lr_sched": {
