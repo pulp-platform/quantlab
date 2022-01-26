@@ -206,7 +206,8 @@ class ResNet(nn.Module):
                  config: str,
                  n_groups: int = 1,
                  group_capacity: int = 1,
-                 num_classes: int = 1000):
+                 num_classes: int = 1000,
+                 seed: int = -1):
 
         super(ResNet, self).__init__()
 
@@ -224,7 +225,7 @@ class ResNet(nn.Module):
         self.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Linear(out_channels_features, num_classes)
 
-        self._initialize_weights()
+        self._initialize_weights(seed=seed)
 
     def _make_pilot(self, out_channels_pilot: int) -> nn.Sequential:
 
@@ -293,7 +294,10 @@ class ResNet(nn.Module):
 
         return x
 
-    def _initialize_weights(self):
+    def _initialize_weights(self, seed: int):
+
+        if seed >= 0:
+            torch.manual_seed(seed)
 
         for m in self.modules():
 

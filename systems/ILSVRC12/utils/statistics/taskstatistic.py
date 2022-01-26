@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2022 ETH Zurich. All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,11 +53,11 @@ class ILSVRC12Statistic(TaskStatistic):
         self._postprocess_pr_fun = postprocess_pr_fun
 
     def _reset(self):
-        self._total_tracked = torch.Tensor([0]).to(dtype=torch.int64)
-        self._total_top1    = torch.Tensor([0]).to(dtype=torch.int64)
-        self._total_top5    = torch.Tensor([0]).to(dtype=torch.int64)
-        self._value_top1    = torch.Tensor([0.0])
-        self._value_top5    = torch.Tensor([0.0])
+        self._total_tracked = torch.Tensor([0]).to(dtype=torch.int64, device=self._platform.device)
+        self._total_top1    = torch.Tensor([0]).to(dtype=torch.int64, device=self._platform.device)
+        self._total_top5    = torch.Tensor([0]).to(dtype=torch.int64, device=self._platform.device)
+        self._value_top1    = torch.Tensor([0.0]).to(device=self._platform.device)
+        self._value_top5    = torch.Tensor([0.0]).to(device=self._platform.device)
 
     def _stop_observing(self, *args):
         # master-only point: at the end of the epoch, write the running statistics to disk

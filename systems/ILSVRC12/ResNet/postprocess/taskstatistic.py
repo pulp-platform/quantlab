@@ -32,7 +32,7 @@ def _postprocess_gt(ygt: torch.Tensor) -> torch.Tensor:
 
 
 def _postprocess_pr(ypr: torch.Tensor) -> torch.Tensor:
-    return ypr
+    return ypr.argmax(dim=1).unsqueeze(-1)
 
 
 class ResNetStatistic(ILSVRC12Statistic):
