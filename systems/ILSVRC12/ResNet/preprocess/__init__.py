@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2022 ETH Zurich. All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,19 +23,42 @@ import os
 import torch
 import torchvision
 
-from .transform_a import get_transform_a
+from .transform_a import TransformA
+from systems.utils.data.cvsplit import default_dataset_cv_split
 
 
 __all__ = [
-    'dataset_load',
-    'get_transform_a',
+    'load_data_set',
+    'TransformA',
 ]
 
 
-def dataset_load(path_data: str, transform: torchvision.transforms.Compose, train: bool = True) -> torch.utils.data.Dataset:
+def load_data_set(partition: str,
+                  path_data: str,
+                  n_folds: int,
+                  current_fold_id: int,
+                  cv_seed: int,
+                  transform: torchvision.transforms.Compose) -> torch.utils.data.Dataset:
 
-    path_dataset = os.path.join(os.path.realpath(path_data), 'train' if train else 'val')
-    dataset = torchvision.datasets.ImageFolder(path_dataset, transform)
+    if partition in {'train', 'valid'}:
+
+        if n_folds > 1:  # this is a cross-validation experiment
+
+            path_data = os.path.join(path_data, 'train')
+            dataset = torchvision.datasets.ImageFolder(root=path_data, transform=transform)
+            train_fold_indices, valid_fold_indices = default_dataset_cv_split(dataset=dataset, n_folds=n_folds, current_fold_id=current_fold_id, cv_seed=cv_seed)
+
+            if partition == 'train':
+                dataset = torch.utils.data.Subset(dataset, train_fold_indices)
+            elif partition == 'valid':
+                dataset = torch.utils.data.Subset(dataset, valid_fold_indices)
+
+        else:
+            path_data = os.path.join(path_data, 'train' if partition == 'train' else 'val')
+            dataset = torchvision.datasets.ImageFolder(root=path_data, transform=transform)
+
+    else:
+        assert partition == 'test'
+        raise NotImplementedError
 
     return dataset
-

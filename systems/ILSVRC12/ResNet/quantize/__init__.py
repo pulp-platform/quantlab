@@ -19,10 +19,4 @@
 # limitations under the License.
 # 
 
-from .taskstatistic import ResNetStatistic
-
-
-__all__ = [
-    'ResNetStatistic',
-]
-
+from .all_ana import all_ana_recipe, all_ana_controller
