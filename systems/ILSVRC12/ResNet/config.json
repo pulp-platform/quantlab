@@ -36,7 +36,7 @@
             "function": "all_ana_recipe",
             "kwargs": {
                 "quantizer_spec": {
-                    "nbits": 16,
+                    "nbits": 4,
                     "signed": false,
                     "balanced": false,
                     "eps": 0.07
