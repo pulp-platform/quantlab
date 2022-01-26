@@ -101,9 +101,9 @@
             "compute_profiling_statistic": true,
             "compute_task_statistic": true,
             "tensor_statistics": [
-                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 287}},
-                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 287}},
-                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 287, "n_inputs": 4}}
+                {"class": "DistributionOutputFeaturesComponents",   "kwargs": {"name": "pilot.0", "start": 0, "period": 229}},
+                {"class": "DistributionOutgoingGradientComponents", "kwargs": {"name": "pilot.1", "start": 0, "period": 229}},
+                {"class": "OutputFeaturesSnapshot",                 "kwargs": {"name": "pilot.2", "start": 0, "period": 229, "n_inputs": 4}}
             ]
         },
         "valid": {
