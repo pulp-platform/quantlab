@@ -3,7 +3,7 @@
         "train": {
             "dataset": {
                 "transform": {
-                    "class": "TransformA",
+                    "class": "TransformB",
                     "kwargs": {
                         "augment": true
                     }
@@ -16,7 +16,7 @@
         "valid": {
             "dataset": {
                 "transform": {
-                    "class": "TransformA",
+                    "class": "TransformB",
                     "kwargs": {
                         "augment": false
                     }

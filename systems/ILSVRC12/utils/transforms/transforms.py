@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2022 ETH Zurich. All rights reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -153,3 +153,9 @@ class ILSVRC12Normalize(Normalize):
     def __init__(self):
         super(ILSVRC12Normalize, self).__init__(**ILSVRC12STATS['normalize'])
 
+
+class ILSVRC12NormalizeHomogeneous(Normalize):
+    def __init__(self):
+        mean = torch.mean(torch.Tensor(ILSVRC12STATS['normalize']['mean']))
+        std  = torch.mean(torch.Tensor(ILSVRC12STATS['normalize']['std']))
+        super(ILSVRC12NormalizeHomogeneous, self).__init__(mean=mean, std=std)
