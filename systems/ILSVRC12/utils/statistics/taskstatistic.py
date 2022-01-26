@@ -75,7 +75,7 @@ class ILSVRC12Statistic(TaskStatistic):
         pp_ypr = self._postprocess_pr_fun(ypr)
 
         # compute the batch statistics for the current process
-        bs          = torch.Tensor([ypr.shape[0]]).to(dtype=torch.int64)
+        bs          = torch.Tensor([ypr.shape[0]]).to(dtype=torch.int64, device=self._platform.device)
         pp_ypr_top5 = torch.topk(pp_ypr, 5, dim=1).indices
         correct     = pp_ygt == pp_ypr_top5
 
