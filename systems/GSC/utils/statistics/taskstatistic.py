@@ -8,7 +8,7 @@ from manager.meter import WriterStub
 from typing import Union, Callable, List
 
 
-class GoogleSpeechStatistic(TaskStatistic):
+class GSCStatistic(TaskStatistic):
 
     def __init__(self,
                  platform: PlatformManager, writerstub: WriterStub,
@@ -18,9 +18,9 @@ class GoogleSpeechStatistic(TaskStatistic):
                  postprocess_pr_fun: Callable[[Union[torch.Tensor, List[torch.Tensor]]], torch.Tensor]):  # consider the possibility of deep supervision
 
         name = "Accuracy"
-        super(GoogleSpeechStatistic, self).__init__(platform=platform, writerstub=writerstub,
-                                                    n_epochs=n_epochs, n_batches=n_batches, name=name,
-                                                    train=train)
+        super(GSCStatistic, self).__init__(platform=platform, writerstub=writerstub,
+                                           n_epochs=n_epochs, n_batches=n_batches, name=name,
+                                           train=train)
 
         self._total_tracked = None
         self._total_correct = None

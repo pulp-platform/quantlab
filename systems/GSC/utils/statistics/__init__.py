@@ -1,1 +1,1 @@
-from .taskstatistic import GoogleSpeechStatistic
+from .taskstatistic import GSCStatistic

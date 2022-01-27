@@ -1,6 +1,6 @@
 import torch
 
-from systems.GoogleSpeech.utils.statistics import GoogleSpeechStatistic
+from systems.GSC.utils.statistics import GSCStatistic
 
 from manager.platform import PlatformManager
 from manager.meter import WriterStub
@@ -14,7 +14,7 @@ def _postprocess_pr(ypr: torch.Tensor) -> torch.Tensor:
     return ypr.argmax(dim=1).unsqueeze(-1)
 
 
-class DSCNNStatistic(GoogleSpeechStatistic):
+class DSCNNStatistic(GSCStatistic):
 
     def __init__(self,
                  platform: PlatformManager, writerstub: WriterStub,
