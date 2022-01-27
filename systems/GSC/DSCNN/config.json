@@ -1,0 +1,60 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "GSCToTensor",
+                    "kwargs": {}
+                }
+            },
+            "dataloader": {"bs": 128}
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "GSCToTensor",
+                    "kwargs": {}
+                }
+            },
+            "dataloader": {"bs": 128}
+        }
+    },
+    "network": {
+        "class": "DSCNN",
+        "kwargs": {"use_bias": false}
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "Adam",
+                "kwargs": {
+                    "lr": 0.001
+                }
+            }
+        },
+        "lr_sched": {
+            "class": "HandScheduler",
+            "kwargs": {
+                "schedule": {
+                    "15": 0.2,
+                    "25": 0.1,
+                    "35": 0.05
+                }
+            }
+        },
+        "n_epochs": 40
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    }
+}
