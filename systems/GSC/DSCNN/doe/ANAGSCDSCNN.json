@@ -1,0 +1,307 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "GSCToTensor",
+                    "kwargs": {}
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "GSCToTensor",
+                    "kwargs": {}
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        }
+    },
+    "network": {
+        "class": "DSCNN",
+        "kwargs": {
+            "use_bn_features": true,
+            "use_bias_classifier": false
+        },
+        "quantize": {
+            "function": "all_ana_recipe",
+            "kwargs": {
+                "quantizer_spec_conv": {
+                    "nbits": 4,
+                    "signed": true,
+                    "balanced": false,
+                    "eps": 0.07
+                },
+                "quantizer_spec_act": {
+                    "nbits": 4,
+                    "signed": false,
+                    "balanced": false,
+                    "eps": 0.07
+                },
+                "noise_type": "uniform",
+                "strategy": "mode"
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "Adam",
+                "kwargs": {
+                    "lr": 0.001
+                }
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "100": 0.1
+                    }
+                }
+            }
+        },
+        "n_epochs": 120,
+        "quantize": {
+            "function": "all_ana_controller",
+            "kwargs": {
+                "ctrl_spec": [
+                    {
+                        "modules": [
+                            "pilot.1.0",
+                            "pilot.1.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 80,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 80,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    },
+                    {
+                        "modules": [
+                            "features.0.1.0",
+                            "features.0.1.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 70,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 70,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    },
+                    {
+                        "modules": [
+                            "features.0.2.0",
+                            "features.0.2.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 60,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 60,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    },
+                    {
+                        "modules": [
+                            "features.1.1.0",
+                            "features.1.1.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 50,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 50,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    },
+                    {
+                        "modules": [
+                            "features.1.2.0",
+                            "features.1.2.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 40,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 40,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    },
+                    {
+                        "modules": [
+                            "features.2.1.0",
+                            "features.2.1.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 30,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 30,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    },
+                    {
+                        "modules": [
+                            "features.2.2.0",
+                            "features.2.2.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 20,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 20,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    },
+                    {
+                        "modules": [
+                            "features.3.1.0",
+                            "features.3.1.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 10,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 10,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    },
+                    {
+                        "modules": [
+                            "features.3.2.0",
+                            "features.3.2.2"
+                        ],
+                        "mi": {
+                            "beta": 0.0,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 0,
+                                "tend": 90,
+                                "alpha": 0
+                            }
+                        },
+                        "sigma": {
+                            "beta": 0.5,
+                            "fun": "bws",
+                            "kwargs": {
+                                "tstart": 0,
+                                "tend": 90,
+                                "alpha": 2
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    }
+}

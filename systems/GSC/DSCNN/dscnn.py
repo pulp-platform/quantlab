@@ -4,99 +4,98 @@ import torch.nn as nn
 
 class DSCNN(torch.nn.Module):
 
-    def __init__(self, use_bias=False, seed: int = -1):
+    def __init__(self, use_bn_features: bool = True, use_bias_classifier: bool = False, num_classes: int = 12, seed: int = -1):
 
         super(DSCNN, self).__init__()
 
-        torch.manual_seed(seed)
+        self.pilot = self._make_pilot(64, use_bn_features)
+        self.features = self._make_features(64, use_bn_features)
+        self.avgpool = nn.AvgPool2d(kernel_size=(25, 5), stride=1)
+        self.classifier = nn.Linear(64, num_classes, bias=use_bias_classifier)  # logits
 
-        # CONV2D replacing Block1 for evaluation purposes
-        # self.pad2  = nn.ConstantPad2d((1, 1, 1, 1), value=0.)
-        # self.conv2 = torch.nn.Conv2d(in_channels = 64, out_channels = 64, kernel_size = (3, 3), stride = (1, 1), groups = 1, bias = use_bias)
-        self.pad1 = nn.ConstantPad2d((1, 1, 5, 5), value=0.0)
-        self.conv1 = torch.nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(10, 4), stride=(2, 2), bias=use_bias)
-        self.bn1 = torch.nn.BatchNorm2d(64)
-        self.relu1 = torch.nn.ReLU()
+        self._initialize_weights(seed=seed)
 
-        self.pad2 = nn.ConstantPad2d((1, 1, 1, 1), value=0.)
-        self.conv2 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), groups=64, bias=use_bias)
-        self.bn2 = torch.nn.BatchNorm2d(64)
-        self.relu2 = torch.nn.ReLU()
-        self.conv3 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), bias=use_bias)
-        self.bn3 = torch.nn.BatchNorm2d(64)
-        self.relu3 = torch.nn.ReLU()
+    @staticmethod
+    def _make_pilot(out_channels: int, use_bn: bool) -> nn.Sequential:
 
-        self.pad4 = nn.ConstantPad2d((1, 1, 1, 1), value=0.)
-        self.conv4 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), groups=64, bias=use_bias)
-        self.bn4 = torch.nn.BatchNorm2d(64)
-        self.relu4 = torch.nn.ReLU()
-        self.conv5 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), bias=use_bias)
-        self.bn5 = torch.nn.BatchNorm2d(64)
-        self.relu5 = torch.nn.ReLU()
+        pad = nn.ConstantPad2d((1, 1, 5, 5), value=0.0)
+        modules = []
+        modules += [nn.Conv2d(in_channels=1, out_channels=out_channels, kernel_size=(10, 4), stride=(2, 2), bias=not use_bn)]
+        modules += [nn.BatchNorm2d(64)]
+        modules += [nn.ReLU(inplace=True)]
 
-        self.pad6 = nn.ConstantPad2d((1, 1, 1, 1), value=0.)
-        self.conv6 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), groups=64, bias=use_bias)
-        self.bn6 = torch.nn.BatchNorm2d(64)
-        self.relu6 = torch.nn.ReLU()
-        self.conv7 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), bias=use_bias)
-        self.bn7 = torch.nn.BatchNorm2d(64)
-        self.relu7 = torch.nn.ReLU()
+        return nn.Sequential(*[pad, nn.Sequential(*modules)])
 
-        self.pad8 = nn.ConstantPad2d((1, 1, 1, 1), value=0.)
-        self.conv8 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), groups=64, bias=use_bias)
-        self.bn8 = torch.nn.BatchNorm2d(64)
-        self.relu8 = torch.nn.ReLU()
-        self.conv9 = torch.nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(1, 1), stride=(1, 1), bias=use_bias)
-        self.bn9 = torch.nn.BatchNorm2d(64)
-        self.relu9 = torch.nn.ReLU()
+    @staticmethod
+    def _make_dw_layer(n_channels: int, use_bn: bool) -> nn.Sequential:
 
-        self.avg = torch.nn.AvgPool2d(kernel_size=(25, 5), stride=1)
-        self.fc1 = torch.nn.Linear(64, 12, bias=use_bias)  # logits
-        # self.soft  = torch.nn.Softmax(dim=1)  # class probabilities
-        # self.soft = F.log_softmax(x, dim=1)  # class log-probabilities
+        modules = []
+        modules += [nn.Conv2d(in_channels=n_channels, out_channels=n_channels, kernel_size=(3, 3), stride=(1, 1), groups=64, bias=not use_bn)]
+        modules += [nn.BatchNorm2d(n_channels)] if use_bn else []
+        modules += [nn.ReLU(inplace=True)]
+
+        return nn.Sequential(*modules)
+
+    @staticmethod
+    def _make_pw_layer(n_channels: int, use_bn: bool) -> nn.Sequential:
+
+        modules = []
+        modules += [nn.Conv2d(in_channels=n_channels, out_channels=n_channels, kernel_size=(1, 1), stride=(1, 1), bias=not use_bn)]
+        modules += [nn.BatchNorm2d(n_channels)] if use_bn else []
+        modules += [nn.ReLU(inplace=True)]
+
+        return nn.Sequential(*modules)
+
+    @staticmethod
+    def _make_block(n_channels: int, use_bn: bool) -> nn.Sequential:
+
+        modules = []
+        modules += [nn.ConstantPad2d((1, 1, 1, 1), value=0.)]
+        modules += [DSCNN._make_dw_layer(n_channels, use_bn)]
+        modules += [DSCNN._make_pw_layer(n_channels, use_bn)]
+
+        return nn.Sequential(*modules)
+
+    @staticmethod
+    def _make_features(n_channels: int, use_bn: bool) -> nn.Sequential:
+
+        modules = []
+        modules += [DSCNN._make_block(n_channels, use_bn)]
+        modules += [DSCNN._make_block(n_channels, use_bn)]
+        modules += [DSCNN._make_block(n_channels, use_bn)]
+        modules += [DSCNN._make_block(n_channels, use_bn)]
+
+        return nn.Sequential(*modules)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
-        x = self.pad1(x)
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu1(x)
+        x = self.pilot(x)
+        x = self.features(x)
+        x = self.avgpool(x)
 
-        x = self.pad2(x)
-        x = self.conv2(x)
-        x = self.bn2(x)
-        x = self.relu2(x)
-        x = self.conv3(x)
-        x = self.bn3(x)
-        x = self.relu3(x)
+        x = x.view(x.size(0), -1)  # https://stackoverflow.com/questions/57234095/what-is-the-difference-of-flatten-and-view-1-in-pytorch
 
-        x = self.pad4(x)
-        x = self.conv4(x)
-        x = self.bn4(x)
-        x = self.relu4(x)
-        x = self.conv5(x)
-        x = self.bn5(x)
-        x = self.relu5(x)
-
-        x = self.pad6(x)
-        x = self.conv6(x)
-        x = self.bn6(x)
-        x = self.relu6(x)
-        x = self.conv7(x)
-        x = self.bn7(x)
-        x = self.relu7(x)
-
-        x = self.pad8(x)
-        x = self.conv8(x)
-        x = self.bn8(x)
-        x = self.relu8(x)
-        x = self.conv9(x)
-        x = self.bn9(x)
-        x = self.relu9(x)
-
-        x = self.avg(x)
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
+        x = self.classifier(x)
 
         return x
-        # return F.log_softmax(x, dim=1)
+
+    def _initialize_weights(self, seed: int):
+
+        if seed >= 0:
+            torch.manual_seed(seed)
+
+        for m in self.modules():
+
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
+            elif isinstance(m, nn.BatchNorm2d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+            elif isinstance(m, nn.Linear):
+                nn.init.normal_(m.weight, 0, 0.01)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)

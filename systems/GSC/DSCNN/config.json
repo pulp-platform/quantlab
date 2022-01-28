@@ -7,7 +7,9 @@
                     "kwargs": {}
                 }
             },
-            "dataloader": {"bs": 128}
+            "dataloader": {
+                "bs": 256
+            }
         },
         "valid": {
             "dataset": {
@@ -16,30 +18,16 @@
                     "kwargs": {}
                 }
             },
-            "dataloader": {"bs": 128}
+            "dataloader": {
+                "bs": 256
+            }
         }
     },
     "network": {
         "class": "DSCNN",
-        "kwargs": {"use_bias": false},
-        "quantize": {
-            "function": "all_ana_recipe",
-            "kwargs": {
-                "quantizer_spec_conv": {
-                    "nbits": 4,
-                    "signed": true,
-                    "balanced": false,
-                    "eps": 0.07
-                },
-                "quantizer_spec_act": {
-                    "nbits": 4,
-                    "signed": false,
-                    "balanced": false,
-                    "eps": 0.07
-                },
-                "noise_type": "logistic",
-                "strategy": "mode"
-            }
+        "kwargs": {
+            "use_bn_features": true,
+            "use_bias_classifier": false
         }
     },
     "training": {
@@ -53,242 +41,19 @@
                 "kwargs": {
                     "lr": 0.001
                 }
-            }
-        },
-        "lr_sched": {
-            "class": "HandScheduler",
-            "kwargs": {
-                "schedule": {
-                    "15": 0.2,
-                    "25": 0.1,
-                    "35": 0.05
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "15": 0.2,
+                        "25": 0.1,
+                        "35": 0.05
+                    }
                 }
             }
         },
-        "n_epochs": 40,
-        "quantize": {
-            "function": "all_ana_controller",
-            "kwargs": {
-                "ctrl_spec": [
-                    {
-                        "modules": [
-                            "conv1",
-                            "relu1"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "conv2",
-                            "relu2"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "conv3",
-                            "relu3"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "conv4",
-                            "relu4"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "conv5",
-                            "relu5"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "conv6",
-                            "relu6"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "conv7",
-                            "relu7"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "conv8",
-                            "relu8"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "conv9",
-                            "relu9"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        }
-                    }
-                ]
-            }
-        }
+        "n_epochs": 40
     },
     "meters": {
         "train": {
