@@ -89,7 +89,7 @@ def get_wav_file_metadata(wav_path: os.PathLike) -> GSCMeta:
 
     # extract file metadata
     _, word = os.path.split(wav_path_dir)
-    speaker_id = wav_file_filename.split('_')[0]  # anonymised speaker identity (eight-digit hexadecimal number)
+    speaker_id = '' if word == BACKGROUND_NOISE_LABEL else wav_file_filename.split('_')[0]  # anonymised speaker identity (eight-digit hexadecimal number)
 
     return GSCMeta(path=wav_path, word=word, speaker_id=speaker_id)
 
@@ -150,10 +150,15 @@ class GSCPartitioner(object):
         hash_name_hashed = hashlib.sha1(gsc_file.speaker_id.encode()).hexdigest()
         fraction = (int(hash_name_hashed, 16) % (MAX_NUM_WAVS_PER_CLASS + 1)) / float(MAX_NUM_WAVS_PER_CLASS)  # remember: N % K is an integer going from 0 to K - 1
 
-        if fraction < self._test_fraction:
-            set_ = GSCPartition.TEST.value
-        elif fraction < (self._test_fraction + self._valid_fraction):
+        # if fraction < self._test_fraction:
+        #     set_ = GSCPartition.TEST.value
+        # elif fraction < (self._test_fraction + self._valid_fraction):
+        #     set_ = GSCPartition.VALID.value
+        # TODO: legacy
+        if fraction < self._valid_fraction:
             set_ = GSCPartition.VALID.value
+        elif fraction < (self._valid_fraction + self._test_fraction):
+            set_ = GSCPartition.TEST.value
         else:
             set_ = GSCPartition.TRAIN.value
 
@@ -239,8 +244,12 @@ class GSCMapper(object):
     def _finalise_file_lists(self, silence_ratio: float, unknown_ratio: float):
         """Add *silence* and *unknown* samples to the data sets."""
 
+        random.seed(RANDOM_SEED)
+
         # we select an arbitrary file since the waveform will anyway be zeroed-out to represent silence
-        gsc_file = self._files_background[0]
+        # gsc_file = self._files[GSCPartition.TEST.value][0]
+        # TODO: legacy
+        gsc_file = self._files[GSCPartition.TRAIN.value][0]
 
         for k in GSCPartition:
 
@@ -253,7 +262,7 @@ class GSCMapper(object):
 
             # add randomly chosen unknown word files
             n_unknown_files = int(math.ceil(unknown_ratio * set_size))
-            random.Random(RANDOM_SEED).shuffle(self._files_unknown[k.value])
+            random.shuffle(self._files_unknown[k.value])
             set_files.extend(self._files_unknown[k.value][:n_unknown_files])
 
     @property
