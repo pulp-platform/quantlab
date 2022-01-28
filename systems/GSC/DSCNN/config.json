@@ -3,7 +3,7 @@
         "train": {
             "dataset": {
                 "transform": {
-                    "class": "GSCToTensor",
+                    "class": "NullTransform",
                     "kwargs": {}
                 }
             },
@@ -14,7 +14,7 @@
         "valid": {
             "dataset": {
                 "transform": {
-                    "class": "GSCToTensor",
+                    "class": "NullTransform",
                     "kwargs": {}
                 }
             },
