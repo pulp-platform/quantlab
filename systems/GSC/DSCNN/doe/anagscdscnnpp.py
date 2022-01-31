@@ -280,5 +280,5 @@ def draw_line_plot(exp_dofs:      Dict[str, List],
     plt.show()
 
 
-draw_line_plot_accuracy_valid = functools.partial(draw_line_plot, scalar_tag='Accuracy/Valid', x_min=0, x_max=500, x_label='Epoch', y_min=0.0, y_max=100.0, y_label='Accuracy (%)', ticks_size=20, axis_size=24, legend_size=20)
+draw_line_plot_accuracy_valid = functools.partial(draw_line_plot, scalar_tag='Accuracy/Valid', x_min=0, x_max=120, x_label='Epoch', y_min=0.0, y_max=100.0, y_label='Accuracy (%)', ticks_size=20, axis_size=24, legend_size=20)
 
