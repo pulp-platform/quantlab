@@ -331,7 +331,8 @@ class LogsManager(object):
             net.load_state_dict(ckpt['net'])
 
             # optimizer hyper-parameters
-            opt.load_state_dict(ckpt['gd']['opt'])
+            if opt is not None:
+                opt.load_state_dict(ckpt['gd']['opt'])
             if lr_sched is not None:
                 assert ckpt['gd']['lr_sched'] is not None
                 lr_sched.load_state_dict(ckpt['gd']['lr_sched'])

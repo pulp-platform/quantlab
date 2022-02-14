@@ -81,22 +81,16 @@ def test(args):
     net         = networkassistant.prepare(platform, logbook.fold_id)
     # training
     loss_fn     = trainingassistant.prepare_loss(net)
-    gd          = trainingassistant.prepare_gd(platform, net)
     qnt_ctrls   = trainingassistant.prepare_qnt_ctrls(net)
     # meters
-    test_meter  = testmeterassistant.prepare(platform, len(test_loader), net, gd.opt)
+    test_meter  = testmeterassistant.prepare(platform, len(test_loader), net)
 
     # master-workers synchronisation point: load the desired checkpoint from the fold's logs folder
     if (not platform.is_horovod_run) or platform.is_master:
-        logbook.epoch_id = logbook.logs_manager.load_checkpoint(platform, net, gd.opt, gd.lr_sched, qnt_ctrls, ckpt_id=args.ckpt_id)
+        logbook.epoch_id = logbook.logs_manager.load_checkpoint(platform, net, opt=None, lr_sched=None, qnt_ctrls=qnt_ctrls, ckpt_id=args.ckpt_id)
     if platform.is_horovod_run:
         logbook.epoch_id = platform.hvd.broadcast_object(logbook.epoch_id, root_rank=platform.master_rank, name='epoch_id')
         platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
-        platform.hvd.broadcast_optimizer_state(gd.opt, root_rank=platform.master_rank)
-        if gd.lr_sched is not None:
-            sd_lr_sched = platform.hvd.broadcast_object(gd.lr_sched.state_dict(), root_rank=platform.master_rank, name='sd_lr_sched')
-            if not platform.is_master:
-                gd.lr_sched.load_state_dict(sd_lr_sched)
         for i, c in enumerate(qnt_ctrls):
             sd_c = platform.hvd.broadcast_object(c.state_dict(), root_rank=platform.master_rank, name='sd_c_{}'.format(i))
             if not platform.is_master:
