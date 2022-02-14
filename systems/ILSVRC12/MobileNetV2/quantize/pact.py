@@ -19,6 +19,10 @@
 # limitations under the License.
 # 
 
+import json
+from typing import Optional
+
+import torch
 from torch import nn
 
 import quantlib.editing.lightweight as qlw
@@ -31,7 +35,9 @@ from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
 
 def pact_recipe(net : nn.Module,
-                config : dict):
+                config : dict,
+                precision_spec_file : Optional[str] = None,
+                finetuning_ckpt : Optional[str] = None):
 
     # config is expected to contain 3 keys for each layer type:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
@@ -53,6 +59,21 @@ def pact_recipe(net : nn.Module,
     act_cfg = config["PACTUnsignedAct"]
 
     harmonize_cfg = config["harmonize"]
+
+     # the precision_spec_file is (for example) dumped by a Bayesian Bits
+    # training run and overrides the 'n_levels' spec from config.json
+    if precision_spec_file is not None:
+        with open(precision_spec_file, 'r') as fh:
+            prec_override_spec = json.load(fh)['layer_levels']
+        # deal with nn.DataParallel wrapping
+
+        if all(k.startswith('module.') for k in prec_override_spec.keys()):
+            prec_override_spec = {k.lstrip('module.'):v for k,v in prec_override_spec.items()}
+        for cfg in (conv_cfg, lin_cfg, act_cfg):
+            appl_keys = [k for k in prec_override_spec.keys() if k in cfg.keys()]
+            for k in appl_keys:
+                cfg[k]['n_levels'] = prec_override_spec[k]
+
 
     def make_rules(cfg : dict,
                    rule : type):
@@ -86,6 +107,13 @@ def pact_recipe(net : nn.Module,
     # now harmonize the graph according to the configuration
     harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
     final_net = harmonize_pass(net)
+
+
+    if finetuning_ckpt is not None:
+        state_dict = torch.load(finetuning_ckpt)['net']
+        if all(k.startswith('module.') for k in state_dict.keys()):
+            state_dict = {k.lstrip('module.'):v for k,v in state_dict.items()}
+        lwe._graph.net.load_state_dict(state_dict, strict=False)
 
     return final_net
 

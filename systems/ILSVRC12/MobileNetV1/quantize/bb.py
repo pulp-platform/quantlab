@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Optional
 from functools import partial
 import torch
 from torch import nn
@@ -53,7 +53,8 @@ class ReplaceActBBRule(LightweightRule):
 
 
 def bb_recipe(net : nn.Module,
-              config : dict):
+              config : dict,
+              gate_init : Optional[float] = 2.):
 
     filter_conv2d = TypeFilter(nn.Conv2d)
     filter_linear = TypeFilter(nn.Linear)
@@ -97,7 +98,7 @@ def bb_recipe(net : nn.Module,
     net = lwe._graph.net
 
     #attach gate controllers using the appropriate pass
-    ctrl_pass = BBControllerInitPass(shape_in=(1, 3, 224, 224))
+    ctrl_pass = BBControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init)
     net_traced = BB_symbolic_trace(net)
 
     net_final = ctrl_pass.apply(net_traced)
@@ -107,15 +108,23 @@ def bb_recipe(net : nn.Module,
     return net_final
 
 
-def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict = {}, kwargs_activation : dict = {}):
+def get_bb_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict = {}, kwargs_activation : dict = {}, export_file : Optional[str] = None):
     net_nodes = LightweightGraph.build_nodes_list(net)
     lin_filter = TypeFilter(BBLinear) | TypeFilter(BBConv2d)
     act_filter = TypeFilter(BBAct)
+    bb_filter = lin_filter | act_filter
     lin_modules = [n.module for n in lin_filter(net_nodes)]
     act_modules = [n.module for n in act_filter(net_nodes)]
+
 
     lin_ctrl = PACTLinearController(lin_modules, schedules['linear'], **kwargs_linear)
     act_ctrl = PACTActController(act_modules, schedules['activation'], **kwargs_activation)
 
-    return lin_ctrl, act_ctrl
+    bb_nodes = bb_filter(net_nodes)
+
+    if export_file is not None:
+        bb_export_ctrl = BBExportController(bb_nodes, export_file, input_bitwidth=8, net=net)
+        return lin_ctrl, act_ctrl, bb_export_ctrl
+    else:
+        return lin_ctrl, act_ctrl
 
