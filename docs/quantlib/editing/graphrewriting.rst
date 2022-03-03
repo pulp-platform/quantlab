@@ -19,8 +19,6 @@ For this reason, this section of the documentation is structured as follows:
 * the second sub-section will summarise the principles of *number representations* and *digital arithmetic*;
 * the last sub-section will illustrate some of the general-purpose graph rewriting rules implemented in QuantLab's quantlib sub-package.
 
-Due to the often device-specific nature of the required folding and casting operations, we refer the reader to the examples of arithmetic computational graph rewriting rules implemented in the :ref:`TWN accelerator <backends-twn-accelerator>` backend package.
-
 
 The algebraic approach to graph rewriting
 -----------------------------------------
