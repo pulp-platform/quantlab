@@ -81,4 +81,3 @@ def default_dataset_cv_split(dataset: torch.utils.data.Dataset,
     valid_fold_indices = folds_indices[current_fold_id]
 
     return train_fold_indices, valid_fold_indices
-

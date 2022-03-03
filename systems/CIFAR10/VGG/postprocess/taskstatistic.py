@@ -45,4 +45,3 @@ class VGGStatistic(CIFAR10Statistic):
                                            n_epochs=n_epochs, n_batches=n_batches,
                                            train=train,
                                            postprocess_gt_fun=_postprocess_gt, postprocess_pr_fun=_postprocess_pr)
-

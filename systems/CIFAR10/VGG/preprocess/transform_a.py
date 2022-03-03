@@ -40,4 +40,3 @@ class TransformA(Compose):
         transforms.append(CIFAR10Normalize())
 
         super(TransformA, self).__init__(transforms)
-

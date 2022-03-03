@@ -91,4 +91,3 @@ class CIFAR10Statistic(TaskStatistic):
         if (not self._platform.is_horovod_run) or self._platform.is_master:
             message = manager.QUANTLAB_PREFIX + "Epoch [{:3d}/{:3d}] : Batch [{:5d}/{:5d}] - Accuracy: {:6.2f}%".format(self._epoch_id, self._n_epochs, self._batch_id, self._n_batches, self._value.item())
             print(message)
-

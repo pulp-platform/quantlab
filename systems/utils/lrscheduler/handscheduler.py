@@ -56,4 +56,3 @@ class HandScheduler(_LRScheduler):
                 param_group['lr'] = lr
 
         self.last_epoch = just_finished_epoch
-

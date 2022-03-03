@@ -20,4 +20,3 @@
 # 
 
 from .handscheduler import HandScheduler
-

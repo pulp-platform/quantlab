@@ -40,4 +40,3 @@ class CIFAR10InputsSnapshot(RGBInputsSnapshot):
                                                     n_epochs=n_epochs, n_batches=n_batches,
                                                     start=start, period=period,
                                                     name=name, module=module, n_inputs=n_inputs, preprocessing_type=preprocessing_type, preprocessing_stats=CIFAR10STATS['normalize'], writer_kwargs=writer_kwargs)
-
