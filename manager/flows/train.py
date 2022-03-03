@@ -5,7 +5,7 @@
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # Georg Rutishauser <georgr@iis.ee.ethz.ch>
 #
-# Copyright (c) 2020-2021 ETH Zurich. All rights reserved.
+# Copyright (c) 2020-2022 ETH Zuerich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
