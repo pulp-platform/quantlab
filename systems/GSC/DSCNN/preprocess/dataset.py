@@ -174,5 +174,6 @@ class GSCDataset(torch.utils.data.Dataset):
         spectrogram = mfcc_transformation(waveform)
         spectrogram = spectrogram[:, :, :parameters['spectrogram_length']].permute(0, 2, 1)
         spectrogram = torch.clip(spectrogram + 128.0, 0, 255.0)  # shift data in [0, 255] interval to match Dory request for uint8 inputs
+        spectrogram = torch.floor(spectrogram)                   # integerise at training time, so fake-to-true conversion should be more unlikely to yield differences
 
         return torch.Tensor(spectrogram)
