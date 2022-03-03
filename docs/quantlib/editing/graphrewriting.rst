@@ -38,5 +38,3 @@ The input to a derivation is called its *source graph*, whereas its output is ca
 
 Principles of number representations and digital arithmetic
 -----------------------------------------------------------
-
-

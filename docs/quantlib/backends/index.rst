@@ -14,8 +14,8 @@ These steps usually include:
 * *compilation*, the process through which the C/C++ files are transformed into executable machine code for the target device; this step usually includes code optimisation as a sub-step;
 * *execution*, the process through which your QNN program is running on the target device and processing real-world data points.
 
-The backends package consists of multiple *backend sub-packages* whose purpose is performing the first two steps: graph optimisation and code generation.
-Compilation and execution should be taken care of using device-specific tools.
+The backends package consists of multiple *backend sub-packages* whose purpose is performing the first two steps: graph optimisation and, possibly, code generation.
+Compilation and execution should be taken care of by using device-specific tools.
 
 
 .. _supported-backends:
@@ -23,5 +23,3 @@ Compilation and execution should be taken care of using device-specific tools.
 .. toctree::
    :maxdepth: 2
    :caption: Supported backends:
-
-   twnaccelerator/index

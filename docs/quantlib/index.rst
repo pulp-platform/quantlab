@@ -11,7 +11,7 @@ This package consists of three sub-packages:
 * the :ref:`backends sub-package <quantlib-backends-package>` contains the implementations of graph optimisation and code generation functionalities for several hardware devices.
 
 Before giving an overview of the structure of this package and its abstractions, we must define some terminology.
-We call a *floating-point graph* a PyTorch :py:class:`Module`...
+.. todo: We call a *floating-point graph* a PyTorch :py:class:`Module`...
 
 
 .. toctree::

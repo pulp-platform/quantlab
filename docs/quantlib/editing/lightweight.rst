@@ -1,4 +1,2 @@
 Lightweight graph editing
 =========================
-
-
