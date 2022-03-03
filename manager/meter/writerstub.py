@@ -36,4 +36,3 @@ class WriterStub(object):
     @writer.setter
     def writer(self, summarywriter: SummaryWriter) -> None:
         self._writer = summarywriter
-

@@ -294,4 +294,3 @@ class InstantaneousCallbackBasedStatistic(InstantaneousStatistic, CallbackBasedS
 
     def _stop_observing(self, *args):
         raise NotImplementedError
-

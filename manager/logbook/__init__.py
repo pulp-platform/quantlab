@@ -20,4 +20,3 @@
 # 
 
 from .logbook import Logbook
-

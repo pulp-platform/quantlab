@@ -229,4 +229,3 @@ class Logbook(object):
     @property
     def ckpt_period(self) -> int:
         return self.config['experiment']['ckpt_period']
-

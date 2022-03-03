@@ -47,4 +47,3 @@ class TaskStatistic(RunningCallbackFreeStatistic):
 
     def update(self, ygt: torch.Tensor, ypr: Union[torch.Tensor, List[torch.Tensor]]):  # consider the possibility of deep supervision
         raise NotImplementedError
-

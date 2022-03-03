@@ -149,4 +149,3 @@ class Meter(object):
             self._is_best   = True
         else:
             self._is_best = False
-

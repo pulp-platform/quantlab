@@ -128,4 +128,3 @@ def test(args):
             test_meter.update(ygt, ypr, loss)
             test_meter.toc(ygt)
             test_meter.stop_observing()
-

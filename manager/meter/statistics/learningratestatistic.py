@@ -52,4 +52,3 @@ class LearningRateStatistic(InstantaneousCallbackFreeStatistic):
 
     def _stop_observing(self):
         pass
-

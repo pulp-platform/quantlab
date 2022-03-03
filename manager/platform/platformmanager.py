@@ -282,4 +282,3 @@ class PlatformManager(object):
 
         # synched flush to console; in multi-process runs, this should avoid weird interleavings of lines output by different processes
         print(message)
-

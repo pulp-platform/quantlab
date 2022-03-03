@@ -131,4 +131,3 @@ class OutputFeaturesSnapshot(InstantaneousCallbackBasedStatistic):
 
     def _stop_observing(self):
         self._handle.remove()
-

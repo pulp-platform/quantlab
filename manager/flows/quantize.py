@@ -25,4 +25,3 @@ import IPython
 def quantize(args):
 
     IPython.embed()
-

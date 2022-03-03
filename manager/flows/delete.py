@@ -32,4 +32,3 @@ def delete(args):
 
     logbook.boot_logs_manager(exp_id=args.exp_id)
     logbook.logs_manager.destroy_exp_folder()
-

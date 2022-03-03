@@ -40,4 +40,3 @@ class QuantLabLibrary(object):
     @property
     def package(self):
         return self._module.__package__
-

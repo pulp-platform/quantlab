@@ -38,4 +38,3 @@ def configure(args):
     logbook.boot_logs_manager()
     logbook.logs_manager.create_exp_folder()
     logbook.logs_manager.store_config(logbook.config)
-

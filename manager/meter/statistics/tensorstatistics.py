@@ -423,4 +423,3 @@ class MeanUpdateNormWeightNormRatio(InstantaneousCallbackFreeStatistic):
                 self._writer.add_scalar(self._tag, torch.mean(ratios), global_step=self._global_step, **self._writer_kwargs)
             except AttributeError:  # ``SummaryWriter`` has not been instantiated
                 pass
-

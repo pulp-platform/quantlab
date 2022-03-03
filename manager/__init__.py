@@ -20,4 +20,3 @@
 # 
 
 QUANTLAB_PREFIX = "[QuantLab] "
-

@@ -28,4 +28,3 @@ def platform(args):
     platform.startup(horovod=args.horovod)
 
     platform.show()
-

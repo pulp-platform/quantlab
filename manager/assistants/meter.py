@@ -182,4 +182,3 @@ class MeterAssistant(object):
         meter = self._assemble_meter(platform=platform, n_batches=n_batches, net=net, opt=opt)
 
         return meter
-

@@ -163,4 +163,3 @@ class NetworkAssistant(object):
             platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
         return net
-

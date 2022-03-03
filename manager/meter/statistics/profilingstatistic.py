@@ -78,4 +78,3 @@ class ProfilingStatistic(InstantaneousCallbackFreeStatistic):
         if self._is_observing:
             self._stop_observing(bs)
             self._is_observing = False
-

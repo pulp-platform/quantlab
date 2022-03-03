@@ -83,4 +83,3 @@ class LossStatistic(RunningCallbackFreeStatistic):
         if (not self._platform.is_horovod_run) or self._platform.is_master:
             message = manager.QUANTLAB_PREFIX + "Epoch [{:3d}/{:3d}] : Batch [{:5d}/{:5d}] - {}: {:10.3f}".format(self._epoch_id, self._n_epochs, self._batch_id, self._n_batches, self._tag, self._value.item())
             print(message)
-

@@ -29,4 +29,3 @@ from .statistics.visionstatistics      import RGBInputsSnapshot      # template 
 from .statistics.visionstatistics      import *                      # general-purpose statistics for computer vision networks
 from .writerstub                       import WriterStub
 from .meter                            import Meter
-

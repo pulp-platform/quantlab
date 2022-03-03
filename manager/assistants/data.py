@@ -289,4 +289,3 @@ class DataAssistant(object):
         loader  = self.get_dataloader(platform, dataset, sampler)
 
         return loader
-

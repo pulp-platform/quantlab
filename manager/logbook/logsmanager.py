@@ -338,4 +338,3 @@ class LogsManager(object):
         print(message)
 
         return epoch_id
-

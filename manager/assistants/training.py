@@ -213,4 +213,3 @@ class TrainingAssistant(object):
     #     qnt_ctrls = self.prepare_qnt_ctrls(net)
     #
     #     return loss_fn, gd, qnt_ctrls
-
