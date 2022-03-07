@@ -1,0 +1,171 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "DVSAugmentTransform",
+                    "kwargs": {
+                        "augment": true,
+                        "downsample": 2,
+                        "p_flip": 0.1
+                    }
+                },
+                "load_data_set": {
+                    "kwargs": {
+                        "window_stride": 2,
+                        "cnn_stride": 1,
+                        "cnn_win": 8,
+                        "tcn_win": 5,
+                        "n_val_subjects": 6
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 128
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "DVSAugmentTransform",
+                    "kwargs": {
+                        "augment": false,
+                        "downsample": 2
+                    }
+                },
+                "load_data_set": {
+                    "kwargs": {
+                        "window_stride": 1,
+                        "cnn_stride": 3,
+                        "cnn_win": 8,
+                        "tcn_win": 5,
+                        "n_val_subjects": 6
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 256
+            }
+        }
+    },
+    "network": {
+        "class": "DVSHybridNet",
+        "kwargs": {
+            "cnn_cfg_key": "96_channels",
+            "tcn_cfg_key": "96_channels",
+            "pool_type": "max_pool",
+            "cnn_window": 8,
+            "tcn_window": 5,
+            "activation": "htanh",
+            "n_classes": 11,
+            "classifier_bias": false,
+            "twn_classifier": false,
+            "k_cnn": 3,
+            "classifier_type": "linear",
+            "classifier_out": "last",
+            "layer_order": "bn_pool",
+            "pretrained": "/home/georgr/projects/TNN/dvs-ql-new/systems/DVS128/dvs_cnn/pretrained/FP32_ds2x_96ch_cnnstride_1.ckpt",
+            "fix_cnn_pool": false,
+            "last_conv_nopad": false
+        },
+        "quantize": {
+            "function": "layers_ste_inq",
+            "kwargs": {
+                "config": {
+                    "STE": {
+                        "n_levels": 3,
+                        "quant_start_epoch": 1
+                    },
+                    "INQ": {
+                        "n_levels": 3,
+                        "quant_init_method": "uniform-l2-opt",
+                        "quant_strategy": "magnitude"
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "takes_net": false,
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "Adam",
+                "takes_net": false,
+                "kwargs": {
+                    "lr": 0.01
+                }
+            },
+            "lr_sched": {
+                "class":  "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0": 0.5,
+                        "11": 0.1,
+                        "15": 0.5,
+                        "24": 0.1,
+                        "30": 0.5,
+                        "39": 0.1,
+                        "45": 0.5,
+                        "54": 0.1,
+                        "60": 0.5,
+                        "69": 0.1,
+                        "75": 0.5,
+                        "84": 0.1,
+                        "90": 0.5,
+                        "99": 0.1,
+                        "105": 0.5,
+                        "114": 0.1,
+                        "120": 0.01
+                    }
+                }
+            }
+
+        },
+        "n_epochs": 130,
+        "quantize": {
+            "function": "layers_ste_inq_get_controllers",
+            "kwargs": {
+                "config": {
+                    "verbose": true,
+                    "STE": {
+                        "clear_optim_state_on_step": false
+                    },
+                    "INQ": {
+                        "schedule": {
+                            "5": 0.2,
+                            "15": 0.4,
+                            "30": 0.6,
+                            "45": 0.8,
+                            "60": 0.9,
+                            "75": 0.95,
+                            "90": 0.975,
+                            "105": 1
+                        },
+                        "clear_optim_state_on_step": false
+                    }
+                }
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": false,
+            "compute_task_statistic": true,
+            "tensor_statistics": []
+        },
+        "valid": {
+            "compute_profiling_statistic": false,
+            "tensor_statistics": []
+        }
+    },
+    "experiment": {
+        "n_folds": 1,
+        "metrics": {
+            "target_metric": "valid"
+        }
+    }
+}
