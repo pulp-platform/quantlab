@@ -20,10 +20,13 @@
 # 
 
 import torch
+from torch import nn
 from torchvision.transforms import Normalize
 
 from torchvision.transforms import Compose
-from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
+from torchvision.transforms import RandomHorizontalFlip  # statistical
+# augmentation transforms
+from torchvision.transforms import Lambda
 from torchvision.transforms import RandomCrop            # "evil" transforms combining statistical augmentation with structural aspects
 from torchvision.transforms import ToTensor              # structural transforms
 
@@ -94,7 +97,7 @@ class CIFAR10PACTQuantTransform(Compose):
     The input can be fake-quantized (`quantize == 'fake'`) or true-quantized
     (`quantize == 'int'`).
     """
-    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 4, quantize='none', n_q=256):
+    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 4, quantize='none', n_q=256, pad_channels : Optional[int] = None, clip : bool = False):
 
         transforms = []
         transforms.append(TransformA(augment, crop_size=crop_size, padding=padding))
@@ -111,5 +114,12 @@ class CIFAR10PACTQuantTransform(Compose):
             eps = transforms[-1].get_eps()
             div_by_eps = lambda x: x/eps
             transforms.append(Lambda(div_by_eps))
+        if pad_channels is not None and pad_channels != 3:
+            assert pad_channels > 3, "Can't pad CIFAR10 data to <3 channels!"
+            pad_img = lambda x: nn.functional.pad(x, (0,0,0,0,0,pad_channels-3), mode='constant', value=0.)
+            transforms.append(Lambda(pad_img))
+        if clip:
+            do_clip = lambda x: nn.functional.relu(x)
+            transforms.append(Lambda(do_clip))
 
         super(CIFAR10PACTQuantTransform, self).__init__(transforms)
