@@ -54,7 +54,8 @@ class ReplaceActBBRule(LightweightRule):
 
 def bb_recipe(net : nn.Module,
               config : dict,
-              gate_init : Optional[float] = 2.):
+              gate_init : float = 2.,
+              joint_distribution : bool = False):
 
     filter_conv2d = TypeFilter(nn.Conv2d)
     filter_linear = TypeFilter(nn.Linear)
@@ -98,7 +99,9 @@ def bb_recipe(net : nn.Module,
     net = lwe._graph.net
 
     #attach gate controllers using the appropriate pass
-    ctrl_pass = BBControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init)
+    #ctrl_pass = BBControllerInitPass(shape_in=(1, 3, 224, 224),
+    #gate_init=gate_init)
+    ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution)
     net_traced = BB_symbolic_trace(net)
 
     net_final = ctrl_pass.apply(net_traced)
