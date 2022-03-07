@@ -26,3 +26,4 @@ dependencies:
   - jupyter=1.0.0
   - onnx=1.9.0
   - tqdm=4.62.1
+  - parse=1.19.0
