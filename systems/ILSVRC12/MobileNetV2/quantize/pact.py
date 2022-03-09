@@ -63,6 +63,7 @@ def pact_recipe(net : nn.Module,
      # the precision_spec_file is (for example) dumped by a Bayesian Bits
     # training run and overrides the 'n_levels' spec from config.json
     if precision_spec_file is not None:
+        print(f"Overriding precision specification from config.json with spec from <{precision_spec_file}>...")
         with open(precision_spec_file, 'r') as fh:
             prec_override_spec = json.load(fh)['layer_levels']
         # deal with nn.DataParallel wrapping
@@ -110,6 +111,7 @@ def pact_recipe(net : nn.Module,
 
 
     if finetuning_ckpt is not None:
+        print(f"Loading finetuning ckpt from <{finetuning_ckpt}>...")
         state_dict = torch.load(finetuning_ckpt)['net']
         if all(k.startswith('module.') for k in state_dict.keys()):
             state_dict = {k.lstrip('module.'):v for k,v in state_dict.items()}

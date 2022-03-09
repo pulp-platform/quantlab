@@ -22,4 +22,6 @@
 from .preprocess import *
 from .mobilenetv2 import MobileNetV2
 from .postprocess import *
+from .statistics import *
 from quantlib.algorithms.pact import PACTAdam, PACTAdagrad, PACTSGD
+from quantlib.algorithms.bb import BBSGD, BBCrossEntropyLoss
