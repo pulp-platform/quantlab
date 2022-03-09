@@ -30,6 +30,7 @@ from torchvision.transforms import Lambda
 from torchvision.transforms import RandomCrop            # "evil" transforms combining statistical augmentation with structural aspects
 from torchvision.transforms import ToTensor              # structural transforms
 
+from quantlib.algorithms.pact import PACTAsymmetricAct, almost_symm_quant
 
 CIFAR10STATS =\
     {
