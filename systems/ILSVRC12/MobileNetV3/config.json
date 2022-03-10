@@ -1,0 +1,287 @@
+{
+    "description": {},
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 190
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformA",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 190
+            }
+
+        }
+    },
+    "network": {
+        "class": "MobileNetV3",
+        "kwargs": {
+            "config": "small",
+            "width_mult": 1.0,
+            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/ILSVRC12/MobileNetV3/pretrained/MNv3_small_224_1.0.ckpt"
+        },
+        "quantize": {
+            "function": "pact_recipe",
+            "kwargs": {
+                "config": {
+                    "PACTConv2d": {
+                        "pilot.0$": {},
+                        "features.0.block.0.0$": {},
+                        "features.0.block.1.lin.0$": {},
+                        "features.0.block.1.lin.2$": {},
+                        "features.0.block.2.0$": {},
+                        "features.1.block.0.0$": {},
+                        "features.1.block.1.0$": {},
+                        "features.1.block.2.0$": {},
+                        "features.2.block.0.0$": {},
+                        "features.2.block.1.0$": {},
+                        "features.2.block.2.0$": {},
+                        "features.3.block.0.0$": {},
+                        "features.3.block.1.0$": {},
+                        "features.3.block.2.lin.0$": {},
+                        "features.3.block.2.lin.2$": {},
+                        "features.3.block.3.0$": {},
+                        "features.4.block.0.0$": {},
+                        "features.4.block.1.0$": {},
+                        "features.4.block.2.lin.0$": {},
+                        "features.4.block.2.lin.2$": {},
+                        "features.4.block.3.0$": {},
+                        "features.5.block.0.0$": {},
+                        "features.5.block.1.0$": {},
+                        "features.5.block.2.lin.0$": {},
+                        "features.5.block.2.lin.2$": {},
+                        "features.5.block.3.0$": {},
+                        "features.6.block.0.0$": {},
+                        "features.6.block.1.0$": {},
+                        "features.6.block.2.lin.0$": {},
+                        "features.6.block.2.lin.2$": {},
+                        "features.6.block.3.0$": {},
+                        "features.7.block.0.0$": {},
+                        "features.7.block.1.0$": {},
+                        "features.7.block.2.lin.0$": {},
+                        "features.7.block.2.lin.2$": {},
+                        "features.7.block.3.0$": {},
+                        "features.8.block.0.0$": {},
+                        "features.8.block.1.0$": {},
+                        "features.8.block.2.lin.0$": {},
+                        "features.8.block.2.lin.2$": {},
+                        "features.8.block.3.0$": {},
+                        "features.9.block.0.0$": {},
+                        "features.9.block.1.0$": {},
+                        "features.9.block.2.lin.0$": {},
+                        "features.9.block.2.lin.2$": {},
+                        "features.9.block.3.0$": {},
+                        "features.10.block.0.0$": {},
+                        "features.10.block.1.0$": {},
+                        "features.10.block.2.lin.0$": {},
+                        "features.10.block.2.lin.2$": {},
+                        "features.10.block.3.0$": {},
+                        "features.11.0$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "quantize": "per_channel",
+                            "init_clip": "max",
+                            "learn_clip": true,
+                            "tqt": true,
+                            "symm_wts": true
+                        }
+                    },
+                    "PACTLinear": {
+                        "classifier.0$": {},
+                        "classifier.3$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "quantize": "per_layer",
+                            "init_clip": "max",
+                            "learn_clip": true,
+                            "tqt": true,
+                            "symm_wts": true
+                        }
+                    },
+                    "PACTUnsignedAct": {
+                        "features.0.block.0.2$": {},
+                        "features.0.block.1.lin.1$": {},
+                        "features.1.block.0.2$": {},
+                        "features.1.block.1.2$": {},
+                        "features.2.block.0.2$": {},
+                        "features.2.block.1.2$": {},
+                        "features.3.block.2.lin.1$": {},
+                        "features.4.block.2.lin.1$": {},
+                        "features.5.block.2.lin.1$": {},
+                        "features.6.block.2.lin.1$": {},
+                        "features.7.block.2.lin.1$": {},
+                        "features.8.block.2.lin.1$": {},
+                        "features.9.block.2.lin.1$": {},
+                        "features.10.block.2.lin.1$": {},
+                        "features.0.block.1.lin.3$": {},
+                        "features.3.block.2.lin.3$": {},
+                        "features.4.block.2.lin.3$": {},
+                        "features.5.block.2.lin.3$": {},
+                        "features.6.block.2.lin.3$": {},
+                        "features.7.block.2.lin.3$": {},
+                        "features.8.block.2.lin.3$": {},
+                        "features.9.block.2.lin.3$": {},
+                        "features.10.block.2.lin.3$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "init_clip": "const",
+                            "act_kind": "relu",
+                            "tqt": true,
+                            "learn_clip": true,
+                            "rounding": true
+                        }
+                    },
+                    "PACTAsymmetricAct": {
+                        "pilot.2$": {},
+                        "features.3.block.0.2$": {},
+                        "features.3.block.1.2$": {},
+                        "features.4.block.0.2$": {},
+                        "features.4.block.1.2$": {},
+                        "features.5.block.0.2$": {},
+                        "features.5.block.1.2$": {},
+                        "features.6.block.0.2$": {},
+                        "features.6.block.1.2$": {},
+                        "features.7.block.0.2$": {},
+                        "features.7.block.1.2$": {},
+                        "features.8.block.0.2$": {},
+                        "features.8.block.1.2$": {},
+                        "features.9.block.0.2$": {},
+                        "features.9.block.1.2$": {},
+                        "features.10.block.0.2$": {},
+                        "features.10.block.1.2$": {},
+                        "features.11.2$": {},
+                        "classifier.1$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "init_clip": "const",
+                            "act_kind": "identity",
+                            "tqt": true,
+                            "learn_clip": true,
+                            "rounding": true
+                        }
+                    },
+                    "PACTHardsigmoid": {
+                        "features.0.block.1.lin.3$": {},
+                        "features.3.block.2.lin.3$": {},
+                        "features.4.block.2.lin.3$": {},
+                        "features.5.block.2.lin.3$": {},
+                        "features.6.block.2.lin.3$": {},
+                        "features.7.block.2.lin.3$": {},
+                        "features.8.block.2.lin.3$": {},
+                        "features.9.block.2.lin.3$": {},
+                        "features.10.block.2.lin.3$": {},
+                        "kwargs": {
+                            "eps_s": 0.00065104167
+                        }
+                    },
+                    "PACTHardswish": {
+                        "pilot.2$": {},
+                        "features.3.block.0.2$": {},
+                        "features.3.block.1.2$": {},
+                        "features.4.block.0.2$": {},
+                        "features.4.block.1.2$": {},
+                        "features.5.block.0.2$": {},
+                        "features.5.block.1.2$": {},
+                        "features.6.block.0.2$": {},
+                        "features.6.block.1.2$": {},
+                        "features.7.block.0.2$": {},
+                        "features.7.block.1.2$": {},
+                        "features.8.block.0.2$": {},
+                        "features.8.block.1.2$": {},
+                        "features.9.block.0.2$": {},
+                        "features.9.block.1.2$": {},
+                        "features.10.block.0.2$": {},
+                        "features.10.block.1.2$": {},
+                        "features.11.2$": {},
+                        "classifier.1$": {},
+                        "kwargs": {
+                            "eps_s": 0.00065104167
+                        }
+                    },
+                    "harmonize": {
+                        "n_levels": 256,
+                        "init_clip": "max",
+                        "noisy": false,
+                        "rounding": true,
+                        "force_out_eps": true,
+                        "tqt": true,
+                        "learn_clip": true
+                    }
+                }
+            }
+        }
+
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "SGD",
+                "takes_net": false,
+                "kwargs": {
+                    "lr": 0.00075,
+                    "momentum": 0.9,
+                    "weight_decay": 4e-5
+                }
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0": 1,
+                        "4": 0.1,
+                        "7": 0.01
+                    }
+                }
+            }
+        },
+        "n_epochs": 12,
+        "quantize": {
+            "function": "get_pact_controllers",
+            "kwargs": {
+                "schedules": {
+                    "linear": {
+                        "0": ["start", "verbose_on"]
+                    },
+                    "activation": {
+                        "1": ["start", "verbose_on"]
+                    }
+                },
+                "kwargs_linear": {
+                },
+                "kwargs_activation": {
+                    "init_clip_hi": 6.0
+                }
+            }
+
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": false,
+            "compute_task_statistic": true
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    }
+}

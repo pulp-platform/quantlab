@@ -92,7 +92,8 @@ def pact_recipe(net : nn.Module,
 def build_module_spec(net : nn.Module, names : List[str], cfg : dict):
     select_levels_dict = {"static": select_levels_static,
                           "uniform": select_levels_uniform,
-                          "const": select_levels_const}
+                          "const": select_levels_const,
+                          "anneal": select_levels_anneal}
 
     modules = [net.get_submodule(name) for name in names]
     levels = cfg["levels"]
