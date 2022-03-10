@@ -26,8 +26,7 @@ from torch import nn
 from torchvision.transforms import Normalize
 
 from torchvision.transforms import Compose
-from torchvision.transforms import RandomHorizontalFlip  # statistical
-# augmentation transforms
+from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
 from torchvision.transforms import Lambda
 from torchvision.transforms import RandomCrop            # "evil" transforms combining statistical augmentation with structural aspects
 from torchvision.transforms import ToTensor              # structural transforms
