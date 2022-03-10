@@ -18,6 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # 
+from typing import Optional
 
 from torch import nn
 
@@ -25,10 +26,29 @@ import quantlib.editing.lightweight as qlw
 from quantlib.editing.lightweight import LightweightGraph
 import quantlib.editing.lightweight.rules as qlr
 from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter
-from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace
+from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace, PACT_symbolic_trace_inclusive
+from quantlib.editing.fx.passes import ModifySequentialPatternPass
 
 from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
+
+# can't use pattern matchers because integeradd nodes have >1 inputs :(((((
+# time to fix this!!
+
+
+
+
+def change_adder_levels(n : nn.Module, n_in_levels : Optional[int]=None, n_out_levels : Optional[int]=None):
+    nl = LightweightGraph.build_nodes_list(n, leaf_types=(PACTIntegerAdd,))
+    adder_filter = TypeFilter(PACTIntegerAdd)
+    ml = [node.module for node in adder_filter(nl)]
+
+    for adder in ml:
+        if n_in_levels is not None:
+            for a in adder.acts:
+                a.n_levels = n_in_levels
+        if n_out_levels is not None:
+            adder.act_out.n_levels = n_out_levels
 
 def pact_recipe(net : nn.Module,
                 config : dict):
@@ -123,6 +143,10 @@ def pact_recipe(net : nn.Module,
     # now harmonize the graph according to the configuration
     harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
     final_net = harmonize_pass(net)
+
+    # change adder input activations' n_levels if configured
+    if "adder_levels" in config.keys():
+        change_adder_levels(final_net, **config["adder_levels"])
 
     return final_net
 

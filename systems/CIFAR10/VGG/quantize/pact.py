@@ -19,6 +19,8 @@
 # limitations under the License.
 # 
 
+from typing import List
+
 from torch import nn
 
 import quantlib.editing.lightweight as qlw
@@ -29,6 +31,9 @@ from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_
 
 from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
+from quantlib.algorithms.pact.dynamic_precision import *
+
+
 
 
 def pact_recipe(net : nn.Module,
@@ -57,7 +62,7 @@ def pact_recipe(net : nn.Module,
                    rule : type):
         rules = []
         default_cfg = cfg["kwargs"] if "kwargs" in cfg.keys() else {}
-        layer_keys = [k for k in cfg.keys() if k != "kwargs"]
+        layer_keys = [k for k in cfg.keys() if k != "kwargs" and k != "dynamic"]
         for k in layer_keys:
             filt = NameFilter(k)
             kwargs = default_cfg.copy()
@@ -84,15 +89,55 @@ def pact_recipe(net : nn.Module,
 
     return lwe._graph.net
 
+def build_module_spec(net : nn.Module, names : List[str], cfg : dict):
+    select_levels_dict = {"static": select_levels_static,
+                          "uniform": select_levels_uniform,
+                          "const": select_levels_const,
+                          "anneal": select_levels_anneal}
 
-def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict = {}, kwargs_activation : dict = {}):
+    modules = [net.get_submodule(name) for name in names]
+    levels = cfg["levels"]
+    select_levels_val = select_levels_dict[cfg["select_levels_val"]](**cfg["val_kwargs"])
+    select_levels_trn = select_levels_dict[cfg["select_levels_trn"]](**cfg["trn_kwargs"])
+    return (modules, levels, select_levels_trn, select_levels_val)
+
+def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict = {}, kwargs_activation : dict = {}, dynamic : dict = {}):
     filter_intadd = TypeFilter(PACTIntegerAdd)
-    net_nodes_intadds_dissolved = LightweightGraph.build_nodes_list(net)
-    net_nodes_intadds_intact = LightweightGraph.build_nodes_list(net, leaf_types=(PACTIntegerAdd,))
+    net_nodes = LightweightGraph.build_nodes_list(net)
     lin_modules = PACTLinearController.get_modules(net)
     act_modules = PACTActController.get_modules(net)
 
     lin_ctrl = PACTLinearController(lin_modules, schedules["linear"], **kwargs_linear)
     act_ctrl = PACTActController(act_modules, schedules["activation"], **kwargs_activation)
+    try:
+        enable_dynamic = dynamic["cfg"]["enable"]
+    except KeyError:
+        enable_dynamic = False
+
+    if enable_dynamic:
+        module_spec_list = []
+        module_cfgs = {k : v for k, v in dynamic.items() if k != "cfg"}
+        for mn, c in module_cfgs.items():
+            cfg = dynamic["cfg"].copy()
+            if "layers" in c.keys():
+                names = c["layers"]
+                try:
+                    config = c["cfg"]
+                except KeyError:
+                    config = {}
+            else:
+                names = [mn]
+                config = c
+            cfg.update(config)
+            module_spec_list.append(build_module_spec(net, names, cfg))
+
+        dyn_ctrl = PACTDynamicPrecController(module_spec_list)
+        #######################
+        # WATCH OUT!!!!!
+        # The order in which these controllers are returned matters!!!
+        # the dyn_ctrl must come first, because the step_xx functions are
+        # called in order on each controller!
+        ########################
+        return dyn_ctrl, lin_ctrl, act_ctrl
 
     return lin_ctrl, act_ctrl
