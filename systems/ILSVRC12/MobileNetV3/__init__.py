@@ -22,4 +22,5 @@
 from .preprocess import *
 from .mobilenetv3 import MobileNetV3
 from .postprocess import *
-
+from .statistics import *
+from quantlib.algorithms.bb import BBCrossEntropyLoss, BBSGD

@@ -33,6 +33,7 @@ from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFil
 from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace
 
 from quantlib.algorithms.pact.pact_ops import *
+from quantlib.algorithms.profit import PROFITController
 from quantlib.algorithms.pact.pact_controllers import *
 from .precision_search import quant_layers_from_net, cut_acts_wts_orig, cut_acts_wts_pulp, cut_acts_wts_pulp_mp, print_net_summary, QuantConvLayer, QuantLinLayer
 
@@ -186,5 +187,10 @@ def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict
 
     lin_ctrl = PACTLinearController(lin_modules, schedules['linear'], **kwargs_linear)
     act_ctrl = PACTActController(act_modules, schedules['activation'], **kwargs_activation)
+    if "profit" in schedules.keys():
+        profit_nodes = PROFITController.get_modules(net)
+        profit_ctrl = PROFITController(profit_nodes, schedules['profit'], verbose = True)
+        return lin_ctrl, act_ctrl, profit_ctrl
+
 
     return lin_ctrl, act_ctrl

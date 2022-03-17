@@ -52,11 +52,13 @@ _ILSVRC12_EPS = ILSVRC12STATS['quantize']['eps']
 from systems.CIFAR10.VGG import VGG
 from systems.ILSVRC12.MobileNetV1 import MobileNetV1
 from systems.ILSVRC12.MobileNetV2 import MobileNetV2
+from systems.ILSVRC12.MobileNetV3 import MobileNetV3
 
 # import the quantization functions for the networks
 from systems.CIFAR10.VGG.quantize import pact_recipe as quantize_vgg, get_pact_controllers as controllers_vgg
 from systems.ILSVRC12.MobileNetV1.quantize import pact_recipe as quantize_mnv1, get_pact_controllers as controllers_mnv1
 from systems.ILSVRC12.MobileNetV2.quantize import pact_recipe as quantize_mnv2, get_pact_controllers as controllers_mnv2
+from systems.ILSVRC12.MobileNetV3.quantize import pact_recipe as quantize_mnv3, get_pact_controllers as controllers_mnv3
 
 # import the DORY backend
 from quantlib.backends.dory import export_net
@@ -86,8 +88,9 @@ def get_topology_dir(key : str):
 # this if you have different GPUs
 _QUANT_UTILS = {
     'VGG': QuantUtil(problem='CIFAR10', quantize=quantize_vgg, get_controllers=controllers_vgg, network=VGG, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=256),
-    'MobileNetV1': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv1, get_controllers=controllers_mnv1, network=MobileNetV1, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**24, bs=96),
-    'MobileNetV2': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv2, get_controllers=controllers_mnv2, network=MobileNetV2, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**24, bs=53),
+    'MobileNetV1': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv1, get_controllers=controllers_mnv1, network=MobileNetV1, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=96),
+    'MobileNetV2': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv2, get_controllers=controllers_mnv2, network=MobileNetV2, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53),
+    'MobileNetV3': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv3, get_controllers=controllers_mnv3, network=MobileNetV3, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53),
 }
 
 # the experiment config for the exp_id of the network specified by 'key'
@@ -118,6 +121,7 @@ def get_network(key : str, exp_id : int, ckpt_id : Union[int, str], quantized=Fa
     # strip the 'module.' from all the keys
     if all(k.startswith('module.') for k in state_dict.keys()):
         state_dict = {k.lstrip('module.'): v for k, v in state_dict.items()}
+    #import ipdb; ipdb.set_trace()
     quant_net.load_state_dict(state_dict)
     qctrls = qu.get_controllers(quant_net, **ctrl_cfg)
     for ctrl, sd in zip(qctrls, ckpt['qnt_ctrls']):
@@ -171,6 +175,7 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool):
     # will be by powers of 2 and can be implemented as bit shifts.
     int_pass = IntegerizePACTNetPass(shape_in=qu.in_shape, eps_in=qu.eps_in, D=qu.D, fix_channel_numbers=fix_channels)
     int_net = int_pass(net)
+
     return int_net
 
 def export_integerized_network(net : nn.Module, key : str, export_dir : str, name : str, in_idx : int = 42, pad_img : Optional[int] = None, clip : bool = False):
@@ -208,7 +213,7 @@ def get_input_channels(net : fx.GraphModule):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='QuantLab Example Flows')
     parser.add_argument('--net', required=True, type=str,
-                        help='Network to treat - can be "MobileNetV1", "MobileNetV2" or "VGG"')
+                        help='Network to treat - can be "MobileNetV1", "MobileNetV2", MobileNetV3 or "VGG"')
     parser.add_argument('--exp_id', required=True,
                         help='Experiment to integerize and export. The specified experiment must be a for a PACT/TQT-quantized network! Can be "best" or the index of the checkpoint')
     parser.add_argument('--ckpt_id', required=True, type=int,
