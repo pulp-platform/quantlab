@@ -161,11 +161,19 @@ class MeterAssistant(object):
             meter.register_statistic(manager.meter.LearningRateStatistic(platform=platform, writerstub=self._writerstub_epoch, n_epochs=meter.n_epochs, n_batches=meter.n_batches, opt=opt))
 
         # tensor statistics
-        n2m = self._names_2_modules(net)  # tensor statistics are bound to :obj:`torch.nn.Module`s by name; computing this mapping once avoids looping multiple times through the network to discover the binding points
+
+        # ====================== ATTENTION GEORGR HACK ======================
+        # @MATTEO CHECK IF OK
+        #n2m = self._names_2_modules(net)  # tensor statistics are bound to :obj:`torch.nn.Module`s by name; computing this mapping once avoids looping multiple times through the network to discover the binding points
         for sd in self._tensor_statistics_descriptions:
-            name = '.'.join(['module', sd.kwargs['name']]) if platform.is_nndataparallel_run else sd.kwargs['name']  # `torch.nn.DataParallel` wraps network objects adding a naming layer
-            sd.kwargs['module'] = n2m[name]  # resolve module name into ``torch.nn.Module`` object
+            if sd.kwargs['name'] is not None:
+                name = '.'.join(['module', sd.kwargs['name']]) if platform.is_nndataparallel_run else sd.kwargs['name']  # `torch.nn.DataParallel` wraps network objects adding a naming layer
+                sd.kwargs['module'] = net.get_submodule(name)  # resolve module name into ``torch.nn.Module`` object
+            else:
+                sd.kwargs['module'] = net.module if platform.is_nndataparallel_run else net
             meter.register_statistic(sd.class_(platform=platform, writerstub=self._writerstub_step, n_epochs=meter.n_epochs, n_batches=meter.n_batches, **sd.kwargs))
+
+        # ===================== GEORGR HACK OVER ============================
 
         # profiling statistic (optional)
         if self._compute_profiling_statistic:
