@@ -34,6 +34,7 @@ class MobileNetV1(nn.Module):
     def __init__(self, capacity : float = 1., config : str = 'standard', n_classes : int = 1000, seed : int = -1, pretrained : str = None, act_fn : str = 'relu'):
         assert config in _CONFIGS.keys(), f"Unknown config {config}"
         assert act_fn in ['relu', 'relu6'], f"Unknown activation function {act_fn}!"
+        self.act_fn = act_fn
         act = nn.ReLU if act_fn == 'relu' else nn.ReLU6
         super(MobileNetV1, self).__init__()
         base_width = int(capacity*32)

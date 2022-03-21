@@ -29,6 +29,7 @@ from torch import nn
 import quantlib.editing.lightweight as qlw
 from quantlib.editing.lightweight import LightweightGraph
 import quantlib.editing.lightweight.rules as qlr
+from quantlib.editing.lightweight.rules import LightweightRule
 from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter
 from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace
 
@@ -61,7 +62,8 @@ def config_from_layers(ql : list, nodes_list : list):
 def pact_recipe(net : nn.Module,
                 config : dict,
                 precision_spec_file : Optional[str] = None,
-                finetuning_ckpt : Optional[str] = None):
+                finetuning_ckpt : Optional[str] = None,
+                quantize_pool : bool = False):
 
     # config is expected to contain 3 keys for each layer type:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
@@ -69,15 +71,35 @@ def pact_recipe(net : nn.Module,
     # arguments containing the kwargs for each layer.
     # An additional dict is expected to be stored under the key "kwargs", which
     # is used as the default kwargs.
-    # Under the key "harmonize", the configuration for the harmonization pass
-    # should be stored.
-    # memory-constrained mixed-precision configuration search
+    # if `quantize_pool` is True, the key for the inserted ReLU/ReLU6 (features.13.1) will be added
+    # to the unsignedAct config if not alrady present
     try:
         mp_search = config['mixed_precision_search']['enable']
     except KeyError:
         mp_search = False
 
+    if quantize_pool:
+        # in MNv1 we know the pooling node will be an adaptive avg pool
+        print("Quantizing Average Pooling layer...")
+        pool_filter = TypeFilter(nn.AdaptiveAvgPool2d)
+        pool_nodes = pool_filter(LightweightGraph.build_nodes_list(net))
+        if net.act_fn == "relu6":
+            act = nn.ReLU6
+        else:
+            act = nn.ReLU
+        for n in pool_nodes:
+            print(f"Found pooling layer: {n.name}\nReplacing with Pool+{net.act_fn}")
+            activated_pool = nn.Sequential(n.module, act(inplace=True))
+            LightweightRule.replace_module(net, n.name.split('.'), activated_pool)
+            if n.name+'.1' not in config["PACTUnsignedAct"].keys():
+                config["PACTUnsignedAct"][n.name+'.1'] = {}
+
+
     if mp_search:
+        # TODO if quantize_pool, make sure that avg pool's output precision is
+        # treated correctly! => quantizing output to lower n_levels than the
+        # input may make sense!
+
         # avoid polluting the config somewhere else in the quantlab flow
         config = deepcopy(config)
 
@@ -128,6 +150,7 @@ def pact_recipe(net : nn.Module,
     conv_cfg = config["PACTConv2d"]
     lin_cfg = config["PACTLinear"]
     act_cfg = config["PACTUnsignedAct"]
+
     # the precision_spec_file is (for example) dumped by a Bayesian Bits
     # training run and overrides the 'n_levels' spec from config.json
     if precision_spec_file is not None:
