@@ -42,7 +42,7 @@ class DSCNN(torch.nn.Module):
         pad = nn.ConstantPad2d((1, 1, 5, 5), value=0.0)
         modules = []
         modules += [nn.Conv2d(in_channels=1, out_channels=out_channels, kernel_size=(10, 4), stride=(2, 2), bias=not use_bn)]
-        modules += [nn.BatchNorm2d(64)]
+        modules += [nn.BatchNorm2d(out_channels)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
 
         return nn.Sequential(*[pad, nn.Sequential(*modules)])
@@ -51,7 +51,7 @@ class DSCNN(torch.nn.Module):
     def _make_dw_layer(n_channels: int, use_bn: bool) -> nn.Sequential:
 
         modules = []
-        modules += [nn.Conv2d(in_channels=n_channels, out_channels=n_channels, kernel_size=(3, 3), stride=(1, 1), groups=64, bias=not use_bn)]
+        modules += [nn.Conv2d(in_channels=n_channels, out_channels=n_channels, kernel_size=(3, 3), stride=(1, 1), groups=n_channels, bias=not use_bn)]
         modules += [nn.BatchNorm2d(n_channels)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
 
