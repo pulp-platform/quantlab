@@ -38,7 +38,7 @@ _QL_ROOTPATH = Path(__file__).absolute().parent.parent.parent
 sys.path.append(str(_QL_ROOTPATH))
 
 # import the get_dataset functions for CIFAR10 and ImageNet
-from systems.CIFAR10.utils.data import load_cifar10
+from systems.CIFAR10.utils.data import load_data_set as load_cifar10
 from systems.CIFAR10.utils.transforms import CIFAR10PACTQuantTransform
 from systems.CIFAR10.utils.transforms.transforms import CIFAR10STATS
 from systems.ILSVRC12.utils.data import load_ilsvrc12
@@ -85,7 +85,7 @@ def get_topology_dir(key : str):
 # this if you have different GPUs
 _QUANT_UTILS = {
     'VGG': QuantUtil(problem='CIFAR10', quantize=quantize_vgg, get_controllers=controllers_vgg, network=VGG, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=256),
-    'MobileNetV1': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv1, get_controllers=controllers_mnv1, network=MobileNetV1, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**24, bs=128),
+    'MobileNetV1': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv1, get_controllers=controllers_mnv1, network=MobileNetV1, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**24, bs=96),
     'MobileNetV2': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv2, get_controllers=controllers_mnv2, network=MobileNetV2, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**24, bs=53),
 }
 
@@ -101,13 +101,15 @@ def get_ckpt(key : str, exp_id : int, ckpt_id : Union[int, str]):
     ckpt_filepath = get_topology_dir(key).joinpath(f'logs/exp{exp_id:04}/fold0/saves/{ckpt_str}.ckpt')
     return torch.load(ckpt_filepath)
 
-def get_quantized_network(key : str, exp_id : int, ckpt_id : Union[int, str]):
+def get_network(key : str, exp_id : int, ckpt_id : Union[int, str], quantized=False):
     cfg = get_config(key, exp_id)
     qu = _QUANT_UTILS[key]
     quant_cfg = cfg['network']['quantize']['kwargs']
     ctrl_cfg = cfg['training']['quantize']['kwargs']
     net_cfg = cfg['network']['kwargs']
     net = qu.network(**net_cfg)
+    if not quantized:
+        return net.eval()
     quant_net = qu.quantize(net, **quant_cfg)
     ckpt = get_ckpt(key, exp_id, ckpt_id)
     state_dict = ckpt['net']
@@ -177,6 +179,22 @@ def export_integerized_network(net : nn.Module, key : str, export_dir : str, nam
     test_input = ds[in_idx][0].unsqueeze(0)
     export_net(net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input)
 
+def export_unquant_net(net : nn.Module, key : str, export_dir : str, name : str):
+    out_path = Path(export_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+    onnx_file = f"{name}.onnx"
+    onnx_path = out_path.joinpath(onnx_file)
+    ds = get_valid_dataset(get_system(key), quantize='none')
+    test_input = ds[42][0].unsqueeze(0)
+    torch.onnx.export(net.to('cpu'),
+                      test_input,
+                      str(onnx_path),
+                      export_params=True,
+                      opset_version=10,
+                      do_constant_folding=True)
+
+
+
 
 # if this script is executed directly, expose all the above functions as
 # command line arguments.
@@ -192,6 +210,8 @@ if __name__ == '__main__':
                         help='Whether to validate the fake-quantized network on the appropriate dataset')
     parser.add_argument('--validate_tq', action='store_true',
                         help='Whether to validate the integerized network on the appropriate dataset')
+    parser.add_argument('--export_unquant', action='store_true',
+                        help='Also export the unquantized network')
     parser.add_argument('--export_dir', type=str, default=None,
                         help='Export the integerized network to the specified directory.')
     parser.add_argument('--export_name', type=str, default=None,
@@ -207,8 +227,11 @@ if __name__ == '__main__':
 
     exp_id = int(args.exp_id) if args.exp_id.isnumeric() else args.exp_id
 
+    
+        
+
     print(f'Loading network {args.net}, experiment {exp_id}, checkpoint {args.ckpt_id}')
-    qnet = get_quantized_network(args.net, exp_id, args.ckpt_id)
+    qnet = get_network(args.net, exp_id, args.ckpt_id, quantized=True)
 
     if args.validate_fq:
         print(f'Validating fake-quantized network {args.net} on dataset {get_system(args.net)}')
@@ -225,4 +248,7 @@ if __name__ == '__main__':
     if args.export_dir is not None:
         print(f'Exporting integerized network {args.net} to directory {args.export_dir} under name {export_name}')
         export_integerized_network(int_net, args.net, args.export_dir, export_name)
+        if args.export_unquant:
+            net_unq = get_network(args.net, exp_id, args.ckpt_id, quantized=False)
+            export_unquant_net(net_unq, args.net, args.export_dir, export_name)
 

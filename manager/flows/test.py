@@ -28,6 +28,7 @@ from manager.assistants import NetworkAssistant
 from manager.assistants import TrainingAssistant
 from manager.assistants import MeterAssistant
 
+from quantlib.algorithms.pact.pact_controllers import *
 
 def test(args):
 
@@ -65,11 +66,13 @@ def test(args):
     if (not platform.is_horovod_run) or platform.is_master:
         logbook.logs_manager.set_fold_id(fold_id=args.fold_id)
     if platform.is_horovod_run:
-        logbook.fold_id = platform.hvd.broadcast_object(logbook.fold_id, root_rank=platform.master_rank, name='fold_id')
+        logbook.fold_id = platform.hvd.broadcast_object(logbook.logs_manager._fold_id, root_rank=platform.master_rank, name='fold_id')
+    else:
+        logbook.fold_id = logbook.logs_manager._fold_id
 
     # master-only point: prepare fold logs folders
     if (not platform.is_horovod_run) or platform.is_master:
-        logbook.logs_manager.setup_fold_logs()
+        logbook.logs_manager.setup_fold_logs(fold_id=args.fold_id)
 
     # prepare the entities for the test
     # data
@@ -101,11 +104,11 @@ def test(args):
 
     # === MAIN TESTING LOOP ===
     net.eval()
-
     # master-workers synchronisation point: quantization controllers might change the network's quantization parameters stochastically
     if (not platform.is_horovod_run) or platform.is_master:
         for c in qnt_ctrls:
-            c.step(logbook.epoch_id)
+            c.step_pre_training_epoch(logbook.epoch_id)
+            c.step_pre_validation_epoch(logbook.epoch_id)
     if platform.is_horovod_run:
         platform.hvd.broadcast_parameters(net.state_dict(), root_rank=platform.master_rank)
 
