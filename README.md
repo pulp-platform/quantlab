@@ -188,6 +188,12 @@ Assuming that you installed Horovod inside the `quantlab` Anaconda environment, 
 ```
 
 
+## Advanced guide
+
+If you prefer walk-through guides to learning-by-doing, we uploaded the [1st QuantLab Virtual Workshop recording](https://www.youtube.com/watch?v=dgngk02eLYI) to YouTube.
+The [workshop's slide deck](https://pulp-platform.org/docs/quantlab_presentation_compressed.pdf) can be found on the [PULP training webpage](https://pulp-platform.org/pulp_training.html).
+
+
 ## Notice
 
 ### Licensing information
