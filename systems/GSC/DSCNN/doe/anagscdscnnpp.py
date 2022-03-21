@@ -19,7 +19,7 @@
 # limitations under the License.
 #
 
-"""Post-processing functions for the ANA/SVHN/VGG-8 experimental design."""
+"""Post-processing functions for the ANA/GSC/DSCNN experimental design."""
 
 import math
 import itertools
