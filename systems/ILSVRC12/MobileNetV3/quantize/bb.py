@@ -214,7 +214,7 @@ def bb_recipe(net : nn.Module,
     act_cfg = config["BBAct"]
 
     hact_pact_cfg = config["HardActsPACT"]
-    
+
     hact_bb_cfg = config["HardActsBB"]
 
     harmonize_cfg = config["harmonize"]

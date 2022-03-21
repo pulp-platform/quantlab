@@ -19,6 +19,7 @@
 # limitations under the License.
 # 
 from typing import Optional
+import json
 
 from torch import nn
 
@@ -51,7 +52,9 @@ def change_adder_levels(n : nn.Module, n_in_levels : Optional[int]=None, n_out_l
             adder.act_out.n_levels = n_out_levels
 
 def pact_recipe(net : nn.Module,
-                config : dict):
+                config : dict,
+                use_pact_hardacts : bool = True,
+                precision_spec_file : Optional[str] = None):
 
     # config is expected to contain 3 keys for each layer type:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
@@ -86,6 +89,7 @@ def pact_recipe(net : nn.Module,
             ha_cfg[k1]["hact_kwargs"].update(cfg["PACTHardsigmoid"][k1].copy())
             ha_cfg[k1]["quant_act_kwargs"] = cfg["PACTUnsignedAct"]["kwargs"].copy()
             ha_cfg[k1]["quant_act_kwargs"].update(cfg["PACTUnsignedAct"][k1])
+            ha_cfg[k1]["use_pact_hact"] = use_pact_hardacts
             del new_cfg["PACTUnsignedAct"][k1]
 
         for k1 in hsw_keys:
@@ -93,6 +97,9 @@ def pact_recipe(net : nn.Module,
             ha_cfg[k1]["hact_kwargs"].update(cfg["PACTHardswish"][k1].copy())
             ha_cfg[k1]["quant_act_kwargs"] = cfg["PACTAsymmetricAct"]["kwargs"].copy()
             ha_cfg[k1]["quant_act_kwargs"].update(cfg["PACTAsymmetricAct"][k1])
+            # 'use_pact_hact' needs to be given to all the PACT HardAct replacement
+            # rules as an argument but it is not a kwarg of PACTHard*, so hack it in here
+            ha_cfg[k1]["use_pact_hact"] = use_pact_hardacts
             del new_cfg["PACTAsymmetricAct"][k1]
 
         new_cfg["PACTHardActs"] = ha_cfg
@@ -143,6 +150,21 @@ def pact_recipe(net : nn.Module,
     # now harmonize the graph according to the configuration
     harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
     final_net = harmonize_pass(net)
+
+    #now if there is a precision config override specified, use it
+    if precision_spec_file is not None:
+        with open(precision_spec_file, 'r') as fh:
+            prec_override_spec = json.load(fh)['layer_levels']
+        # deal with nn.DataParallel wrapping
+        if all(k.startswith('module.') for k in prec_override_spec.keys()):
+            prec_override_spec = {k.lstrip('module.'):v for k,v in prec_override_spec.items()}
+
+        final_net_nodes = LightweightGraph.build_nodes_list(final_net)
+        for k, l in prec_override_spec.items():
+            print(f"Modifying 'n_levels' of layer {k.rstrip('$')} to {l}...")
+            nf = NameFilter(k)
+            m = nf(final_net_nodes)[0].module
+            m.n_levels = l
 
     # change adder input activations' n_levels if configured
     if "adder_levels" in config.keys():
