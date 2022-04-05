@@ -61,7 +61,7 @@ from systems.ILSVRC12.MobileNetV2.quantize import pact_recipe as quantize_mnv2, 
 from systems.ILSVRC12.MobileNetV3.quantize import pact_recipe as quantize_mnv3, get_pact_controllers as controllers_mnv3
 
 # import the DORY backend
-from quantlib.backends.dory import export_net
+from quantlib.backends.dory import export_net, DORYHarmonizePass
 # import the PACT/TQT integerization pass
 from quantlib.editing.fx.passes.pact import IntegerizePACTNetPass
 from quantlib.editing.fx.util import module_of_node
@@ -121,7 +121,6 @@ def get_network(key : str, exp_id : int, ckpt_id : Union[int, str], quantized=Fa
     # strip the 'module.' from all the keys
     if all(k.startswith('module.') for k in state_dict.keys()):
         state_dict = {k.lstrip('module.'): v for k, v in state_dict.items()}
-    #import ipdb; ipdb.set_trace()
     quant_net.load_state_dict(state_dict)
     qctrls = qu.get_controllers(quant_net, **ctrl_cfg)
     for ctrl, sd in zip(qctrls, ckpt['qnt_ctrls']):
@@ -167,7 +166,7 @@ def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval :
     net.to('cpu')
 
 # THIS IS WHERE THE BUSINESS HAPPENS!
-def integerize_network(net : nn.Module, key : str, fix_channels : bool):
+def integerize_network(net : nn.Module, key : str, fix_channels : bool, align_avgpool : bool):
     qu = _QUANT_UTILS[key]
     # All we need to do to integerize a fake-quantized network is to run the
     # IntegerizePACTNetPass on it! Afterwards, the ONNX graph it produces will
@@ -175,6 +174,10 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool):
     # will be by powers of 2 and can be implemented as bit shifts.
     int_pass = IntegerizePACTNetPass(shape_in=qu.in_shape, eps_in=qu.eps_in, D=qu.D, fix_channel_numbers=fix_channels)
     int_net = int_pass(net)
+    print(f"Align avgpool: {align_avgpool}")
+    if align_avgpool:
+        align_avgpool_pass = DORYHarmonizePass(in_shape=qu.in_shape)
+        int_net = align_avgpool_pass(int_net)
 
     return int_net
 
@@ -234,6 +237,8 @@ if __name__ == '__main__':
                         help='Name of the exported ONNX graph. By default, this is identical to the value of the "--net" flag')
     parser.add_argument('--accuracy_print_interval', type=int, default=10,
                         help='While evaluating networks on the validation set, print the intermediate accuracy every N batches')
+    parser.add_argument('--no_align_avg_pool', action='store_true',
+                        help='If supplied, don\'t align averagePool nodes\' associated requantization nodes')
 
 
 
@@ -253,7 +258,7 @@ if __name__ == '__main__':
         validate(qnet, dl, args.accuracy_print_interval)
 
     print(f'Integerizing network {args.net}')
-    int_net = integerize_network(qnet, args.net, args.fix_channels)
+    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_align_avg_pool)
 
     if args.fix_channels:
         pad_img = get_input_channels(int_net)
