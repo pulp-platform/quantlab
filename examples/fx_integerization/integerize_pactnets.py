@@ -165,19 +165,37 @@ def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval :
     print(f'Final accuracy: {n_correct/n_tot}')
     net.to('cpu')
 
+
+def get_input_channels(net : fx.GraphModule):
+    for node in net.graph.nodes:
+        if node.op == 'call_module' and isinstance(module_of_node(net, node), (nn.Conv1d, nn.Conv2d)):
+            conv = module_of_node(net, node)
+            return conv.in_channels
+
 # THIS IS WHERE THE BUSINESS HAPPENS!
-def integerize_network(net : nn.Module, key : str, fix_channels : bool, align_avgpool : bool):
+def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_harmonize : bool):
     qu = _QUANT_UTILS[key]
     # All we need to do to integerize a fake-quantized network is to run the
     # IntegerizePACTNetPass on it! Afterwards, the ONNX graph it produces will
     # contain only integer operations. Any divisions in the integerized graph
     # will be by powers of 2 and can be implemented as bit shifts.
-    int_pass = IntegerizePACTNetPass(shape_in=qu.in_shape, eps_in=qu.eps_in, D=qu.D, fix_channel_numbers=fix_channels)
+    in_shp = qu.in_shape
+    int_pass = IntegerizePACTNetPass(shape_in=in_shp, eps_in=qu.eps_in, D=qu.D, fix_channel_numbers=fix_channels)
     int_net = int_pass(net)
-    print(f"Align avgpool: {align_avgpool}")
-    if align_avgpool:
-        align_avgpool_pass = DORYHarmonizePass(in_shape=qu.in_shape)
-        int_net = align_avgpool_pass(int_net)
+    if fix_channels:
+        # we may have modified the # of input channels so we need to adjust the
+        # input shape
+        in_shp_l = list(in_shp)
+        in_shp_l[1] = get_input_channels(int_net)
+        in_shp = tuple(in_shp_l)
+    if dory_harmonize:
+        # the DORY harmonization pass:
+        # - wraps and aligns averagePool nodes so
+        #   they behave as they do in the PULP-NN kernel
+        # - replaces quantized adders with DORYAdder modules which are exported
+        #   as custom "QuantAdd" ONNX nodes
+        dory_harmonize_pass = DORYHarmonizePass(in_shape=in_shp)
+        int_net = dory_harmonize_pass(int_net)
 
     return int_net
 
@@ -201,13 +219,6 @@ def export_unquant_net(net : nn.Module, key : str, export_dir : str, name : str)
                       export_params=True,
                       opset_version=10,
                       do_constant_folding=True)
-
-def get_input_channels(net : fx.GraphModule):
-    for node in net.graph.nodes:
-        if node.op == 'call_module' and isinstance(module_of_node(net, node), (nn.Conv1d, nn.Conv2d)):
-            conv = module_of_node(net, node)
-            return conv.in_channels
-
 
 
 
@@ -237,8 +248,8 @@ if __name__ == '__main__':
                         help='Name of the exported ONNX graph. By default, this is identical to the value of the "--net" flag')
     parser.add_argument('--accuracy_print_interval', type=int, default=10,
                         help='While evaluating networks on the validation set, print the intermediate accuracy every N batches')
-    parser.add_argument('--no_align_avg_pool', action='store_true',
-                        help='If supplied, don\'t align averagePool nodes\' associated requantization nodes')
+    parser.add_argument('--no_dory_harmonize', action='store_true',
+                        help='If supplied, don\'t align averagePool nodes\' associated requantization nodes and replace adders with DORYAdders')
 
 
 
@@ -258,7 +269,8 @@ if __name__ == '__main__':
         validate(qnet, dl, args.accuracy_print_interval)
 
     print(f'Integerizing network {args.net}')
-    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_align_avg_pool)
+
+    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize)
 
     if args.fix_channels:
         pad_img = get_input_channels(int_net)
