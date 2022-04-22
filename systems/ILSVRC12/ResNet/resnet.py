@@ -227,6 +227,7 @@ def convert_torchvision_to_ql_resnet_state_dict(state_dict : dict):
     ql_state_dict = {resnet_replace_key(k):v for k,v in state_dict.items()}
     return ql_state_dict
 
+
 class ResNet(nn.Module):
 
     def __init__(self,
@@ -252,6 +253,7 @@ class ResNet(nn.Module):
         self.features   = self._make_features(block_cfgs, block_class, in_planes_features, out_planes_features, n_groups, group_capacity)
         self.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = nn.Linear(out_channels_features, num_classes)
+
         if pretrained == True: # load weights from torchvision model
             self.preload_torchvision(config)
         elif pretrained: # if `pretrained` is string, load from checkpoint
