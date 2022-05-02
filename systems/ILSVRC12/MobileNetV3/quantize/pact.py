@@ -27,16 +27,50 @@ import quantlib.editing.lightweight as qlw
 from quantlib.editing.lightweight import LightweightGraph
 import quantlib.editing.lightweight.rules as qlr
 from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter
-from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace, PACT_symbolic_trace_inclusive
-from quantlib.editing.fx.passes import ModifySequentialPatternPass
+from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace, PACT_symbolic_trace_inclusive, MulReplacementPass, AddTreeReplacementPass, InsertActivationsBetweenLinearsPass
+from quantlib.editing.fx.passes import ModifySequentialPatternPass, InsertModuleBetweenModulesPass, SequentialPass, RetracePass
 
 from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
+from quantlib.algorithms.generic.generic_ops import Multiply
 
 # can't use pattern matchers because integeradd nodes have >1 inputs :(((((
 # time to fix this!!
 
+class InsertUnsignedActBetweenMulConvPass(InsertModuleBetweenModulesPass):
+    before_modules = (Multiply,)
+    after_modules = (nn.Conv1d,
+                     nn.Conv2d)
 
+    def __init__(self, **kwargs):
+        name = "PACT_LINEAR_ACTIVATIONS"
+        default_kwargs = {'learn_clip' : True, 'tqt' : True, 'init_clip' : 'max', 'act_kind' : 'relu'}
+        default_kwargs.update(kwargs)
+        self.kwargs = default_kwargs
+        super(InsertUnsignedActBetweenMulConvPass, self).__init__(modules_before=self.before_modules,
+                                                                  modules_after=self.after_modules,
+                                                                  make_module_fn=self.inserted_module,
+                                                                  name=name,
+                                                                  combine='force')
+
+    def inserted_module(self, *args, **kwargs):
+        module_kwargs = {k:v for k, v in self.kwargs.items() if k != "symm"}
+        return PACTUnsignedAct(**module_kwargs)
+
+
+class HarmonizeMNv3Pass(SequentialPass):
+    def __init__(self, **kwargs):
+        passes = []
+        passes.append(RetracePass(PACT_symbolic_trace))
+        passes.append(AddTreeReplacementPass(**kwargs))
+        passes.append(MulReplacementPass())
+        actpass_kwargs = {k:v for k,v in kwargs.items() if k != 'force_out_eps'}
+        # MNv3 needs a dedicated activation insertion pass: Mul nodes always
+        # multiply unsigned inputs (hardsigm * relu) so between mul and conv we
+        # want an unsigned activation
+        passes.append(InsertUnsignedActBetweenMulConvPass(**actpass_kwargs))
+        passes.append(InsertActivationsBetweenLinearsPass(signed=True, act_kind='identity', **actpass_kwargs))
+        super(HarmonizeMNv3Pass, self).__init__(*passes, name_prefix='_HARMONIZE_PACT_NET_PASS')
 
 
 def change_adder_levels(n : nn.Module, n_in_levels : Optional[int]=None, n_out_levels : Optional[int]=None):
@@ -50,6 +84,8 @@ def change_adder_levels(n : nn.Module, n_in_levels : Optional[int]=None, n_out_l
                 a.n_levels = n_in_levels
         if n_out_levels is not None:
             adder.act_out.n_levels = n_out_levels
+
+
 
 def pact_recipe(net : nn.Module,
                 config : dict,
@@ -148,7 +184,7 @@ def pact_recipe(net : nn.Module,
     lwe.shutdown()
 
     # now harmonize the graph according to the configuration
-    harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
+    harmonize_pass = HarmonizeMNv3Pass(**harmonize_cfg)
     final_net = harmonize_pass(net)
 
     #now if there is a precision config override specified, use it
@@ -163,7 +199,10 @@ def pact_recipe(net : nn.Module,
         for k, l in prec_override_spec.items():
             print(f"Modifying 'n_levels' of layer {k.rstrip('$')} to {l}...")
             nf = NameFilter(k)
-            m = nf(final_net_nodes)[0].module
+            try:
+                m = nf(final_net_nodes)[0].module
+            except IndexError:
+                import ipdb; ipdb.set_trace()
             m.n_levels = l
 
     # change adder input activations' n_levels if configured

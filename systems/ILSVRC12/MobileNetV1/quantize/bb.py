@@ -55,8 +55,10 @@ class ReplaceActBBRule(LightweightRule):
 def bb_recipe(net : nn.Module,
               config : dict,
               gate_init : float = 2.,
-              joint_distribution : bool = False):
+              joint_distribution : bool = False,
+              shared_gates : bool = False):
 
+    assert not (shared_gates and joint_distribution), "shared_gates and joint_distribution are mutually exclusive!"
     filter_conv2d = TypeFilter(nn.Conv2d)
     filter_linear = TypeFilter(nn.Linear)
     act_types = (nn.ReLU, nn.ReLU6)
@@ -101,7 +103,7 @@ def bb_recipe(net : nn.Module,
     #attach gate controllers using the appropriate pass
     #ctrl_pass = BBControllerInitPass(shape_in=(1, 3, 224, 224),
     #gate_init=gate_init)
-    ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution)
+    ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution, shared_gates=shared_gates)
     net_traced = BB_symbolic_trace(net)
 
     net_final = ctrl_pass.apply(net_traced)

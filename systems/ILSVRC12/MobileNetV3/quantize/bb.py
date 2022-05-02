@@ -40,6 +40,7 @@ from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.bb.bb_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
 from quantlib.algorithms.bb.bb_controllers import *
+from quantlib.algorithms.generic.generic_ops import Multiply
 
 
 
@@ -80,11 +81,11 @@ class BBAddTreeReplacementPass(OpTreeReplacementPass):
         return BBIntegerAdd(num_args=n_args, signed=self.signed, pact_kwargs=self.pact_args, bb_args=self.bb_args)
 
 class AdvancedInsertActivationsBetweenLinearsPass(InsertActivationsBetweenLinearsPass):
-    def __init__(self, signed : bool, strategy : list, default_act_type : str, pact_kwargs : dict, bb_kwargs : dict):
+    def __init__(self, strategy : list, default_act_type : tuple, pact_kwargs : dict, bb_kwargs : dict):
         # 'strategy' should be a list of ((before_module, after_module),
-        # act_type) where act_type is either "pact" or "bb"
+        # (act_type, sgn)) where act_type is either "pact" or "bb" and sgn is a
+        # bool indicating signedness
         name = "ADVANCED_LINEAR_ACTIVATIONS"
-        self.signed = signed
         bb_default_kwargs = {'hc_stretch' : 1.2, 'hc_T' : 0.5, 'learn_clip' : False, 'init_clip' : 'max', 'act_kind' : 'identity'}
         bb_default_kwargs.update(bb_kwargs)
         if 'signed' in bb_default_kwargs.keys():
@@ -94,7 +95,8 @@ class AdvancedInsertActivationsBetweenLinearsPass(InsertActivationsBetweenLinear
         self.pact_kwargs = pact_default_kwargs
         self.bb_kwargs = bb_default_kwargs
         self.strategy = strategy
-        self.default_act_type = default_act_type
+        self.default_algo = default_act_type[0]
+        self.default_sgn = default_act_type[1]
         super(AdvancedInsertActivationsBetweenLinearsPass, self).__init__(modules_before=self.before_modules,
                                                                   modules_after=self.after_modules,
                                                                   make_module_fn=self.inserted_module,
@@ -102,20 +104,22 @@ class AdvancedInsertActivationsBetweenLinearsPass(InsertActivationsBetweenLinear
                                                                   combine='force')
 
     def inserted_module(self, module_before, module_after):
-        act_type = self.default_act_type
-        for (tb, ta), t in self.strategy:
+        act_type = self.default_algo
+        sgn = self.default_sgn
+        for (tb, ta), (t, s) in self.strategy:
             if isinstance(module_before, tb) and isinstance(module_after, ta):
                 act_type = t
+                sgn = s
                 break
         if act_type == "pact":
-            if self.signed:
+            if s:
                 return PACTAsymmetricAct(**self.pact_kwargs)
             else:
                 module_kwargs = {k:v for k, v in self.pact_kwargs.items() if k != "symm"}
                 return PACTUnsignedAct(**module_kwargs)
 
         elif act_type == "bb":
-            return BBAct(signed=self.signed, **self.bb_kwargs)
+            return BBAct(signed=sgn, **self.bb_kwargs)
         else:
             assert False, f"AdvancedInsertActivationsBetweenLinearsPass got invalid 'act_type': {act_type}"
 
@@ -131,14 +135,15 @@ class HarmonizeBBNetPass(SequentialPass):
             passes.append(BBAddTreeReplacementPass(signed=True, bb_kwargs=bb_kwargs, pact_kwargs=pact_kwargs))
         passes.append(MulReplacementPass())
         pact_actpass_kwargs = {k:v for k,v in pact_kwargs.items() if k != 'force_out_eps'}
-        strat_conservative = [(((nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d), (nn.Conv1d, nn.Conv2d, nn.Conv3d)), 'pact')]
-        # aggressive strategy: insert BB activations everywhere - no strategy
-        # spec needed
-        strat_aggressive = []
+        strat_conservative = [(((nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d), (nn.Conv1d, nn.Conv2d, nn.Conv3d)), ('pact', True)), (((Multiply,), (nn.Conv1d, nn.Conv2d)), ('bb', False))]
+
+        # aggressive strategy: insert BB activations everywhere
+        strat_aggressive = [(((Multiply,), (nn.Conv1d, nn.Conv2d)), ('bb', False))]
+        strat_default = ("bb", True)
         if strategy == 'conservative':
-            passes.append(AdvancedInsertActivationsBetweenLinearsPass(signed=True, strategy=strat_conservative, default_act_type='bb', pact_kwargs=pact_actpass_kwargs, bb_kwargs=bb_kwargs))
+            passes.append(AdvancedInsertActivationsBetweenLinearsPass(strategy=strat_conservative, default_act_type=strat_default, pact_kwargs=pact_actpass_kwargs, bb_kwargs=bb_kwargs))
         else:
-            passes.append(AdvancedInsertActivationsBetweenLinearsPass(signed=True, strategy=strat_aggressive, default_act_type='bb', pact_kwargs=pact_actpass_kwargs, bb_kwargs=bb_kwargs))
+            passes.append(AdvancedInsertActivationsBetweenLinearsPass(strategy=strat_aggressive, default_act_type=strat_default, pact_kwargs=pact_actpass_kwargs, bb_kwargs=bb_kwargs))
         super(HarmonizeBBNetPass, self).__init__(*passes, name_prefix='_HARMONIZE_BB_NET_PASS')
 
 
