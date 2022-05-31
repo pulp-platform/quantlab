@@ -1,6 +1,26 @@
-# USE THIS
+#
+# make_dataset.py
+# 
+# Author(s):
+# Georg Rutishauser <georgr@iis.ee.ethz.ch>
+# 
+# Copyright (c) 2020-2021 ETH Zurich.
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+# http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# 
 
 import os
+import argparse
 from dv import LegacyAedatFile
 import numpy as np
 import os
@@ -19,13 +39,13 @@ DATASET_DIR = './dvs128'
 # point the ./data folder to this folder (with a symlink)
 GEN_DATA_DIR = './dvs128/processed'
 # change if you want :)
-FPS = 30
 
-def get_filenames():
+
+def get_filenames(data_dir : str):
     users = ["user{:02d}".format(i) for i in range(1, 30)]
     lightings = ["fluorescent", "natural", "fluorescent_led", "lab", "led"]
     def realdir(f):
-        return os.path.join(DATASET_DIR, f)
+        return os.path.join(data_dir, f)
     filenames = [(realdir(u+"_"+l+".aedat"), realdir(u+"_"+l+"_labels.csv")) for u,l in itertools.product(users, lightings)]
     return [f for f in filenames if Path(f[0]).exists()]
 
@@ -56,7 +76,7 @@ def make_frames(evts : list, fps : int, prefix : str, out_mode : str = "np"):
                 #print("Min of curr_frame: {}".format(np.min(curr_frame)))
             else:
                 video = np.concatenate((video, curr_frame[None, :, :]))
-            curr_frame = np.zeros((128, 128), dtype=np.int8)
+            curr_nframe = np.zeros((128, 128), dtype=np.int8)
             frame_start = e.timestamp
             frame_idx += 1
         curr_frame[e.y, e.x] = np.int8(e.polarity*2-1)
@@ -94,6 +114,12 @@ def gen_data(in_files : tuple, out_prefix : str, fps : int, out_mode : str):
 
 
 if __name__ == "__main__":
-    files = get_filenames()
+    parser = argparse.ArgumentParser("DVS128 Frame Data Extraction Script")
+    parser.add_argument('--fps', '-f', type=int, default=30, help="Framerate of extracted event frame videos")
+    parser.add_argument('--in_dir', '-i', type=str, default='./dvs128', help="Location of the extracted DVS128 dataset")
+    parser.add_argument('--out_dir', '-o', type=str, default='./dvs128/processed', help="Where to store the generated event frames")
+    args = parser.parse_args()
+    files = get_filenames(args.in_dir)
+    out_dir = os.path.join(args.out_dir, f"{args.fps}FPS")
     for f in tq(files):
-        _ = gen_data(f, GEN_DATA_DIR, FPS, "np")
+        _ = gen_data(f, out_dir, args.fps, "np")

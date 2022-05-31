@@ -10,7 +10,7 @@ import torch
 __all__ = ['DVS128DataSet']
 
 class DVS128DataSet(torch.utils.data.Dataset):
-    def __init__(self, data_dir, cnn_win, tcn_win, window_stride, verbose=False, include_subjects=None, single_out : bool = False, cnn_stride=None, file_suffix : str = "", transform=None):
+    def __init__(self, data_dir, cnn_win, tcn_win, window_stride, verbose=False, include_subjects=None, single_out : bool = False, cnn_stride=None, file_suffix : str = "", transform=None, fps : int = 30):
         self.cnn_win = cnn_win
         self.tcn_win = tcn_win
         self.window_stride = window_stride
@@ -22,7 +22,7 @@ class DVS128DataSet(torch.utils.data.Dataset):
         self.verbose = verbose
         self.transform = transform
         self.single_out = single_out
-        cd = Path(__file__).parent.resolve()
+        data_dir = os.path.join(data_dir, f"{fps}FPS")
         prep_file_pre = os.path.join(data_dir, "dataset")
         # dataset is always the same if we leave out the same subjects - not so
         # nice that the `file_suffix` is not calculated locally but whatever
