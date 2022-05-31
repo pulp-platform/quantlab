@@ -28,6 +28,7 @@ from torch import nn
 import quantlib.editing.lightweight as qlw
 from quantlib.editing.lightweight import LightweightGraph
 import quantlib.editing.lightweight.rules as qlr
+from quantlib.editing.lightweight.rules import LightweightRule
 from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter
 from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace
 
@@ -37,7 +38,22 @@ from quantlib.algorithms.pact.pact_controllers import *
 def pact_recipe(net : nn.Module,
                 config : dict,
                 precision_spec_file : Optional[str] = None,
-                finetuning_ckpt : Optional[str] = None):
+                finetuning_ckpt : Optional[str] = None,
+                quantize_pool : bool = False):
+
+
+    if quantize_pool:
+        # in MNv1 we know the pooling node will be an adaptive avg pool
+        print("Quantizing Average Pooling layer...")
+        pool_filter = TypeFilter(nn.AdaptiveAvgPool2d)
+        pool_nodes = pool_filter(LightweightGraph.build_nodes_list(net))
+        act = nn.ReLU6
+        for n in pool_nodes:
+            print(f"Found pooling layer: {n.name}\nReplacing with Pool+ReLU6")
+            activated_pool = nn.Sequential(n.module, act(inplace=True))
+            LightweightRule.replace_module(net, n.name.split('.'), activated_pool)
+            if n.name+'.1' not in config["PACTUnsignedAct"].keys():
+                config["PACTUnsignedAct"][n.name+'.1'] = {}
 
     # config is expected to contain 3 keys for each layer type:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
@@ -115,7 +131,7 @@ def pact_recipe(net : nn.Module,
         state_dict = torch.load(finetuning_ckpt)['net']
         if all(k.startswith('module.') for k in state_dict.keys()):
             state_dict = {k.lstrip('module.'):v for k,v in state_dict.items()}
-        lwe._graph.net.load_state_dict(state_dict, strict=False)
+        final_net.load_state_dict(state_dict, strict=False)
 
     return final_net
 

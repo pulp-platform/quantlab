@@ -4,7 +4,10 @@ This topology package implements quantized [MobileNetV2](https://arxiv.org/abs/1
 The MobileNetV2 quantization flow can be considered the reference `QuantLab` flow for PACT/TQT. Under the
 `network`->`quantize` in the `config.json`, the configuration for each quantized layer type can be specified for each layer individually by the respective `torch.Module`'s hierarchical name. Under the `PACTConv2d` key, you may enter the parameters passed to the constructor of that class for each layer individually. The activation layers (`PACTUnsignedAct`) and the linear layer (`PACTLinear`) are treated equivalently. For each class, the default arguments (used if the corresponding keys are not present in the layer's configuration) can be entered under the `kwargs` key.
 
-The quantization routine `pact_recipe` in [quantize/pact.py] works by first replacing each layer with its fake-quantized counterpart according to the supplied configuration, then running a harmonization pass on the network to ensure that the resulting network can be integerized correctly.
+The quantization routine `pact_recipe` in [quantize/pact.py] works by first replacing each layer with its fake-quantized counterpart according to the supplied configuration, then running a harmonization pass on the network to ensure that the resulting network can be integerized correctly. The entries under the `harmonize` key in `config.json` are passed as `kwargs` to the harmonization pass. The main purpose of this pass is to insert quantization operators before and after add nodes and between linear layers, ensuring that:
+* Tensors which are added together are quantized to the same step size (meaning their integer representations can be added together)
+* No unquantized floating-point values are used as inputs to a linear operators
+The parameters are mostly passed to `PACTAsymmetricAct`/`PACTUnsignedAct` instantiations.
 ## Configurations
 3 example configurations are provided:
 * No quantization - `config.fp32.json`. Note that this configuration may not reach the published accuracy; we conducted our experiments starting from a pre-trained `torchvision` model.
