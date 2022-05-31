@@ -1,4 +1,4 @@
-from typing import Union, Optional
+from typing import Union, Optional, Literal
 from functools import partial
 import torch
 from torch import nn
@@ -10,6 +10,7 @@ from quantlib.algorithms.pact.pact_controllers import *
 from quantlib.algorithms.bb.bb_ops import *
 from quantlib.algorithms.bb.bb_controllers import *
 from quantlib.editing.fx.passes.bb import *
+
 
 class ReplaceConvLinearBBRule(LightweightRule):
     @staticmethod
@@ -56,7 +57,10 @@ def bb_recipe(net : nn.Module,
               config : dict,
               gate_init : float = 2.,
               joint_distribution : bool = False,
-              shared_gates : bool = False):
+              shared_gates : bool = False,
+              target : Literal["bops", "latency"] = "bops",
+              latency_spec_file : Optional[str] = None,
+              init_best_latency : bool = False):
 
     assert not (shared_gates and joint_distribution), "shared_gates and joint_distribution are mutually exclusive!"
     filter_conv2d = TypeFilter(nn.Conv2d)
@@ -103,7 +107,7 @@ def bb_recipe(net : nn.Module,
     #attach gate controllers using the appropriate pass
     #ctrl_pass = BBControllerInitPass(shape_in=(1, 3, 224, 224),
     #gate_init=gate_init)
-    ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution, shared_gates=shared_gates)
+    ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution, shared_gates=shared_gates, target=target, latency_spec_file=latency_spec_file, init_best_latency_gates=init_best_latency)
     net_traced = BB_symbolic_trace(net)
 
     net_final = ctrl_pass.apply(net_traced)
