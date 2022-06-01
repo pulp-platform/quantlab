@@ -21,14 +21,13 @@
 
 from torch import nn
 
-from quantlib.algorithms.pact import PACTUnsignedAct, PACTAsymmetricAct, PACTConv1d, PACTConv2d, PACTLinear
+from quantlib.algorithms.pact import CausalConv1d, PACTUnsignedAct, PACTAsymmetricAct, PACTConv1d, PACTCausalConv1d, PACTConv2d, PACTLinear
 from quantlib.algorithms.pact import PACTActController, PACTLinearController
 import quantlib.editing.lightweight as qlw
 from quantlib.editing.lightweight import LightweightGraph, LightweightEditor
 import quantlib.editing.lightweight.rules as qlr
 from quantlib.editing.lightweight.rules import LightweightRule
 from quantlib.editing.lightweight.rules.filters import TypeFilter, VariadicOrFilter, NameFilter
-
 
 __all__ = ['pact_recipe',
            'get_pact_controllers']
@@ -43,7 +42,7 @@ def pact_recipe(net : nn.Module,
     # An additional dict is expected to be stored under the key "kwargs", which
     # is used as the default kwargs.
 
-    filter_convs = TypeFilter(nn.Conv2d) | TypeFilter(nn.Conv1d)
+    filter_convs = TypeFilter(nn.Conv2d) | TypeFilter(nn.Conv1d) | TypeFilter(CausalConv1d)
     filter_htanh = TypeFilter(nn.Hardtanh)
     filter_relu = TypeFilter(nn.ReLU) | TypeFilter(nn.ReLU6)
 
@@ -76,7 +75,7 @@ def pact_recipe(net : nn.Module,
 
 
 def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict = {}, kwargs_activation : dict = {}):
-    filter_conv = TypeFilter(PACTConv2d) | TypeFilter(PACTConv1d)
+    filter_conv = TypeFilter(PACTConv2d) | TypeFilter(PACTConv1d) | TypeFilter(PACTCausalConv1d)
     filter_act = TypeFilter(PACTAsymmetricAct) | TypeFilter(PACTUnsignedAct)
     net_nodes = LightweightGraph.build_nodes_list(net)
     conv_modules = [n.module for n in filter_conv(net_nodes)]
