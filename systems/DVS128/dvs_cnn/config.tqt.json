@@ -14,7 +14,8 @@
                         "window_stride": 2,
                         "cnn_win": 8,
                         "tcn_win": 5,
-                        "n_val_subjects": 6
+                        "n_val_subjects": 6,
+                        "fps": 30
                     }
                 }
             },
@@ -53,7 +54,7 @@
             "pool_type": "max_pool",
             "cnn_window": 8,
             "tcn_window": 5,
-            "activation": "htanh",
+            "activation": "relu6",
             "n_classes": 11,
             "classifier_bias": false,
             "fix_cnn_pool": true,
@@ -77,6 +78,13 @@
                         "tqt": true
                     },
                     "PACTAsymmetricAct": {
+                        "n_levels": 3,
+                        "init_clip": "const",
+                        "learn_clip": true,
+                        "rounding": true,
+                        "tqt": true
+                    },
+                    "PACTUnsignedAct": {
                         "n_levels": 3,
                         "init_clip": "const",
                         "learn_clip": true,
@@ -122,8 +130,7 @@
                         }
                     },
                 "kwargs_activation": {
-                    "init_clip_lo": 1.0,
-                    "init_clip_hi": 1.0
+                    "init_clip_hi": 6.0
                 }
             }
         }
@@ -140,7 +147,7 @@
         }
     },
     "experiment": {
-        "n_folds": 1,
+        "n_folds": 2,
         "metrics": {
             "target_metric": "valid"
         }
