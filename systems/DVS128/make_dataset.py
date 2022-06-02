@@ -25,20 +25,14 @@ from dv import LegacyAedatFile
 import numpy as np
 import os
 import itertools
-import cv2
 from pathlib import Path
 import pandas
-import matplotlib.pyplot as plt
 import numba
 from tqdm import tqdm as tq
 
 # download the dataset from
 # https://ibm.ent.box.com/s/3hiq58ww1pbbjrinh367ykfdf60xsfm8/folder/50167556794
 # into this folder
-DATASET_DIR = './dvs128'
-# point the ./data folder to this folder (with a symlink)
-GEN_DATA_DIR = './dvs128/processed'
-# change if you want :)
 
 
 def get_filenames(data_dir : str):
@@ -56,6 +50,9 @@ def make_frames(evts : list, fps : int, prefix : str, out_mode : str = "np"):
     frametime_usec = 1000000.0//fps
     Path(prefix).parent.mkdir(exist_ok=True, parents=True)
     if out_mode == "cv2":
+        # out_mode == "cv2" requires openCV which has lots of dependency
+        # issues, so only import if needed
+        import cv2
         fcc = cv2.VideoWriter_fourcc((*"XVID"))
         writer = cv2.VideoWriter(prefix+".avi", fcc, float(fps), (128, 128), 0)
         out_file = prefix+".avi"
@@ -117,7 +114,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser("DVS128 Frame Data Extraction Script")
     parser.add_argument('--fps', '-f', type=int, default=30, help="Framerate of extracted event frame videos")
     parser.add_argument('--in_dir', '-i', type=str, default='./dvs128', help="Location of the extracted DVS128 dataset")
-    parser.add_argument('--out_dir', '-o', type=str, default='./dvs128/processed', help="Where to store the generated event frames")
+    parser.add_argument('--out_dir', '-o', type=str, default='./data', help="Where to store the generated event frames")
     args = parser.parse_args()
     files = get_filenames(args.in_dir)
     out_dir = os.path.join(args.out_dir, f"{args.fps}FPS")

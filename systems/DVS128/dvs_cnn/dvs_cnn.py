@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from quantlib.algorithms.generic import CausalConv1d
 
 __CNN_CFGS__ = {
     'first_try' : [128, 128, 128, 128],
@@ -22,51 +23,9 @@ __TCN_CFGS__ = {
     '128_ch' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
     '128_channels' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
     'k3' : [(3, 1, 64), (3, 2, 64), (3, 4, 64)],
+    '96_channels_k3' : [(3, 1, 96), (3, 2, 96), (3, 4, 96)],
     '32_channels' : [(2, 1, 32), (2, 2, 32), (2, 4, 32)]
 }
-
-class CausalConv1d(torch.nn.Conv1d):
-    def __init__(self,
-             in_channels,
-             out_channels,
-             kernel_size,
-             stride=1,
-             dilation=1,
-             groups=1,
-                 bias=True,
-                 padding_mode='zeros'):
-        self.__padding = (kernel_size - 1) * dilation
-
-        super(CausalConv1d, self).__init__(
-            in_channels,
-            out_channels,
-            kernel_size=kernel_size,
-            stride=stride,
-            padding=0,
-            dilation=dilation,
-            groups=groups,
-            bias=bias,
-            padding_mode=padding_mode)
-    def forward(self, input):
-        pad_mode = 'constant' if self.padding_mode == 'zeros' else self.padding_mode
-        x = nn.functional.pad(input, (self.__padding, 0), mode=pad_mode)
-        result = super(CausalConv1d, self).forward(x)
-        return result
-
-
-class Pad2d(nn.Module):
-
-    def __init__(self, k_x : int, k_y : int):
-        super(Pad2d, self).__init__()
-        pad_x = k_x-1
-        pad_y = k_y-1
-        self.pad_right = pad_x//2
-        self.pad_left = pad_x - self.pad_right
-        self.pad_bot = pad_y//2
-        self.pad_top = pad_y - self.pad_bot
-
-    def forward(self, x):
-        return nn.functional.pad(x, (self.pad_left, self.pad_right, self.pad_top, self.pad_bot))
 
 
 class DVSNet2D(nn.Module):
@@ -87,13 +46,8 @@ class DVSNet2D(nn.Module):
         assert layer_order in ['pool_bn', 'bn_pool'], "Invalid layer order specified: {}".format(layer_order)
 
         adapter_list = []
-        if self.k % 2 == 0:
-            adapter_list.append(Pad2d(self.k, self.k))
-            pad = 0
-        else:
-            pad = k//2
 
-        adapter_list.append(nn.Conv2d(cnn_window, 32, kernel_size=k, padding=pad, bias=False))
+        adapter_list.append(nn.Conv2d(cnn_window, 32, kernel_size=k, padding='same', bias=False))
         if pool_type != 'max_pool':
             adapter_pool = nn.AvgPool2d(kernel_size=2)
         else:
@@ -143,11 +97,7 @@ class DVSNet2D(nn.Module):
         l = []
         for i, c in enumerate(cfg):
             if not (i == len(cfg)-1 and last_conv_nopad):
-                if k % 2 == 0:
-                    l.append(Pad2d(k, k))
-                    pad = 0
-                else:
-                    pad = k//2
+                pad = "same"
             else:
                 pad = 0
             if pool_type == "stride":
