@@ -6,7 +6,7 @@
                     "class": "DVSAugmentTransform",
                     "kwargs": {
                         "augment": true,
-                        "downsample": 1
+                        "downsample": 2
                     }
                 },
                 "load_data_set": {
@@ -29,7 +29,7 @@
                     "class": "DVSAugmentTransform",
                     "kwargs": {
                         "augment": false,
-                        "downsample": 1
+                        "downsample": 2
                     }
                 },
                 "load_data_set": {
@@ -37,7 +37,8 @@
                         "window_stride": 2,
                         "cnn_win": 8,
                         "tcn_win": 5,
-                        "n_val_subjects": 6
+                        "n_val_subjects": 6,
+                        "fps": 30
                     }
                 }
             },
@@ -112,12 +113,12 @@
             "lr_sched": {
                 "class": "CosineAnnealingLR",
                 "kwargs": {
-                    "T_max": 100,
+                    "T_max": 50,
                     "eta_min": 0.00001
                 }
             }
         },
-        "n_epochs": 100,
+        "n_epochs": 50,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
@@ -137,17 +138,17 @@
     },
     "meters": {
         "train": {
-            "compute_profiling_statistic": true,
+            "compute_profiling_statistic": false,
             "compute_task_statistic": true,
             "tensor_statistics": []
         },
         "valid": {
-            "compute_profiling_statistic": true,
+            "compute_profiling_statistic": false,
             "tensor_statistics": []
         }
     },
     "experiment": {
-        "n_folds": 2,
+        "n_folds": 1,
         "metrics": {
             "target_metric": "valid"
         }
