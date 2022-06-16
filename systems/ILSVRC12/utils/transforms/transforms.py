@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich.
+# Copyright (c) 2020-2022 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,18 +20,12 @@
 # 
 
 import torch
-from torchvision.transforms import Normalize
-
-
 from torchvision.transforms import Compose
-from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
-from torchvision.transforms import RandomResizedCrop  # "evil" transforms
-# combining statistical augmentation with structural aspects
-from torchvision.transforms import Lambda
+from torchvision.transforms import Normalize
+from torchvision.transforms import RandomHorizontalFlip          # statistical augmentation transforms
 from torchvision.transforms import Resize, CenterCrop, ToTensor  # structural transforms
+from torchvision.transforms import RandomResizedCrop             # evil transforms: they combine statistical augmentation with structural aspects
 
-from quantlib.algorithms.pact import PACTAsymmetricAct
-from quantlib.algorithms.pact.util import almost_symm_quant
 
 ILSVRC12STATS = \
     {
@@ -169,43 +163,30 @@ class ILSVRC12Normalize(Normalize):
     def __init__(self):
         super(ILSVRC12Normalize, self).__init__(**ILSVRC12STATS['normalize'])
 
+
 class ILSVRC12AugmentTransform(Compose):
 
-    def __init__(self, augment: bool):
+    def __init__(self,
+                 augment:    bool,
+                 image_size: int = 224):
 
+        # validate arguments
+        _NON_AUGMENT_RESIZE = 256
+        if image_size > _NON_AUGMENT_RESIZE:
+            raise ValueError  # otherwise, `CenterCrop` won't work in the non-augmented branch
 
         if augment:
-            transforms = [RandomResizedCrop(224),
+            transforms = [RandomResizedCrop(image_size),
                           RandomHorizontalFlip(),
                           ToTensor(),
                           ColorJitter(),
                           ILSVRC12Lighting(),
                           ILSVRC12Normalize()]
+
         else:
-            transforms = [Resize(256),
-                          CenterCrop(224),
+            transforms = [Resize(_NON_AUGMENT_RESIZE),
+                          CenterCrop(image_size),
                           ToTensor(),
                           ILSVRC12Normalize()]
 
         super(ILSVRC12AugmentTransform, self).__init__(transforms)
-
-class ILSVRC12PACTQuantTransform(Compose):
-
-    def __init__(self, augment: bool, quantize: str = 'none', n_q: int = 256):
-        transforms = [ILSVRC12AugmentTransform(augment)]
-
-        if quantize in ['fake', 'int']:
-            transforms.append(PACTAsymmetricAct(n_levels=n_q, symm=True, learn_clip=False, init_clip='max', act_kind='identity'))
-            quantizer = transforms[-1]
-            # set clip_lo to negative max abs of CIFAR10
-            maximum_abs = torch.max(torch.tensor([v for v in ILSVRC12STATS['quantize'].values()]).abs())
-            clip_lo, clip_hi = almost_symm_quant(maximum_abs, n_q)
-            quantizer.clip_lo.data = clip_lo
-            quantizer.clip_hi.data = clip_hi
-            quantizer.started |= True
-        if quantize == 'int':
-            eps = transforms[-1].get_eps()
-            div_by_eps = lambda x: (x/eps).round()
-            transforms.append(Lambda(div_by_eps))
-
-        super(ILSVRC12PACTQuantTransform, self).__init__(transforms)

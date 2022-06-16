@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich.
+# Copyright (c) 2020-2022 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,41 +25,51 @@ import torch.nn as nn
 
 class AlexNet(nn.Module):
 
-    def __init__(self, use_bn: bool, num_classes: int = 1000, seed : int = -1) -> None:
+    def __init__(self,
+                 use_bn:    bool,
+                 n_classes: int = 1000,
+                 seed:      int = -1) -> None:
 
         super(AlexNet, self).__init__()
 
-        self.features   = self._make_features(use_bn)
-        self.avgpool    = nn.AdaptiveAvgPool2d((6, 6))
-        self.classifier = self._make_classifier(num_classes)
+        # build the network
+        self.features   = AlexNet.make_features(use_bn)
+        self.avgpool    = AlexNet.make_avgpool()
+        self.classifier = AlexNet.make_classifier(use_bn, n_classes)
+
         self._initialize_weights(seed)
 
-    def _make_features(self, use_bn: bool) -> nn.Sequential:
+    @staticmethod
+    def make_features(use_bn: bool) -> nn.Sequential:
 
         modules = []
 
         # conv 1
-        modules += [nn.Conv2d(3, 64, kernel_size=11, stride=4, padding=2, bias=not use_bn)]
+        modules += [nn.Conv2d(3, 64, kernel_size=(11, 11), stride=(4, 4), padding=2, bias=not use_bn)]
         modules += [nn.BatchNorm2d(64)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
         # max pool
         modules += [nn.MaxPool2d(kernel_size=3, stride=2)]
+
         # conv 2
-        modules += [nn.Conv2d(64, 192, kernel_size=5, padding=2, bias=not use_bn)]
+        modules += [nn.Conv2d(64, 192, kernel_size=(5, 5), padding=2, bias=not use_bn)]
         modules += [nn.BatchNorm2d(192)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
         # max pool
         modules += [nn.MaxPool2d(kernel_size=3, stride=2)]
+
         # conv 3
-        modules += [nn.Conv2d(192, 384, kernel_size=3, padding=1, bias=not use_bn)]
+        modules += [nn.Conv2d(192, 384, kernel_size=(3, 3), padding=1, bias=not use_bn)]
         modules += [nn.BatchNorm2d(384)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
+
         # conv 4
-        modules += [nn.Conv2d(384, 256, kernel_size=3, padding=1, bias=not use_bn)]
+        modules += [nn.Conv2d(384, 256, kernel_size=(3, 3), padding=1, bias=not use_bn)]
         modules += [nn.BatchNorm2d(256)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
+
         # conv 5
-        modules += [nn.Conv2d(256, 256, kernel_size=3, padding=1, bias=not use_bn)]
+        modules += [nn.Conv2d(256, 256, kernel_size=(3, 3), padding=1, bias=not use_bn)]
         modules += [nn.BatchNorm2d(256)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
         # max pool
@@ -67,22 +77,32 @@ class AlexNet(nn.Module):
 
         return nn.Sequential(*modules)
 
-    def _make_classifier(self, num_classes: int) -> nn.Sequential:
+    @staticmethod
+    def make_avgpool() -> nn.AdaptiveAvgPool2d:
+        return nn.AdaptiveAvgPool2d((6, 6))
+
+    @staticmethod
+    def make_classifier(use_bn:    bool,
+                        n_classes: int) -> nn.Sequential:
+
+        in_features = 256 * 6 * 6
 
         modules = []
 
-        # dropout
-        modules += [nn.Dropout()]
-        # linear 1
-        modules += [nn.Linear(256 * 6 * 6, 4096)]
+        # first linear
+        modules += [] if use_bn else [nn.Dropout()]
+        modules += [nn.Linear(in_features=in_features, out_features=4096, bias=not use_bn)]
+        modules += [nn.BatchNorm1d(4096)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
-        # dropout
-        modules += [nn.Dropout()]
-        # linear 2
-        modules += [nn.Linear(4096, 4096)]
+
+        # second linear
+        modules += [] if use_bn else [nn.Dropout()]
+        modules += [nn.Linear(in_features=4096, out_features=4096, bias=not use_bn)]
+        modules += [nn.BatchNorm1d(4096)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
-        # linear 3
-        modules += [nn.Linear(4096, num_classes)]
+
+        # last linear (the "real" classifier)
+        modules += [nn.Linear(in_features=4096, out_features=n_classes)]
 
         return nn.Sequential(*modules)
 
@@ -117,4 +137,3 @@ class AlexNet(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-
