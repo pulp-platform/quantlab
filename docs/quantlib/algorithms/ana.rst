@@ -11,10 +11,10 @@ Writing C/C++ and CUDA extensions for PyTorch
 We used PyTorch's binding mechanics to expose our own CUDA kernels and accelerate the execution of ANA operations.
 In this section, we will give you an overview of this process, navigating the call stack using ANA as an example.
 
-If you are a PyTorch user, you are probably aware that the operations acting on :py:class:`Tensor` objects can be recorded by the autograd mechanics.
+If you are a PyTorch user, you are probably aware that the operations acting on :py:class:`~torch.Tensor` objects can be recorded by the autograd mechanics.
 When this is the case, it is possible to compute gradients using reverse-mode automatic differentiation (i.e., back-propagation) and training deep neural networks that use the operation.
 When you implement your custom module, apart from bookkeeping data structures and algorithm, you can encode this core functionality using objects of class :py:class:`torch.autograd.Function`.
-A :py:class:`torch.autograd.Function` object can be registered when you instantiate a custom :py:class:`Module`.
+A :py:class:`torch.autograd.Function` object can be registered when you instantiate a custom :py:class:`~torch.Module`.
 
 For example, consider the code of the class :py:class:`ANAActivation` (defined in ``quantlib/algorithms/ana/ana_ops.py:L102``).
 You can see that its ``forward`` method boils down to a call to ``self.ana_op`` (``L111``).
