@@ -19,4 +19,4 @@
 # limitations under the License.
 #
 
-from quantlib.algorithms.pact import PACTAdam, PACTAdagrad, PACTSGD
+# from quantlib.algorithms.pact import PACTAdam, PACTAdagrad, PACTSGD

@@ -4,7 +4,7 @@
 # Author(s):
 # Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich.
+# Copyright (c) 2020-2022 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,43 +33,71 @@ _CONFIGS = {
 
 class VGG(nn.Module):
 
-    def __init__(self, config: str, capacity: int = 1, use_bn_features: bool = False, use_bn_classifier: bool = False, pretrained : str = None, num_classes: int = 10, seed: int = -1) -> None:
+    def __init__(self,
+                 config:    str,
+                 capacity:  float = 1.0,
+                 use_bn:    bool = False,
+                 n_classes: int = 10,
+                 seed:      int = -1,
+                 pretrained: str = None) -> None:
+
+        # validate inputs
+        config = config.upper()  # canonicalise
+        if config not in _CONFIGS.keys():
+            raise ValueError
+
+        if capacity <= 0.0:
+            raise ValueError  # must be positive
 
         super(VGG, self).__init__()
 
-        self.pilot      = self._make_pilot(config, capacity, use_bn_features)
-        self.features   = self._make_features(config, capacity, use_bn_features)
-        self.avgpool    = self._make_avgpool(config)
-        self.classifier = self._make_classifier(config, capacity, use_bn_classifier, num_classes)
+        # build the network
+        self.pilot      = VGG.make_pilot(config, capacity, use_bn)
+        self.features   = VGG.make_features(config, capacity, use_bn)
+        self.avgpool    = VGG.make_avgpool(config)
+        self.classifier = VGG.make_classifier(config, capacity, use_bn, n_classes)
+
+        self._initialize_weights(seed=seed)
+
         if pretrained is not None:
             self.load_state_dict(torch.load(pretrained))
-        else:
-            self._initialize_weights(seed=seed)
 
     @staticmethod
-    def _make_pilot(config: str, capacity: int, use_bn_features: bool) -> nn.Sequential:
+    def make_pilot(config:   str,
+                   capacity: float,
+                   use_bn:   bool) -> nn.Sequential:
 
+        in_channels = 3
         out_channels = 64 if config == 'VGG19' else 128
+        out_channels = int(out_channels * capacity)
+
         modules = []
-        modules += [nn.Conv2d(3, out_channels * capacity, kernel_size=3, padding=1, bias=not use_bn_features)]
-        modules += [nn.BatchNorm2d(out_channels * capacity)] if use_bn_features else []
+
+        modules += [nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3), padding=1, bias=not use_bn)]
+        modules += [nn.BatchNorm2d(out_channels)] if use_bn else []
         modules += [nn.ReLU(inplace=True)]
 
         return nn.Sequential(*modules)
 
     @staticmethod
-    def _make_features(config: str, capacity: int, use_bn_features: bool) -> nn.Sequential:
+    def make_features(config:          str,
+                      capacity:        float,
+                      use_bn_features: bool) -> nn.Sequential:
 
-        in_channels  = 64 if config == 'VGG19' else 128
-        in_channels *= capacity
+        in_channels = 64
+        in_channels = in_channels if config == 'VGG19' else (in_channels * 2)
+        in_channels = int(in_channels * capacity)
 
         modules = []
+
         for v in _CONFIGS[config]:
+
             if v == 'M':
-                modules += [nn.MaxPool2d(kernel_size=2, stride=2)]
+                modules += [nn.MaxPool2d(kernel_size=2, stride=2)]  # in VGG networks, spatial down-sampling is achieved via max pooling
+
             else:
-                out_channels = v * capacity
-                modules += [nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=not use_bn_features)]
+                out_channels = int(v * capacity)
+                modules += [nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3), padding=1, bias=not use_bn_features)]
                 modules += [nn.BatchNorm2d(out_channels)] if use_bn_features else []
                 modules += [nn.ReLU(inplace=True)]
                 in_channels = out_channels
@@ -77,25 +105,37 @@ class VGG(nn.Module):
         return nn.Sequential(*modules)
 
     @staticmethod
-    def _make_avgpool(config: str):
-        return nn.AdaptiveAvgPool2d((4, 4)) if config != 'VGG19' else nn.AdaptiveAvgPool2d((1, 1))
+    def make_avgpool(config: str):
+        return nn.AdaptiveAvgPool2d((1, 1)) if config == 'VGG19' else nn.AdaptiveAvgPool2d((4, 4))
 
     @staticmethod
-    def _make_classifier(config: str, capacity: int, use_bn_classifier: bool, num_classes: int) -> nn.Sequential:
+    def make_classifier(config:    str,
+                        capacity:  float,
+                        use_bn:    bool,
+                        n_classes: int) -> nn.Sequential:
+
+        in_channels = int(512 * capacity)
 
         modules = []
+
         if config == 'VGG19':
-            modules += [nn.Linear(512 * capacity, num_classes)]
+            in_features = in_channels * 1 * 1
+            modules += [nn.Linear(in_features=in_features, out_features=n_classes)]
+
         else:
-            modules += [nn.Linear(512 * capacity * 4 * 4, 1024, bias=not use_bn_classifier)]
-            modules += [nn.BatchNorm1d(1024)] if use_bn_classifier else []
+            in_features = in_channels * 4 * 4
+            # first linear
+            modules += [nn.Linear(in_features=in_features, out_features=1024, bias=not use_bn)]
+            modules += [nn.BatchNorm1d(1024)] if use_bn else []
             modules += [nn.ReLU(inplace=True)]
-            modules += [] if use_bn_classifier else [nn.Dropout()]
-            modules += [nn.Linear(1024, 1024, bias=not use_bn_classifier)]
-            modules += [nn.BatchNorm1d(1024)] if use_bn_classifier else []
+            modules += [] if use_bn else [nn.Dropout()]
+            # second linear
+            modules += [nn.Linear(in_features=1024, out_features=1024, bias=not use_bn)]
+            modules += [nn.BatchNorm1d(1024)] if use_bn else []
             modules += [nn.ReLU(inplace=True)]
-            modules += [] if use_bn_classifier else [nn.Dropout()]
-            modules += [nn.Linear(1024, num_classes)]
+            modules += [] if use_bn else [nn.Dropout()]
+            # last linear (the "real" classifier)
+            modules += [nn.Linear(in_features=1024, out_features=n_classes)]
 
         return nn.Sequential(*modules)
 

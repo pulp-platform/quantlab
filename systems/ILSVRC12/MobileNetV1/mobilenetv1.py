@@ -2,9 +2,10 @@
 # mobilenetv1.py
 # 
 # Author(s):
+# Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
 # Georg Rutishauser <georgr@iis.ee.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich.
+# Copyright (c) 2020-2022 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,66 +23,157 @@
 import torch
 import torch.nn as nn
 
-from typing import Union
+from typing import Union, Tuple
 
-# config: (n, stride) where n specifies output channels as n*base_width = n*capacity*32
+
 _CONFIGS = {
-    'standard':
-    [(2, 1), (4, 2), (4, 1), (8, 2), (8, 1), (16, 2), (16, 1), (16, 1), (16, 1), (16, 1), (16, 1), (32, 2), (32, 1)]
+    'STANDARD': [
+        ( 2, 1),
+        ( 4, 2),
+        ( 4, 1),
+        ( 8, 2),
+        ( 8, 1),
+        (16, 2),
+        (16, 1),
+        (16, 1),
+        (16, 1),
+        (16, 1),
+        (16, 1),
+        (32, 2),
+        (32, 1)
+    ]
 }
 
+
 class MobileNetV1(nn.Module):
-    def __init__(self, capacity : float = 1., config : str = 'standard', n_classes : int = 1000, seed : int = -1, pretrained : str = None, act_fn : str = 'relu'):
-        assert config in _CONFIGS.keys(), f"Unknown config {config}"
-        assert act_fn in ['relu', 'relu6'], f"Unknown activation function {act_fn}!"
-        act = nn.ReLU if act_fn == 'relu' else nn.ReLU6
+
+    def __init__(self,
+                 config:     str,
+                 capacity:   float = 1.0,
+                 activation: str = 'ReLU',
+                 n_classes:  int = 1000,
+                 pretrained: str = None,
+                 seed:       int = -1):
+
+        # validate inputs
+        config = config.upper()  # canonicalise
+        if config not in _CONFIGS.keys():
+            raise ValueError
+
+        activation = activation.lower()  # canonicalise
+        if activation == 'relu':
+            activation_class = nn.ReLU
+        elif activation == 'relu6':
+            activation_class = nn.ReLU6
+        else:
+            raise ValueError
+
         super(MobileNetV1, self).__init__()
-        base_width = int(capacity*32)
-        self.pilot = self.bn_conv(3, base_width, 2, act)
 
-        features = []
-        in_ch = base_width
-        for n, stride in _CONFIGS[config]:
-            features.append(self.dws_conv(in_ch, n*base_width, stride, act))
-            in_ch = n*base_width
+        # build the network
+        base_width      = int(32 * capacity)
+        self.pilot      = MobileNetV1.make_pilot(base_width, activation_class)
+        self.features   = MobileNetV1.make_features(config, base_width, activation_class)
+        self.avgpool    = MobileNetV1.make_avgpool()
+        self.classifier = MobileNetV1.make_classifier(config, base_width, n_classes)
 
-        self.last_out_ch = in_ch
+        self._initialize_weights(seed)
 
-        features.append(nn.AdaptiveAvgPool2d((1,1)))
-        self.features = nn.Sequential(*features)
-        self.classifier = nn.Linear(in_ch, n_classes)
         if pretrained:
             self.load_state_dict(torch.load(pretrained))
-        else:
-            self._initialize_weights(seed)
-
 
     @staticmethod
-    def bn_conv(in_ch : int, out_ch : int, stride : tuple, act : type):
-        return nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, (3,3), stride=stride, padding=(1,1), bias=False),
-            nn.BatchNorm2d(out_ch),
-            act(inplace=True)
-        )
+    def make_standard_convolution_layer(in_channels:      int,
+                                        out_channels:     int,
+                                        stride:           Union[int, Tuple[int, ...]],
+                                        activation_class: type) -> nn.Sequential:
+
+        modules = []
+
+        modules += [nn.Conv2d(in_channels, out_channels, kernel_size=(3, 3), stride=stride, padding=(1, 1), bias=False)]
+        modules += [nn.BatchNorm2d(out_channels)]
+        modules += [activation_class(inplace=True)]
+
+        return nn.Sequential(*modules)
 
     @staticmethod
-    def dws_conv(in_ch : int, out_ch : int, stride : tuple, act : type):
-        return nn.Sequential(
-            nn.Conv2d(in_ch, in_ch, (3,3), stride=stride, padding=(1,1), groups=in_ch, bias=False),
-            nn.BatchNorm2d(in_ch),
-            act(inplace=True),
-            nn.Conv2d(in_ch, out_ch, (1,1), stride=(1,1), padding=(0,0), bias=False),
-            nn.BatchNorm2d(out_ch),
-            act(inplace=True)
-        )
+    def make_depthwise_separable_convolution_block(in_channels:      int,
+                                                   out_channels:     int,
+                                                   stride:           Union[int, Tuple[int, ...]],
+                                                   activation_class: type) -> nn.Sequential:
+
+        modules = []
+
+        # depthwise
+        modules += [nn.Conv2d(in_channels, in_channels, kernel_size=(3, 3), stride=stride, padding=(1, 1), groups=in_channels, bias=False)]
+        modules += [nn.BatchNorm2d(in_channels)]
+        modules += [activation_class(inplace=True)]
+
+        # pointwise
+        modules += [nn.Conv2d(in_channels, out_channels, kernel_size=(1, 1), stride=(1, 1), padding=(0, 0), bias=False)]
+        modules += [nn.BatchNorm2d(out_channels)]
+        modules += [activation_class(inplace=True)]
+
+        return nn.Sequential(*modules)
+
+    @staticmethod
+    def make_pilot(base_width:       int,
+                   activation_class: type) -> nn.Sequential:
+
+        in_channels = 3
+        out_channels = base_width
+
+        return MobileNetV1.make_standard_convolution_layer(in_channels=in_channels,
+                                                           out_channels=out_channels,
+                                                           stride=2,  # we start with a spatial down-sampling
+                                                           activation_class=activation_class)
+
+    @staticmethod
+    def make_features(config:           str,
+                      base_width:       int,
+                      activation_class: type) -> nn.Sequential:
+
+        modules = []
+
+        in_channels = base_width
+        for n_channels_multiplier, stride in _CONFIGS[config]:
+            out_channels = base_width * n_channels_multiplier
+            modules += [MobileNetV1.make_depthwise_separable_convolution_block(in_channels=in_channels,
+                                                                               out_channels=out_channels,
+                                                                               stride=stride,
+                                                                               activation_class=activation_class)]
+            in_channels = out_channels
+
+        return nn.Sequential(*modules)
+
+    @staticmethod
+    def make_avgpool() -> nn.AdaptiveAvgPool2d:
+        return nn.AdaptiveAvgPool2d((1, 1))
+
+    @staticmethod
+    def make_classifier(config:     str,
+                        base_width: int,
+                        n_classes:  int) -> nn.Linear:
+
+        last_n_channels_multiplier = _CONFIGS[config][-1][0]
+        in_channels = last_n_channels_multiplier * base_width
+        in_features = in_channels * 1 * 1
+
+        return nn.Linear(in_features=in_features, out_features=n_classes)
 
     def forward(self, x):
+
         x = self.pilot(x)
         x = self.features(x)
-        x = x.view(-1, self.last_out_ch)
-        return self.classifier(x)
+        x = self.avgpool(x)
 
-    def _initialize_weights(self, seed : int = -1):
+        x = x.view(x.size(0), -1)
+
+        x = self.classifier(x)
+
+        return x
+
+    def _initialize_weights(self, seed: int = -1):
 
         if seed >= 0:
             torch.manual_seed(seed)
@@ -101,5 +193,3 @@ class MobileNetV1(nn.Module):
                 nn.init.normal_(m.weight, 0, 0.01)
                 if m.bias is not None:
                     nn.init.constant_(m.bias, 0)
-
-

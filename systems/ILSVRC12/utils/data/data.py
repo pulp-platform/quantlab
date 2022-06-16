@@ -23,11 +23,18 @@ import os
 import torch
 import torchvision
 
-def load_ilsvrc12(partition : str, path_data: str, n_folds : int, current_fold_id : int, cv_seed : int, transform: torchvision.transforms.Compose) -> torch.utils.data.Dataset:
-    # basic dataset creation function for ILSVRC2012
+
+def load_ilsvrc12(partition: str,
+                  path_data: str,
+                  n_folds: int,
+                  current_fold_id: int,
+                  cv_seed: int,
+                  transform: torchvision.transforms.Compose) -> torch.utils.data.Dataset:
+
+    # basic dataset creation function for ILSVRC12
     if n_folds != 1:
         print("Warning: ImageNet 'load_data_set' function does not support cross-validation yet!")
-    path_dataset = os.path.join(os.path.realpath(path_data), 'train' if partition=='train' else 'val')
+    path_dataset = os.path.join(os.path.realpath(path_data), 'train' if partition == 'train' else 'val')
     dataset = torchvision.datasets.ImageFolder(path_dataset, transform)
 
     return dataset
