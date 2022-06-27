@@ -27,19 +27,12 @@ Then, use [Anaconda](https://docs.anaconda.com/anaconda/install/) to install Qua
 ```
 $ conda env create -f quantlab.yml
 ```
-Note: at the moment of writing, the [PyTorch Anaconda channel](https://anaconda.org/pytorch/pytorch/files?version=) does not provide a distribution package for the combination Python 3.8/PyTorch 1.9 supporting a CUDA version lower than 10.2.
-Therefore, if you plan to install QuantLab with GPU support, ensure that your CUDA version is not lower than 10.2.
 
 After creating the Anaconda environment, it can make your life easier to install the `quantlib` quantisation library in your Anaconda environment:
 ```
 $ conda activate quantlab
 (quantlab) $ cd quantlib
 (quantlab) $ python setup.py install
-(quantlab) $ python
-(quantlab) >>> import quantlib
-(quantlab) >>> quantlib.editing.graphs.traces.trace.trace_pytorch_modules()
-(quantlab) >>> quantlib.editing.graphs.traces.trace.trace_quantlib_modules()
-(quantlab) >>> exit()
 (quantlab) $ cd ..
 ```
 Also, this installation is mandatory in case you intend to run some of the Jupyter notebooks contained in the `examples` folder.
