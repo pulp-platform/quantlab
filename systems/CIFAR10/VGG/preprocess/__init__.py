@@ -23,13 +23,11 @@ import torch
 import torchvision
 
 from systems.utils.data import default_dataset_cv_split
-from systems.CIFAR10.utils.transforms import TransformA, TransformB, CIFAR10PACTQuantTransform
+from systems.CIFAR10.utils.transforms import TransformA
 from systems.CIFAR10.utils.data import load_data_set
 
 
 __all__ = [
     'load_data_set',
     'TransformA',
-    'TransformB',
-    'CIFAR10PACTQuantTransform',
 ]

@@ -20,7 +20,10 @@
 # 
 
 import torch
+from torchvision.transforms import Compose
 from torchvision.transforms import Normalize
+from torchvision.transforms import RandomCrop, RandomHorizontalFlip
+from torchvision.transforms import ToTensor
 
 
 CIFAR10STATS =\
@@ -51,17 +54,6 @@ class CIFAR10NormalizeHomogeneous(Normalize):
         super(CIFAR10NormalizeHomogeneous, self).__init__(mean=mean, std=std)
 
 
-# TODO: move the following definition to the VGG topology package
-from torchvision.transforms import Compose
-from torchvision.transforms import Lambda
-
-# from quantlib.algorithms.pact import PACTAsymmetricAct
-# from quantlib.algorithms.pact.util import almost_symm_quant
-
-# from ....CIFAR10.VGG.preprocess import TransformA
-from torchvision.transforms import RandomCrop, RandomHorizontalFlip, ToTensor
-
-
 class TransformA(Compose):
 
     def __init__(self, augment: bool):
@@ -75,31 +67,3 @@ class TransformA(Compose):
         transforms.append(CIFAR10Normalize())
 
         super(TransformA, self).__init__(transforms)
-
-
-class CIFAR10PACTQuantTransform(Compose):
-
-    """Extend a CIFAR-10 transform to quantize its outputs.
-
-    The input can be fake-quantized (`quantize == 'fake'`) or true-quantized
-    (`quantize == 'int'`).
-    """
-    def __init__(self, augment: bool, quantize='none', n_q=256):
-
-        transforms = []
-        transforms.append(TransformA(augment))
-        if quantize in ['fake', 'int']:
-            transforms.append(PACTAsymmetricAct(n_levels=n_q, symm=True, learn_clip=False, init_clip='max', act_kind='identity'))
-            quantizer = transforms[-1]
-            # set clip_lo to negative max abs of CIFAR10
-            maximum_abs = torch.max(torch.tensor([v for v in CIFAR10STATS['quantize'].values()]).abs())
-            clip_lo, clip_hi = almost_symm_quant(maximum_abs, n_q)
-            quantizer.clip_lo.data = clip_lo
-            quantizer.clip_hi.data = clip_hi
-            quantizer.started |= True
-        if quantize == 'int':
-            eps = transforms[-1].get_eps()
-            div_by_eps = lambda x: x/eps
-            transforms.append(Lambda(div_by_eps))
-
-        super(CIFAR10PACTQuantTransform, self).__init__(transforms)
