@@ -28,7 +28,6 @@ from manager.assistants import NetworkAssistant
 from manager.assistants import TrainingAssistant
 from manager.assistants import MeterAssistant
 
-from quantlib.algorithms.pact.pact_controllers import *
 
 def test(args):
 

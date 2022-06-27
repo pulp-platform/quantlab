@@ -21,4 +21,4 @@
 
 from .transforms import CIFAR10Normalize
 from .transforms import CIFAR10NormalizeHomogeneous
-from .transforms import TransformA, TransformB, CIFAR10PACTQuantTransform
+from .transforms import TransformA
