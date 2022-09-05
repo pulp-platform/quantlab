@@ -60,7 +60,9 @@ def bb_recipe(net : nn.Module,
               shared_gates : bool = False,
               target : Literal["bops", "latency"] = "bops",
               latency_spec_file : Optional[str] = None,
-              init_best_latency : bool = False):
+              init_best_latency : bool = False,
+              split : str = None,
+              init_ctrls : bool = True):
 
     assert not (shared_gates and joint_distribution), "shared_gates and joint_distribution are mutually exclusive!"
     filter_conv2d = TypeFilter(nn.Conv2d)
@@ -104,16 +106,16 @@ def bb_recipe(net : nn.Module,
 
     net = lwe._graph.net
 
-    #attach gate controllers using the appropriate pass
-    #ctrl_pass = BBControllerInitPass(shape_in=(1, 3, 224, 224),
-    #gate_init=gate_init)
-    ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution, shared_gates=shared_gates, target=target, latency_spec_file=latency_spec_file, init_best_latency_gates=init_best_latency)
-    net_traced = BB_symbolic_trace(net)
+    if init_ctrls:
+        ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution, shared_gates=shared_gates, target=target, latency_spec_file=latency_spec_file, init_best_latency_gates=init_best_latency, split=split)
+        net_traced = BB_symbolic_trace(net)
 
-    net_final = ctrl_pass.apply(net_traced)
-    for n, m in net_final.named_modules():
-        if isinstance(m, BBAct) and m.bb_gates is None:
-            print(f"Activation {n} has no bb_gates!!")
+        net_final = ctrl_pass.apply(net_traced)
+        for n, m in net_final.named_modules():
+            if isinstance(m, BBAct) and m.bb_gates is None:
+                print(f"Activation {n} has no bb_gates!!")
+    else:
+        net_final = net
     return net_final
 
 

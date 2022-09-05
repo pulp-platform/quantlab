@@ -6,11 +6,12 @@ import numpy as np
 from tqdm import tqdm as tq
 
 import torch
+from quantlib.QTensor import QTensor
 
 __all__ = ['DVS128DataSet']
 
 class DVS128DataSet(torch.utils.data.Dataset):
-    def __init__(self, data_dir, cnn_win, tcn_win, window_stride, verbose=False, include_subjects=None, single_out : bool = False, cnn_stride=None, file_suffix : str = "", transform=None, fps : int = 30):
+    def __init__(self, data_dir, cnn_win, tcn_win, window_stride, verbose=False, include_subjects=None, single_out : bool = False, cnn_stride=None, file_suffix : str = "", transform=None, fps : int = 30, **kwargs):
         self.cnn_win = cnn_win
         self.tcn_win = tcn_win
         self.window_stride = window_stride
@@ -100,6 +101,7 @@ class DVS128DataSet(torch.utils.data.Dataset):
         frames_tot = 0
         for i, f in enumerate(np_file_it):
             d = np.load(f)
+
             n_frames = d.shape[0]
             # if not self.overlap_cnn_wins:
             #     n_windows = int(np.ceil((n_frames-self.window_size+1)/self.window_stride))
@@ -137,6 +139,6 @@ class DVS128DataSet(torch.utils.data.Dataset):
         #print("Key: ", key)
         #print("Indices: ", self.indices[key])
         if self.transform:
-            return (torch.tensor(self.transform(self.dat[self.indices[key]])).float(), torch.tensor(self.labels[key].squeeze()).long())
+            return (QTensor(self.transform(self.dat[self.indices[key]]), eps=1.).float(), torch.tensor(self.labels[key].squeeze()).long())
         else:
-            return (torch.tensor(self.dat[self.indices[key]]).float(), torch.tensor(self.labels[key].squeeze()).long())
+            return (QTensor(self.dat[self.indices[key]], eps=1.).float(), torch.tensor(self.labels[key].squeeze()).long())

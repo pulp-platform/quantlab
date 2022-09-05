@@ -41,8 +41,13 @@ from quantlib.editing.fx.passes.bb import *
 
 
 def bb_recipe(net : nn.Module,
-                config : dict,
-              gate_init : float = 2.):
+              config : dict,
+              gate_init : float = 2.,
+              shared_gates : bool = False,
+              target : Literal["bops", "latency"] = "bops",
+              latency_spec_file : Optional[str] = None,
+              joint_distribution : bool = False
+              ):
 
     # config is expected to contain 3 keys for each layer type:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
@@ -114,13 +119,12 @@ def bb_recipe(net : nn.Module,
     #     m._modules['act_out'] = BBAct(**bb_harmonize_act_cfg)
 
     # now we can attach the controllers
-    ctrl_pass = BBControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init)
+    ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution, shared_gates=shared_gates, target=target, latency_spec_file=latency_spec_file)
     net_final = ctrl_pass(harmonized_net)
 
     return net_final
 
 def get_bb_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict = {}, kwargs_activation : dict = {}, export_file : Optional[str] = None):
-    filter_intadd = SubTypeFilter(PACTIntegerAdd)
     net_nodes_intadds_dissolved = LightweightGraph.build_nodes_list(net)
     net_nodes_intadds_intact = LightweightGraph.build_nodes_list(net, leaf_types=(PACTIntegerAdd,))
     lin_modules = PACTLinearController.get_modules(net)

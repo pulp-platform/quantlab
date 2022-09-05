@@ -63,7 +63,8 @@ def pact_recipe(net : nn.Module,
                 config : dict,
                 precision_spec_file : Optional[str] = None,
                 finetuning_ckpt : Optional[str] = None,
-                quantize_pool : bool = False):
+                quantize_pool : bool = False,
+                use_freebie_cfg : bool = False):
 
     # config is expected to contain 3 keys for each layer type:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
@@ -155,7 +156,8 @@ def pact_recipe(net : nn.Module,
     # training run and overrides the 'n_levels' spec from config.json
     if precision_spec_file is not None:
         with open(precision_spec_file, 'r') as fh:
-            prec_override_spec = json.load(fh)['layer_levels']
+            prec_spec = json.load(fh)
+            prec_override_spec = prec_spec['layer_levels']
         # deal with nn.DataParallel wrapping
         if all(k.startswith('module.') for k in prec_override_spec.keys()):
             prec_override_spec = {k.lstrip('module.'):v for k,v in prec_override_spec.items()}
@@ -163,6 +165,13 @@ def pact_recipe(net : nn.Module,
             appl_keys = [k for k in prec_override_spec.keys() if k in cfg.keys()]
             for k in appl_keys:
                 cfg[k]['n_levels'] = prec_override_spec[k]
+            if use_freebie_cfg:
+                freebie_cfg = prec_spec['freebie_levels']
+                freebie_cfg = {k.lstrip("module."):v for k,v in freebie_cfg.items()}
+                freebie_keys = [k for k in freebie_cfg.keys() if k in cfg.keys()]
+                for k in freebie_keys:
+                    print(f"overriding layer {k}'s n_levels to {freebie_cfg[k]}")
+                    cfg[k]['n_levels'] = freebie_cfg[k]
 
     def make_rules(cfg : dict,
                    rule : type):

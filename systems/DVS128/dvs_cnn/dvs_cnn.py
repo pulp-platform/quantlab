@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 from quantlib.algorithms.generic import CausalConv1d
+from quantlib.QTensor import QTensor
 
 __CNN_CFGS__ = {
     'first_try' : [128, 128, 128, 128],
@@ -10,6 +11,7 @@ __CNN_CFGS__ = {
     '128_channels' : [128, 128, 128, 128],
     '96_channels' : [96, 96, 96, 96],
     '64_channels' : [64, 64, 64, 64],
+    '48_channels' : [48, 48, 48, 48],
     '32_channels' : [32, 32, 32, 32]
 }
 
@@ -18,15 +20,29 @@ __CNN_CFGS__ = {
 __TCN_CFGS__ = {
     'first_try' : [(2, 1, 64), (2, 2, 64), (2, 4, 64)],
     '64_channels' : [(2, 1, 64), (2, 2, 64), (2, 4, 64)],
+    '64_channels_k3' : [(3, 1, 64), (3, 2, 64), (3, 4, 64)],
+    '64_channels_k4' : [(4, 1, 64), (4, 2, 64), (4, 4, 64)],
     'ninetysix_ch' : [(2, 1, 96), (2, 2, 96), (2, 4, 96)],
-    '96_channels' : [(2, 1, 96), (2, 2, 96), (2, 4, 96)],
     '128_ch' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
     '128_channels' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
     'k3' : [(3, 1, 64), (3, 2, 64), (3, 4, 64)],
+    '96_channels' : [(2, 1, 96), (2, 2, 96), (2, 4, 96)],
     '96_channels_k3' : [(3, 1, 96), (3, 2, 96), (3, 4, 96)],
-    '32_channels' : [(2, 1, 32), (2, 2, 32), (2, 4, 32)]
+    '96_channels_k4' : [(4, 1, 96), (4, 2, 96), (4, 4, 96)],
+    '32_channels' : [(2, 1, 32), (2, 2, 32), (2, 4, 32)],
+    '32_channels_k3' : [(3, 1, 32), (3, 2, 32), (3, 4, 32)],
+    '32_channels_k4' : [(4, 1, 32), (4, 2, 32), (4, 4, 32)],
+    '48_channels' : [(2, 1, 48), (2, 2, 48), (2, 4, 48)],
+    '48_channels_k3' : [(3, 1, 48), (3, 2, 48), (3, 4, 48)],
+    '48_channels_k4' : [(4, 1, 48), (4, 2, 48), (4, 4, 48)]
 }
 
+def get_input_shape(cfg : dict):
+    cnn_win = cfg['network']['kwargs']['cnn_window']
+    tcn_win = cfg['network']['kwargs']['tcn_window']
+    ds = cfg['data']['train']['dataset']['transform']['kwargs']['downsample']
+    xy_in = 128//ds
+    return (1, cnn_win*tcn_win, xy_in, xy_in)
 
 class DVSNet2D(nn.Module):
     def __init__(self, cnn_cfg_key : str, pool_type : str = "stride", cnn_window : int = 16, activation : str = 'relu',
@@ -47,7 +63,7 @@ class DVSNet2D(nn.Module):
 
         adapter_list = []
 
-        adapter_list.append(nn.Conv2d(cnn_window, 32, kernel_size=k, padding='same', bias=False))
+        adapter_list.append(nn.Conv2d(cnn_window, 32, kernel_size=k, padding=k//2, bias=False))
         if pool_type != 'max_pool':
             adapter_pool = nn.AvgPool2d(kernel_size=2)
         else:
@@ -97,7 +113,7 @@ class DVSNet2D(nn.Module):
         l = []
         for i, c in enumerate(cfg):
             if not (i == len(cfg)-1 and last_conv_nopad):
-                pad = "same"
+                pad = k//2
             else:
                 pad = 0
             if pool_type == "stride":
@@ -156,11 +172,15 @@ class DVSTCN(nn.Module):
         self.twn_classifier = twn_classifier
         self.sequence_length = sequence_length
         assert classifier_out in ["all", "last"], "DVSTCN parameter classifier_out must be 'all' or 'last'!"
+        self.classifier_type = classifier_type
         self.classifier_out = classifier_out
         features = self._get_features(in_channels, cfg, self._act, twn_classifier)
         self.features = features
         classifier = self._get_classifier(classifier_type, cfg[-1][-1], n_classes, classifier_bias, sequence_length)
         self.classifier = classifier
+        # this must set to true if "linear" (conv1d module) classifier is replaced
+        # with a Linear module
+        self.cls_replaced = False
 
     @staticmethod
     def _get_classifier(classifier_type, in_ch, n_classes, classifier_bias, sequence_length):
@@ -195,24 +215,32 @@ class DVSTCN(nn.Module):
     def forward(self, x):
         x = self.features(x)
         x = self.classifier(x)
-        if self.classifier_out == "last":
-            return x[:, :, -1]
-        elif self.classifier_out == "linear":
+        if self.cls_replaced:
+            return x
+        if self.classifier_type == "linear":
             return x.squeeze(2)
+        elif self.classifier_out == "last":
+            return x[:, :, -1]
         return x
 
 
 class DVSHybridNet(nn.Module):
-    def __init__(self, cnn_window : int, tcn_window : int, cnn_cfg_key : str, tcn_cfg_key : str, n_classes : int = 11, activation : str = 'relu', k_cnn : int = 3, last_conv_nopad : bool = False, pretrained : str = None, **kwargs):
+    def __init__(self, cnn_window : int, tcn_window : int, cnn_cfg_key : str, tcn_cfg_key : str, n_classes : int = 11, activation : str = 'relu', k_cnn : int = 3, last_conv_nopad : bool = False, pretrained : str = None, inject_eps : bool = False, use_tcn : bool = True, classifier_bias : bool = False, **kwargs):
         super(DVSHybridNet, self).__init__()
         cnn_cfg = __CNN_CFGS__[cnn_cfg_key]
         embedding_size = cnn_cfg[-1]
         self.cnn_window = cnn_window
         self.tcn_window = tcn_window
         self.sequence_length = tcn_window
+        self.use_tcn = use_tcn
         self.cnn = DVSNet2D(cnn_cfg_key=cnn_cfg_key, cnn_window=cnn_window, use_classifier=False, activation=activation, k=k_cnn, last_conv_nopad=last_conv_nopad, **kwargs)
-        self.tcn = DVSTCN(tcn_cfg_key=tcn_cfg_key, in_channels=embedding_size, n_classes=n_classes, activation=activation, sequence_length=tcn_window, **kwargs)
-
+        if use_tcn:
+            self.tcn = DVSTCN(tcn_cfg_key=tcn_cfg_key, in_channels=embedding_size, n_classes=n_classes, activation=activation, sequence_length=tcn_window, classifier_bias=classifier_bias, **kwargs)
+        else:
+            # if we don't use a true TCN, just use a single Conv1D layer
+            # (equivalent to a linear layer)
+            self.tcn = nn.Conv1d(cnn_cfg[-1], n_classes, tcn_window, padding=0, dilation=1, bias=classifier_bias)
+        self.inject_eps = inject_eps
         if pretrained:
             self.load_state_dict(torch.load(pretrained))
 
@@ -221,7 +249,12 @@ class DVSHybridNet(nn.Module):
         # we get a (cnn_window * tcn_window)-sized stack of frame batches
         # => shape: (n_batch, cnn_window*tcn_window, H, W)
         # 1. split it up into cnn_window-sized stacks
+        if self.inject_eps:
+            x = QTensor(x, eps=1.)
+        #print(f"type of x - hybridnet: {type(x)}")
         cnn_wins = torch.split(x, self.cnn_window, dim=1)
+        #print(f"eps of x - hybridnet after split: {tuple(w.eps for w in cnn_wins)}")
+
         # 2. run the CNN over each of the chunks
         cnn_outs = []
         for w in cnn_wins:
@@ -232,6 +265,8 @@ class DVSHybridNet(nn.Module):
 
         # 4. run the TCN over this window
         tcn_output = self.tcn(cnn_output)
+        if not self.use_tcn:
+            tcn_output = tcn_output.squeeze(2)
         # 5. done! We get an output window:
         #    shape: (n_batch, n_classes, w)
         #           where w == tcn_window if tcn.classifier_out == "all" and w == 1 if tcn.classifier_out == "last"

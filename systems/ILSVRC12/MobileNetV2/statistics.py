@@ -54,17 +54,18 @@ class BBGateStatistic(InstantaneousCallbackBasedStatistic):
         self._fw_handle.remove()
         self._bw_handle.remove()
 
+
 class BBGateMasterStatistic(InstantaneousCallbackFreeStatistic):
     def __init__(self,
                  platform: PlatformManager, writerstub: WriterStub,
                  n_epochs: int, n_batches: int,
                  start: int, period: int,
                  name: str, module: torch.nn.Module, writer_kwargs: dict = {}):
-        tag = f"{name}/bb_gates"
+        tag = f"{name}/all_bb_gates"
         super(BBGateMasterStatistic, self).__init__(platform=platform, writerstub=writerstub, tag=tag,
                                                              n_epochs=n_epochs, n_batches=n_batches,
-                                                             start=start, period=period,
-                                                             module=module)
+                                                             start=start, period=period
+                                                             )
         self._writer_kwargs = writer_kwargs
         nodes = LightweightGraph.build_nodes_list(module)
         act_filter = SubTypeFilter(BBAct)
@@ -74,7 +75,7 @@ class BBGateMasterStatistic(InstantaneousCallbackFreeStatistic):
         self.conv_keys = [n.name for n in conv_filter(nodes)]
         self.lin_keys = [n.name for n in lin_filter(nodes)]
         self.module = module
-        self.parent_name = name
+        self.prefix = name+'.' if name is not None else ''
 
     def _start_observing(self):
         pass
@@ -84,7 +85,7 @@ class BBGateMasterStatistic(InstantaneousCallbackFreeStatistic):
         for g, p in zip(module.bb_gates, module.precs[1:]):
             if (not self._platform.is_horovod_run) or self._platform.is_master:
                 try:
-                    self._writer.add_scalar(f"{kind}/{self.parent_name}.{name}/gate_{p}b", g.item(), global_step=self._global_step, **self._writer_kwargs)
+                    self._writer.add_scalar(f"{kind}/{self.prefix}{name}/gate_{p}b", g.item(), global_step=self._global_step, **self._writer_kwargs)
                 except AttributeError:  # ``SummaryWriter`` has not been instantiated
                       print("OI NO WRITER")
 
@@ -92,4 +93,4 @@ class BBGateMasterStatistic(InstantaneousCallbackFreeStatistic):
         for kind, keys in [('act', self.act_keys), ('conv', self.conv_keys), ('linear', self.lin_keys)]:
             for k in keys:
                 m = self.module.get_submodule(k)
-                self.write(m, 'kind', k)
+                self.write(m, kind, k)

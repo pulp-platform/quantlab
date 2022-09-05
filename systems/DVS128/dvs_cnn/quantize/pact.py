@@ -21,7 +21,8 @@
 
 from torch import nn
 
-from quantlib.algorithms.pact import CausalConv1d, PACTUnsignedAct, PACTAsymmetricAct, PACTConv1d, PACTCausalConv1d, PACTConv2d, PACTLinear
+from quantlib.algorithms.pact import PACTUnsignedAct, PACTAsymmetricAct, PACTConv1d, PACTCausalConv1d, PACTConv2d, PACTLinear
+from quantlib.algorithms.generic import CausalConv1d
 from quantlib.algorithms.pact import PACTActController, PACTLinearController
 import quantlib.editing.lightweight as qlw
 from quantlib.editing.lightweight import LightweightGraph, LightweightEditor
@@ -51,13 +52,6 @@ def pact_recipe(net : nn.Module,
     signed_act_kwargs = config["PACTAsymmetricAct"]
     unsigned_act_kwargs = config["PACTUnsignedAct"]
 
-    def make_rule(cfg : dict,
-                   rule : type,
-                   filt: TypeFilter):
-        kwargs = cfg["kwargs"] if "kwargs" in cfg.keys() else {}
-        rho = rule(filt, **kwargs)
-        return rho
-
     rhos.append(qlr.pact.ReplaceConvLinearPACTRule(filter_convs, **conv_kwargs))
     rhos.append(qlr.pact.ReplaceActPACTRule(filter_htanh, signed=True, **signed_act_kwargs))
     rhos.append(qlr.pact.ReplaceActPACTRule(filter_relu, signed=False, **unsigned_act_kwargs))
@@ -70,6 +64,10 @@ def pact_recipe(net : nn.Module,
         lwe.set_lwr(rho)
         lwe.apply()
     lwe.shutdown()
+    # input data is ternary, so the first convolution does not need eps padding
+    # no matter what
+    lwg.net.cnn.adapter[0].padding_mode = 'zeros'
+
 
     return lwg.net
 

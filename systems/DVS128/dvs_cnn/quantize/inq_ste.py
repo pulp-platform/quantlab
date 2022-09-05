@@ -3,22 +3,25 @@ import quantlib.editing.lightweight.rules as qlr
 import quantlib.algorithms as qa
 from quantlib.algorithms.inq import *
 from quantlib.algorithms.ste import STEActivation
+from quantlib.algorithms.pact import PACTAsymmetricAct, PACTUnsignedAct, PACTActController
 
 from systems.DVS128.dvs_cnn import CausalConv1d
 from torch import nn
 
 
 
-__all__ = ['layers_ste_inq', 'layers_ste_inq_get_controllers']
+__all__ = ['layers_ste_inq', 'layers_ste_inq_get_controllers', 'layers_pact_inq', 'layers_pact_inq_get_controllers']
 
-def inq_conv2d_from_conv2d(m : nn.Conv2d, n_levels : int, quant_init_method : str = None, quant_strategy : str = "magnitude"):
+def inq_conv2d_from_conv2d(m : nn.Conv2d, n_levels : int, quant_init_method : str = None, quant_strategy : str = "magnitude", padding_mode : str = None):
     # return an INQ Conv2d with equivalent parameters as the input Conv2d.
     # weights are copied.
+    if padding_mode is None:
+        pm = m.padding_mode
     new_conv = INQConv2d(in_channels=m.in_channels, out_channels=m.out_channels,
                      kernel_size=m.kernel_size, stride=m.stride,
                      padding=m.padding, dilation=m.dilation,
                      groups=m.groups, bias=m.bias is not None,
-                     padding_mode=m.padding_mode,
+                     padding_mode=pm,
                      quant_init_method=quant_init_method,
                      quant_strategy=quant_strategy)
     new_conv.weight.data.copy_(m.weight.data)
@@ -26,14 +29,16 @@ def inq_conv2d_from_conv2d(m : nn.Conv2d, n_levels : int, quant_init_method : st
         new_conv.bias.data.copy_(m.bias.data)
     return new_conv
 
-def inq_conv1d_from_conv1d(m : nn.Conv1d, n_levels : int, quant_init_method : str = None, quant_strategy : str = "magnitude"):
+def inq_conv1d_from_conv1d(m : nn.Conv1d, n_levels : int, quant_init_method : str = None, quant_strategy : str = "magnitude", padding_mode : str = None):
     # return an INQ Conv2d with equivalent parameters as the input Conv2d.
     # weights are copied.
+    if padding_mode is None:
+        pm = m.padding_mode
     new_conv = INQConv1d(in_channels=m.in_channels, out_channels=m.out_channels,
                      kernel_size=m.kernel_size, stride=m.stride,
                      padding=m.padding, dilation=m.dilation,
                      groups=m.groups, bias=m.bias is not None,
-                     padding_mode=m.padding_mode,
+                     padding_mode=pm,
                      quant_init_method=quant_init_method,
                      quant_strategy=quant_strategy)
     new_conv.weight.data.copy_(m.weight.data)
@@ -41,14 +46,16 @@ def inq_conv1d_from_conv1d(m : nn.Conv1d, n_levels : int, quant_init_method : st
         new_conv.bias.data.copy_(m.bias.data)
     return new_conv
 
-def inq_causal_conv1d_from_causal_conv1d(m : CausalConv1d, n_levels : int, quant_init_method : str = None, quant_strategy : str = "magnitude"):
+def inq_causal_conv1d_from_causal_conv1d(m : CausalConv1d, n_levels : int, quant_init_method : str = None, quant_strategy : str = "magnitude", padding_mode : str = None):
     # return an INQ Conv2d with equivalent parameters as the input Conv2d.
     # weights are copied.
+    if padding_mode is None:
+        pm = m.padding_mode
     new_conv = INQCausalConv1d(in_channels=m.in_channels, out_channels=m.out_channels,
                      kernel_size=m.kernel_size, stride=m.stride,
                      dilation=m.dilation,
                      groups=m.groups, bias=m.bias is not None,
-                     padding_mode=m.padding_mode,
+                     padding_mode=pm,
                      quant_init_method=quant_init_method,
                      quant_strategy=quant_strategy)
     new_conv.weight.data.copy_(m.weight.data)
@@ -98,7 +105,7 @@ def layers_ste_inq(net, config):
         for n in conv_nodes:
             assert isinstance(n.module, (nn.Conv2d, CausalConv1d, nn.Conv1d)), f"Bad convolution found: {type(n.module)}"
             conv_type = type(n.module)
-            new_conv = _INQ_REPLACEMENTS[conv_type](n.module, num_levels, quant_init_method, quant_strategy)
+            new_conv = _INQ_REPLACEMENTS[conv_type](n.module, **inq_config)
             qlr.LightweightRule.replace_module(net, n.path, new_conv)
 
     add_ste_after_htanh(net, ste_config['n_levels'], ste_config['quant_start_epoch'])
@@ -110,6 +117,44 @@ def layers_ste_inq(net, config):
 
     return net
 
+
+def layers_pact_inq(net, config):
+    filter_convs = qlr.TypeFilter(nn.Conv2d) | qlr.TypeFilter(nn.Conv1d) | qlr.TypeFilter(CausalConv1d)
+    filter_relu = qlr.TypeFilter(nn.ReLU) | qlr.TypeFilter(nn.ReLU6)
+    filter_htanh = qlr.TypeFilter(nn.Hardtanh)
+    inq_config = config["INQ"]
+    signed_act_kwargs = config["PACTAsymmetricAct"]
+    unsigned_act_kwargs = config["PACTUnsignedAct"]
+
+    def replace_conv_nodes_inq(net, num_levels, quant_init_method, quant_strategy):
+        net_nodes = qlw.LightweightGraph.build_nodes_list(net)
+        conv_nodes = filter_convs(net_nodes)
+        for n in conv_nodes:
+            assert isinstance(n.module, (nn.Conv2d, CausalConv1d, nn.Conv1d)), f"Bad convolution found: {type(n.module)}"
+            conv_type = type(n.module)
+            new_conv = _INQ_REPLACEMENTS[conv_type](n.module, num_levels, quant_init_method, quant_strategy)
+            qlr.LightweightRule.replace_module(net, n.path, new_conv)
+
+    rhos = []
+
+    replace_conv_nodes_inq(net, inq_config["n_levels"], inq_config["quant_init_method"], inq_config["quant_strategy"])
+    # we want to emulate STE, so configure PACT activations as follows:
+    # - no learn_clip and no TQT
+    # - 'const' initialization
+    rhos.append(qlr.pact.ReplaceActPACTRule(filter_htanh, signed=True, learn_clip=False, tqt=False, init_clip="const", **signed_act_kwargs))
+    rhos.append(qlr.pact.ReplaceActPACTRule(filter_relu, signed=False, learn_clip=False, tqt=False, init_clip="const", **unsigned_act_kwargs))
+
+    lwg = qlw.LightweightGraph(net)
+    lwe = qlw.LightweightEditor(lwg)
+
+
+    lwe.startup()
+    for rho in rhos:
+        lwe.set_lwr(rho)
+        lwe.apply()
+    lwe.shutdown()
+    lwg.net.cnn.adapter[0].padding_mode = 'zeros'
+    return lwg.net
 
 def layers_ste_inq_get_controllers(net, config):
 
@@ -126,3 +171,21 @@ def layers_ste_inq_get_controllers(net, config):
     inq_controller = qa.inq.INQController(inq_modules, inq_ctrl_config['schedule'], inq_ctrl_config['clear_optim_state_on_step'])
 
     return [ste_controller, inq_controller]
+
+
+def layers_pact_inq_get_controllers(net, schedules, kwargs_activation, kwargs_inq):
+
+    net_nodes = qlw.LightweightGraph.build_nodes_list(net)
+    filter_act = qlr.TypeFilter(PACTAsymmetricAct) | qlr.TypeFilter(PACTUnsignedAct)
+    net_nodes = qlw.LightweightGraph.build_nodes_list(net)
+
+    act_modules = [n.module for n in filter_act(net_nodes)]
+
+    # get PACT Activation controller
+    act_controller = PACTActController(act_modules, schedules["activation"], **kwargs_activation)
+
+    # get INQ controller
+    inq_modules = qa.inq.INQController.get_inq_modules(net_nodes)
+    inq_controller = qa.inq.INQController(inq_modules, schedules['INQ'], **kwargs_inq)
+
+    return [act_controller, inq_controller]

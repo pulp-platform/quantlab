@@ -1,5 +1,7 @@
 import numpy as np
-from torchvision.transforms import Compose, RandomAffine
+import torch
+from torch import nn
+from torchvision.transforms import Compose, RandomAffine, ToTensor, Lambda
 from itertools import product
 
 class AddTernaryNoise(object):
@@ -62,13 +64,35 @@ class TernaryDownsampleTransform(object):
         return out
 
 
+class StackedPadTransform(object):
+    def __init__(self, win : int, pad_channels : int):
+        self.window = win
+        self.pad_channels = pad_channels
+
+
+    def __call__(self, sample):
+        n_wins = sample.shape[0]//self.window
+        padded_size = n_wins * self.pad_channels
+        out = torch.zeros(padded_size, sample.shape[1], sample.shape[2])
+        for i in range(n_wins):
+            out[i*self.pad_channels:i*self.pad_channels+self.window, :, :] = sample[i*self.window:(i+1)*self.window, :, :]
+        return out
+
+
 
 class DVSAugmentTransform(Compose):
-    def __init__(self, augment : bool, downsample : int = 1, p_flip : float = 0.):
+    def __init__(self, augment : bool, downsample : int = 1, p_flip : float = 0., pad_channels : int = None, cnn_window : int = 0, clip : bool = False, **kwargs):
         transforms = []
         if augment:
             transforms.append(RandomPxFlipTransform(p=p_flip))
             transforms.append(TranslateTransform(fracs=(0.1, 0.1)))
         n_vals_in_range = (2*downsample**2+1)//3
         transforms.append(TernaryDownsampleTransform(-downsample**2+n_vals_in_range, downsample**2-n_vals_in_range, downsample))
+        transforms.append(ToTensor())
+        transforms.append(Lambda(lambda x: torch.permute(x, (1,2,0))))
+        if clip:
+            do_clip = lambda x: nn.functional.relu(x)
+            transforms.append(Lambda(do_clip))
+        if pad_channels is not None:
+            transforms.append(StackedPadTransform(cnn_window, pad_channels))
         super(DVSAugmentTransform, self).__init__(transforms)
