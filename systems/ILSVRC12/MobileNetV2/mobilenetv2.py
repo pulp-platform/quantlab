@@ -123,6 +123,7 @@ class MobileNetV2(nn.Module):
         self.features   = self._make_features(config, capacity, round_to_closest_multiple_of, in_planes_features, out_planes_features)
         self.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
         self.classifier = self._make_classifier(out_channels_features, num_classes)
+        self.flatten = nn.Flatten()
 
         if pretrained is not None:
             self.load_state_dict(torch.load(pretrained))
@@ -179,8 +180,9 @@ class MobileNetV2(nn.Module):
         x = self.pilot(x)
         x = self.features(x)
         x = self.avgpool(x)
-
-        x = x.view(x.size(0), -1)
+        x = self.flatten(x)
+        #x = x.view(x.size(0), -1) # this view call results in a really ugly
+        #graph... ghost it
 
         x = self.classifier(x)
 

@@ -11,7 +11,7 @@
                 }
             },
             "dataloader": {
-                "bs": 190
+                "bs": 150
             }
         },
         "valid": {
@@ -24,7 +24,7 @@
                 }
             },
             "dataloader": {
-                "bs": 190
+                "bs": 150
             }
 
         }
@@ -37,10 +37,10 @@
             "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/ILSVRC12/MobileNetV2/pretrained/MNv2_224_1.0.ckpt"
         },
         "quantize": {
-            "function": "pact_recipe",
+            "function": "bb_recipe",
             "kwargs": {
                 "config": {
-                    "PACTConv2d": {
+                    "BBConv2d": {
                         "pilot.0$": {},
                         "features.0.residual_branch.0.0$": {
                             "init_clip": "max"
@@ -128,26 +128,35 @@
                         "features.16.residual_branch.2.0$": {},
                         "features.17.0$": {},
                         "kwargs": {
-                            "n_levels": 256,
                             "quantize": "per_channel",
                             "init_clip": "max",
-                            "learn_clip": true,
+                            "precs": [
+                                2,
+                                4,
+                                8
+                            ],
                             "symm_wts": true,
-                            "tqt": true
+                            "hc_stretch": 1.2,
+                            "hc_T": 0.5
                         }
                     },
-                    "PACTLinear": {
+                    "BBLinear": {
                         "classifier.1$": {},
                         "kwargs": {
-                            "n_levels": 256,
                             "quantize": "per_layer",
                             "init_clip": "max",
-                            "learn_clip": true,
                             "symm_wts": true,
-                            "tqt": true
+                            "precs": [
+                                2,
+                                4,
+                                8
+                            ],
+                            "symm_wts": true,
+                            "hc_stretch": 1.2,
+                            "hc_T": 0.5
                         }
                     },
-                    "PACTUnsignedAct": {
+                    "BBAct": {
                         "pilot.2$": {},
                         "features.0.residual_branch.0.2$": {},
                         "features.1.residual_branch.0.2$": {},
@@ -184,40 +193,50 @@
                         "features.16.residual_branch.1.2$": {},
                         "features.17.2$": {},
                         "kwargs": {
-                            "n_levels": 256,
                             "init_clip": "const",
-                            "noisy": false,
-                            "rounding": true,
-                            "learn_clip": true,
-                            "tqt": true
+                            "learn_clip": false,
+                            "precs": [
+                                2,
+                                4,
+                                8
+                            ],
+                            "hc_stretch": 1.2,
+                            "act_kind": "relu6",
+                            "hc_T": 0.5,
+                            "signed": false
                         }
                     },
                     "harmonize": {
                         "n_levels": 256,
-                        "init_clip": "max",
+                        "init_clip": "const",
                         "noisy": false,
                         "rounding": true,
                         "force_out_eps": true,
                         "tqt": true,
-                        "learn_clip": true
+                        "learn_clip": true,
+                        "bb_adders": true
                     }
-                }
+                },
+                "target": "bops",
+                "shared_gates": true,
+                "gate_init": 2.0
             }
         }
     },
     "training": {
         "loss_fn": {
-            "class": "CrossEntropyLoss",
-            "kwargs": {}
+            "class": "BBCrossEntropyLoss",
+            "kwargs": {"mu0": 0.18},
+            "takes_net": true
         },
         "gd": {
             "opt": {
-                "class": "SGD",
-                "takes_net": false,
+                "class": "BBSGD",
+                "takes_net": true,
                 "kwargs": {
-                    "lr": 0.00075,
+                    "lr": 0.001,
                     "momentum": 0.9,
-                    "weight_decay": 4e-5
+                    "gate_lr": 0.0002
                 }
             },
             "lr_sched": {
@@ -233,21 +252,23 @@
         },
         "n_epochs": 12,
         "quantize": {
-            "function": "get_pact_controllers",
+            "function": "get_bb_controllers",
             "kwargs": {
                 "schedules": {
                     "linear": {
                         "0": ["start", "verbose_on"]
                     },
                     "activation": {
-                        "1": ["start", "verbose_on"]
+                        "0": ["start", "verbose_on"]
                     }
                 },
                 "kwargs_linear": {
                 },
                 "kwargs_activation": {
-                    "init_clip_hi": 6.0
-                }
+                    "init_clip_hi": 6.0,
+                    "init_clip_lo": -6.0
+                },
+                "export_file": "/home/georgr/projects/mixed-precision-inference/ql-pact/bb_mnv2_e86.json"
             }
 
         }
@@ -255,10 +276,19 @@
     "meters": {
         "train": {
             "compute_profiling_statistic": false,
-            "compute_task_statistic": true
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+                {
+                    "class": "BBGateMasterStatistic",
+                    "kwargs": {
+                        "name": null,
+                        "start": 0,
+                        "period": 1500
+                    }
+                }
+                ]
         },
         "valid": {
-            "compute_profiling_statistic": true
         }
     }
 }

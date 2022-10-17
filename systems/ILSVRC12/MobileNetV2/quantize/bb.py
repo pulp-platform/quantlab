@@ -32,6 +32,7 @@ from quantlib.editing.lightweight.rules.bb import *
 import quantlib.editing.lightweight.rules as qlr
 from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter
 from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace
+from quantlib.editing.fx.passes.bb import HarmonizeBBNetPass, BB_symbolic_trace
 
 from quantlib.algorithms.bb.bb_ops import *
 from quantlib.algorithms.bb.bb_controllers import *
@@ -103,20 +104,8 @@ def bb_recipe(net : nn.Module,
     lwe.shutdown()
 
     # now harmonize the graph according to the configuration
-    harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
+    harmonize_pass = HarmonizeBBNetPass(**harmonize_cfg)
     harmonized_net = harmonize_pass(net)
-
-    #next, replace output activations of integerAdd modules with BB signed activations
-    harmonized_nodes = LightweightGraph.build_nodes_list(harmonized_net, leaf_types=(PACTIntegerAdd,))
-    intadd_modules = [n.module for n in filter_intadd(harmonized_nodes)]
-    # the config for the new BB activation modules is the default activation
-    # config
-    bb_harmonize_act_cfg = act_cfg["kwargs"]
-    bb_harmonize_act_cfg["signed"] = True
-    bb_harmonize_act_cfg["act_kind"] = "identity"
-
-    # for m in intadd_modules:
-    #     m._modules['act_out'] = BBAct(**bb_harmonize_act_cfg)
 
     # now we can attach the controllers
     ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution, shared_gates=shared_gates, target=target, latency_spec_file=latency_spec_file)

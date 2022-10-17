@@ -76,6 +76,8 @@ def pact_recipe(net : nn.Module,
 
     harmonize_cfg = config["harmonize"]
 
+
+    prec_override_spec = {}
      # the precision_spec_file is (for example) dumped by a Bayesian Bits
     # training run and overrides the 'n_levels' spec from config.json
     if precision_spec_file is not None:
@@ -125,6 +127,16 @@ def pact_recipe(net : nn.Module,
     harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
     final_net = harmonize_pass(net)
 
+    # the prec. spec file might include layers that were added by the
+    # harmonization pass; those need to be treated separately
+    final_nodes = LightweightGraph.build_nodes_list(final_net)
+    for k, v in prec_override_spec.items():
+        if k.startswith("_QL"):
+            filt = NameFilter(k)
+            target_module = filt(final_nodes)[0].module
+            print(f"Setting module {k}'s 'n_levels' from {target_module.n_levels} to {v}...")
+            target_module.n_levels = v
+
 
     if finetuning_ckpt is not None:
         print(f"Loading finetuning ckpt from <{finetuning_ckpt}>...")
@@ -132,6 +144,7 @@ def pact_recipe(net : nn.Module,
         if all(k.startswith('module.') for k in state_dict.keys()):
             state_dict = {k.lstrip('module.'):v for k,v in state_dict.items()}
         final_net.load_state_dict(state_dict, strict=False)
+
 
     return final_net
 
