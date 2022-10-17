@@ -262,7 +262,7 @@ class ResNet(nn.Module):
     def _make_pilot(self, out_channels_pilot: int) -> nn.Sequential:
 
         modules  = []
-        modules += [nn.Conv2d(3, out_channels_pilot, kernel_size=7, stride=2, padding=1, bias=False)]
+        modules += [nn.Conv2d(3, out_channels_pilot, kernel_size=7, stride=2, padding=3, bias=False)]
         modules += [nn.BatchNorm2d(out_channels_pilot)]
         modules += [nn.ReLU(inplace=True)]
 
