@@ -52,16 +52,20 @@ _ILSVRC12_EPS = ILSVRC12STATS['quantize']['eps']
 
 # import the networks
 from systems.CIFAR10.VGG import VGG
+from systems.CIFAR10.ResNet import ResNet as ResNetCIFAR
 from systems.ILSVRC12.MobileNetV1 import MobileNetV1
 from systems.ILSVRC12.MobileNetV2 import MobileNetV2
 from systems.ILSVRC12.MobileNetV3 import MobileNetV3
+from systems.ILSVRC12.ResNet import ResNet
 from systems.DVS128.dvs_cnn import DVSHybridNet, get_input_shape as get_in_shape_dvsnet
 
 # import the quantization functions for the networks
 from systems.CIFAR10.VGG.quantize import pact_recipe as quantize_vgg, get_pact_controllers as controllers_vgg
+from systems.CIFAR10.ResNet.quantize import pact_recipe as quantize_resnet_cifar, get_pact_controllers as controllers_resnet_cifar
 from systems.ILSVRC12.MobileNetV1.quantize import pact_recipe as quantize_mnv1, get_pact_controllers as controllers_mnv1
 from systems.ILSVRC12.MobileNetV2.quantize import pact_recipe as quantize_mnv2, get_pact_controllers as controllers_mnv2
 from systems.ILSVRC12.MobileNetV3.quantize import pact_recipe as quantize_mnv3, get_pact_controllers as controllers_mnv3
+from systems.ILSVRC12.ResNet.quantize import pact_recipe as quantize_resnet, get_pact_controllers as controllers_resnet
 from systems.DVS128.dvs_cnn.quantize import pact_recipe as quantize_dvsnet, get_pact_controllers as controllers_dvsnet
 
 # import the DORY backend
@@ -74,6 +78,7 @@ from quantlib.algorithms.pact.pact_ops import *
 @dataclass
 class QuantUtil:
     problem : str
+    topo : str
     quantize : callable
     get_controllers : callable
     network : type
@@ -86,6 +91,7 @@ class QuantUtil:
     transform : type
     n_levels_in : int
     export_fn : callable
+    code_size : int
     network_args : dict = field(default_factory=dict)
     quant_transform_args : dict = field(default_factory=dict)
 #QuantUtil = namedtuple('QuantUtil', 'problem quantize get_controllers network in_shape eps_in D bs get_in_shape load_dataset_fn transform quant_transform_args n_levels_in export_fn')
@@ -112,19 +118,23 @@ def get_valid_dataset(key : str, cfg : dict, quantize : str, pad_img : Optional[
     return load_dataset_fn(partition='valid', path_data=str(path_data), n_folds=1, current_fold_id=0, cv_seed=0, transform=transform_inst, **load_dataset_args)
 
 
-# the topology directory where the specified network is defined
-def get_topology_dir(key : str):
-    return _QL_ROOTPATH.joinpath('systems').joinpath(get_system(key)).joinpath(key)
 
 # batch size is per device, determined on Nvidia RTX2080. You may have to change
 # this if you have different GPUs
 _QUANT_UTILS = {
-    'VGG': QuantUtil(problem='CIFAR10', quantize=quantize_vgg, get_controllers=controllers_vgg, network=VGG, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=256, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net),
-    'MobileNetV1': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv1, get_controllers=controllers_mnv1, network=MobileNetV1, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=96, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net),
-    'MobileNetV2': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv2, get_controllers=controllers_mnv2, network=MobileNetV2, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net),
-    'MobileNetV3': QuantUtil(problem='ILSVRC12', quantize=quantize_mnv3, get_controllers=controllers_mnv3, network=MobileNetV3, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net),
-    'dvs_cnn' : QuantUtil(problem='DVS128', quantize=quantize_dvsnet, get_controllers=controllers_dvsnet, network=DVSHybridNet, network_args={'inject_eps':False}, in_shape=None, eps_in=1., D=2**19, bs=128, get_in_shape=get_in_shape_dvsnet, load_dataset_fn=load_dvs128, transform=DVSAugmentTransform, n_levels_in=3, export_fn=export_dvsnet)
+    'VGG': QuantUtil(problem='CIFAR10', topo='VGG', quantize=quantize_vgg, get_controllers=controllers_vgg, network=VGG, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=256, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
+    'MobileNetV1': QuantUtil(problem='ILSVRC12', topo='MobileNetV1', quantize=quantize_mnv1, get_controllers=controllers_mnv1, network=MobileNetV1, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=96, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=135000),
+    'MobileNetV2': QuantUtil(problem='ILSVRC12', topo='MobileNetV2', quantize=quantize_mnv2, get_controllers=controllers_mnv2, network=MobileNetV2, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
+    'MobileNetV3': QuantUtil(problem='ILSVRC12', topo='MobileNetV3', quantize=quantize_mnv3, get_controllers=controllers_mnv3, network=MobileNetV3, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
+    'ResNet': QuantUtil(problem='ILSVRC12', topo='ResNet', quantize=quantize_resnet, get_controllers=controllers_resnet, network=ResNet, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=160000),
+    'ResNetCIFAR': QuantUtil(problem='CIFAR10', topo='ResNet', quantize=quantize_resnet_cifar, get_controllers=controllers_resnet_cifar, network=ResNetCIFAR, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=128, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=120000),
+    'dvs_cnn' : QuantUtil(problem='DVS128', topo='dvs_cnn', quantize=quantize_dvsnet, get_controllers=controllers_dvsnet, network=DVSHybridNet, network_args={'inject_eps':False}, in_shape=None, eps_in=1., D=2**19, bs=128, get_in_shape=get_in_shape_dvsnet, load_dataset_fn=load_dvs128, transform=DVSAugmentTransform, n_levels_in=3, export_fn=export_dvsnet, code_size=340000)
 }
+
+# the topology directory where the specified network is defined
+def get_topology_dir(key : str):
+    topo = _QUANT_UTILS[key].topo
+    return _QL_ROOTPATH.joinpath('systems').joinpath(get_system(key)).joinpath(topo)
 
 # the QuantLab problem being solved by the specified network.
 def get_system(key : str):
@@ -272,9 +282,9 @@ def export_integerized_network(net : nn.Module, cfg : dict, key : str, export_di
     ds = get_valid_dataset(key, cfg, quantize='int', pad_img=pad_img, clip=clip)
     test_input = ds[in_idx][0].unsqueeze(0)
     if key == 'dvs_cnn':
-        qu.export_fn(*net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, change_n_levels=change_n_levels)
+        qu.export_fn(*net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, change_n_levels=change_n_levels, code_size=qu.code_size)
     else:
-        qu.export_fn(net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input)
+        qu.export_fn(net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, code_size=qu.code_size)
 
 def export_unquant_net(net : nn.Module, cfg : dict, key : str, export_dir : str, name : str):
     out_path = Path(export_dir)
@@ -356,6 +366,8 @@ if __name__ == '__main__':
                         help='If supplied, don\'t align averagePool nodes\' associated requantization nodes and replace adders with DORYAdders')
     parser.add_argument('--change_n_levels', type=int, default=None,
                         help='Only used in DVS128 export - override clipping bound of RequantShift modules of exported networks to this value')
+    parser.add_argument('--code_size', type=int, default=None,
+                        help="Override the default 'code reserved space' setting")
 
 
     args = parser.parse_args()
@@ -363,6 +375,8 @@ if __name__ == '__main__':
     if args.export_dir is not None:
         export_name = args.net if args.export_name is None else args.export_name
 
+    if args.code_size is not None:
+        _QUANT_UTILS[args.net].code_size = args.code_size
     exp_id = int(args.exp_id) if args.exp_id.isnumeric() else args.exp_id
 
     print(f'Loading network {args.net}, experiment {exp_id}, checkpoint {args.ckpt_id}')
