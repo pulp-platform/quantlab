@@ -61,7 +61,8 @@ class BasicBlock(nn.Module):
                  stride: int,
                  n_groups: int,
                  group_capacity: int = 1,
-                 downsample: Union[torch.nn.Module, None] = None):
+                 downsample: Union[torch.nn.Module, None] = None,
+                 act_type = nn.ReLU):
 
         super(BasicBlock, self).__init__()
 
@@ -75,12 +76,12 @@ class BasicBlock(nn.Module):
 
         self.conv1 = nn.Conv2d(in_planes, hidden_planes, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1   = nn.BatchNorm2d(hidden_planes)
-        self.relu1 = nn.ReLU(inplace=True)
+        self.relu1 = act_type(inplace=True)
 
         self.conv2 = nn.Conv2d(hidden_planes, hidden_planes, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2   = nn.BatchNorm2d(hidden_planes)
 
-        self.relu2 = nn.ReLU(inplace=True)
+        self.relu2 = act_type(inplace=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
@@ -122,7 +123,8 @@ class BottleneckBlock(nn.Module):
                  stride: int,
                  n_groups: int,
                  group_capacity: int = 1,
-                 downsample: Union[torch.nn.Module, None] = None):
+                 downsample: Union[torch.nn.Module, None] = None,
+                 act_type = nn.ReLU):
 
         super(BottleneckBlock, self).__init__()
 
@@ -133,16 +135,16 @@ class BottleneckBlock(nn.Module):
 
         self.conv1 = nn.Conv2d(in_planes, hidden_planes, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn1   = nn.BatchNorm2d(hidden_planes)
-        self.relu1 = nn.ReLU(inplace=True)
+        self.relu1 = act_type(inplace=True)
 
         self.conv2 = nn.Conv2d(hidden_planes, hidden_planes, kernel_size=3, stride=stride, padding=1, groups=n_groups, bias=False)
         self.bn2   = nn.BatchNorm2d(hidden_planes)
-        self.relu2 = nn.ReLU(inplace=True)
+        self.relu2 = act_type(inplace=True)
 
         self.conv3 = nn.Conv2d(hidden_planes, out_planes * self.expansion_factor, kernel_size=1, stride=1, padding=0, bias=False)
         self.bn3   = nn.BatchNorm2d(out_planes * self.expansion_factor)
 
-        self.relu3 = nn.ReLU(inplace=True)
+        self.relu3 = act_type(inplace=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
 
@@ -210,7 +212,8 @@ class ResNet(nn.Module):
                  group_capacity: int = 1,
                  num_classes: int = 10,
                  seed : int = -1,
-                 pretrained : Union[bool, str] = False):
+                 pretrained : Union[bool, str] = False,
+                 activation : str = 'relu'):
 
         super(ResNet, self).__init__()
 
@@ -222,7 +225,8 @@ class ResNet(nn.Module):
         in_planes_features    = out_channels_pilot
         out_planes_features   = 64 * block_class.expansion_factor
         out_channels_features = out_planes_features
-
+        self.act_type = nn.ReLU if activation == 'relu' else nn.ReLU6
+        
         self.pilot      = self._make_pilot(out_channels_pilot)
         self.maxpool    = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) if do_maxpool else None
         self.features   = self._make_features(block_cfgs, block_class, in_planes_features, out_planes_features, n_groups, group_capacity)
@@ -235,12 +239,13 @@ class ResNet(nn.Module):
         else: # randomly initialize weights
             self._initialize_weights(seed)
 
+
     def _make_pilot(self, out_channels_pilot: int) -> nn.Sequential:
 
         modules  = []
-        modules += [nn.Conv2d(3, out_channels_pilot, kernel_size=7, stride=2, padding=3, bias=False)]
+        modules += [nn.Conv2d(3, out_channels_pilot, kernel_size=3, stride=1, padding=1, bias=False)]
         modules += [nn.BatchNorm2d(out_channels_pilot)]
-        modules += [nn.ReLU(inplace=True)]
+        modules += [self.act_type(inplace=True)]
 
         return nn.Sequential(*modules)
 
@@ -269,12 +274,12 @@ class ResNet(nn.Module):
             else:
                 downsample = None
 
-            blocks += [block(in_planes, out_planes, stride=stride, n_groups=n_groups, group_capacity=group_capacity, downsample=downsample)]
+            blocks += [block(in_planes, out_planes, stride=stride, n_groups=n_groups, group_capacity=group_capacity, downsample=downsample, act_type=self.act_type)]
             in_planes = exp_out_planes
 
             # build remaining blocks (they always use skip branches)
             for _ in range(1, n_blocks):
-                blocks += [block(in_planes, out_planes, stride=1, n_groups=n_groups, group_capacity=group_capacity, downsample=None)]
+                blocks += [block(in_planes, out_planes, stride=1, n_groups=n_groups, group_capacity=group_capacity, downsample=None, act_type=self.act_type)]
 
             return nn.Sequential(*blocks), exp_out_planes
 
@@ -310,12 +315,12 @@ class ResNet(nn.Module):
 
         for m in self.modules():
 
-            if isinstance(m, nn.Conv2d):
+            if isinstance(m, (nn.Conv2d, nn.Linear)):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
 
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
+            #elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+                #nn.init.constant_(m.weight, 1)
+                #nn.init.constant_(m.bias, 0)
 
         # Zero-initialize the last BN in each residual branch, so that each
         # residual block behaves like an identity. This improves the accuracy

@@ -324,10 +324,10 @@ class LogsManager(object):
             if platform.is_nndataparallel_run != is_nndataparallel_state_dict:
                 if not platform.is_nndataparallel_run:
                     assert is_nndataparallel_state_dict
-                    ckpt['net'] = {"module.{}".format(k): v for k, v in ckpt['net'].items()}
+                    ckpt['net'] = {k[7:]: v for k, v in ckpt['net'].items()}
                 else:
                     assert platform.is_nndataparallel_run and (not is_nndataparallel_state_dict)
-                    ckpt['net'] = {k.replace("module."): v for k, v in ckpt['net'].items()}
+                    ckpt['net'] = {f"module.{k}": v for k, v in ckpt['net'].items()}
             net.load_state_dict(ckpt['net'])
 
             # optimizer hyper-parameters

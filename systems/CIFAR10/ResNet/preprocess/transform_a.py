@@ -33,8 +33,8 @@ class TransformA(Compose):
 
         transforms = []
         if augment:
-            transforms.append(RandomCrop(32, padding=4))
             transforms.append(RandomHorizontalFlip())
+            transforms.append(RandomCrop(32, padding=4))
 
         transforms.append(ToTensor())
         transforms.append(CIFAR10Normalize())

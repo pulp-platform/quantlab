@@ -34,7 +34,9 @@
     "network": {
         "class": "ResNet",
         "kwargs": {
-            "config": "ResNet20"
+            "config": "ResNet20",
+            "activation": "ReLU6",
+            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/CIFAR10/ResNet/pretrained/resnet20.ckpt"
         },
         "quantize": {
             "function": "pact_recipe",
@@ -45,13 +47,13 @@
                             "n_levels": 256
                         },
                         "features.*conv1$": {
-                            "n_levels": 4
+                            "n_levels": 256
                         },
                         "features.*conv[2-3]?$": {
-                            "n_levels": 4
+                            "n_levels": 256
                         },
                         "features.*downsample$": {
-                            "n_levels": 4
+                            "n_levels": 256
                         },
                         "kwargs": {
                             "quantize": "per_channel",
@@ -75,22 +77,23 @@
                     },
                     "PACTUnsignedAct": {
                         "pilot.2$": {
-                            "n_levels": 16
+                            "n_levels": 256
                         },
                         "features.*relu[1-2]$": {
-                            "n_levels": 16
+                            "n_levels": 256
                         },
                         "kwargs": {
-                            "init_clip": "const",
+                            "init_clip": "std",
                             "noisy": false,
                             "rounding": true,
                             "learn_clip": true,
-                            "tqt": true
+                            "tqt": true,
+                            "nb_std": 3
                         }
                     },
                     "harmonize": {
                         "init_clip": "std",
-                        "n_levels": [256, 16],
+                        "n_levels": [256, 256],
                         "noisy": false,
                         "rounding": true,
                         "force_out_eps": false,
@@ -109,27 +112,19 @@
         },
         "gd": {
             "opt": {
-                "class": "SGD",
+                "class": "Adam",
                 "kwargs": {
-                    "lr": 0.01,
-                    "weight_decay": 0.0001,
-                    "momentum": 0.9
+                    "lr": 0.001
                 }
             },
             "lr_sched": {
-                "class": "HandScheduler",
+                "class": "CosineAnnealingLR",
                 "kwargs": {
-                    "schedule": {
-                        "0": 1,
-                        "3": 0.3,
-                        "5": 0.1,
-                        "7": 0.03,
-                        "9": 0.01
-                    }
+                    "T_max": 150
                 }
             }
         },
-        "n_epochs": 11,
+        "n_epochs": 150,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {

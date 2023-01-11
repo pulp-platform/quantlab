@@ -38,8 +38,8 @@ CIFAR10STATS =\
     {
         'normalize':
             {
-                'mean': (0.4914, 0.4822, 0.4465),
-                'std':  (0.2470, 0.2430, 0.2610)
+                'mean': (0.485, 0.456, 0.406),
+                'std':  (0.229, 0.224, 0.225)
             },
         'quantize':
             {
@@ -69,8 +69,8 @@ class TransformA(Compose):
 
         transforms = []
         if augment:
-            transforms.append(RandomCrop(crop_size, padding=padding))
             transforms.append(RandomHorizontalFlip())
+            transforms.append(RandomCrop(crop_size, padding=padding))
 
         transforms.append(ToTensor())
         transforms.append(CIFAR10Normalize())
@@ -85,8 +85,8 @@ class TransformB(Compose):
 
         transforms = []
         if augment:
-            transforms.append(RandomCrop(crop_size, padding=padding))
             transforms.append(RandomHorizontalFlip())
+            transforms.append(RandomCrop(crop_size, padding=padding))
 
         transforms.append(ToTensor())
         transforms.append(CIFAR10NormalizeHomogeneous())

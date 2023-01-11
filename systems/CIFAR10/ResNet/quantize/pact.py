@@ -19,6 +19,8 @@
 # limitations under the License.
 # 
 
+import json
+from typing import Optional
 
 from torch import nn
 
@@ -32,7 +34,8 @@ from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
 
 def pact_recipe(net : nn.Module,
-                config : dict):
+                config : dict,
+                precision_spec_file : Optional[str] = None,):
 
     # config is expected to contain 3 keys:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
@@ -52,6 +55,23 @@ def pact_recipe(net : nn.Module,
     act_cfg = config["PACTUnsignedAct"]
 
     harmonize_cfg = config["harmonize"]
+
+    
+    prec_override_spec = {}
+     # the precision_spec_file is (for example) dumped by a Bayesian Bits
+    # training run and overrides the 'n_levels' spec from config.json
+    if precision_spec_file is not None:
+        print(f"Overriding precision specification from config.json with spec from <{precision_spec_file}>...")
+        with open(precision_spec_file, 'r') as fh:
+            prec_override_spec = json.load(fh)['layer_levels']
+        # deal with nn.DataParallel wrapping
+
+        if all(k.startswith('module.') for k in prec_override_spec.keys()):
+            prec_override_spec = {k.lstrip('module.'):v for k,v in prec_override_spec.items()}
+        for cfg in (conv_cfg, lin_cfg, act_cfg):
+            appl_keys = [k for k in prec_override_spec.keys() if k in cfg.keys()]
+            for k in appl_keys:
+                cfg[k]['n_levels'] = prec_override_spec[k]
 
     def make_rules(cfg : dict,
                    rule : type):
@@ -86,6 +106,17 @@ def pact_recipe(net : nn.Module,
     #harmonize_pass = HarmonizePACTNetPass(n_levels=harmonize_cfg["n_levels"])
     net_traced = PACT_symbolic_trace(lwg.net)
     final_net = harmonize_pass(net_traced)
+
+
+    # the prec. spec file might include layers that were added by the
+    # harmonization pass; those need to be treated separately
+    final_nodes = LightweightGraph.build_nodes_list(final_net)
+    for k, v in prec_override_spec.items():
+        if k.startswith("_QL"):
+            filt = NameFilter(k)
+            target_module = filt(final_nodes)[0].module
+            print(f"Setting module {k}'s 'n_levels' from {target_module.n_levels} to {v}...")
+            target_module.n_levels = v
 
     return final_net
 
