@@ -1,3 +1,3 @@
 [submodule "quantlib"]
 	path = quantlib
-	url = git@github.com:pulp-platform/quantlib.git
+	url = git@iis-git.ee.ethz.ch:wiesep/quantlib.git
