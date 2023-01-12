@@ -2,6 +2,11 @@
 **/.DS_Store
 **/.idea
 
+# ignore build-and-install `setuptools` files
+**/build
+**/dist
+**/*.egg-info
+
 # ignore profiling files
 **/gmon.out
 
