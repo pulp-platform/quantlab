@@ -26,6 +26,7 @@ from .statistics.taskstatistic         import TaskStatistic          # template 
 from .statistics.learningratestatistic import LearningRateStatistic  # general-purpose statistic
 from .statistics.tensorstatistics      import *                      # general-purpose statistics
 from .statistics.visionstatistics      import RGBInputsSnapshot      # template for problem-specific input snapshooting
+from .statistics.visionstatistics      import GrayscaleInputsSnapshot      # template for problem-specific input snapshooting
 from .statistics.visionstatistics      import *                      # general-purpose statistics for computer vision networks
 from .writerstub                       import WriterStub
 from .meter                            import Meter
