@@ -41,6 +41,9 @@ sys.path.append(str(_QL_ROOTPATH))
 from systems.CIFAR10.utils.data import load_data_set as load_cifar10
 from systems.CIFAR10.utils.transforms import CIFAR10PACTQuantTransform
 from systems.CIFAR10.utils.transforms.transforms import CIFAR10STATS
+from systems.MNIST.utils.data import load_data_set as load_mnist
+from systems.MNIST.utils.transforms import MNISTPACTQuantTransform
+from systems.MNIST.utils.transforms.transforms import MNISTSTATS
 from systems.ILSVRC12.utils.data import load_ilsvrc12
 from systems.ILSVRC12.utils.transforms import ILSVRC12PACTQuantTransform
 from systems.ILSVRC12.utils.transforms.transforms import ILSVRC12STATS
@@ -49,6 +52,7 @@ from systems.DVS128.dvs_cnn.preprocess import load_data_set as load_dvs128, DVSA
 
 _CIFAR10_EPS = CIFAR10STATS['quantize']['eps']
 _ILSVRC12_EPS = ILSVRC12STATS['quantize']['eps']
+_MNIST_EPS = MNISTSTATS['quantize']['eps']
 
 # import the networks
 from systems.CIFAR10.VGG import VGG
@@ -67,6 +71,8 @@ from systems.ILSVRC12.MobileNetV2.quantize import pact_recipe as quantize_mnv2, 
 from systems.ILSVRC12.MobileNetV3.quantize import pact_recipe as quantize_mnv3, get_pact_controllers as controllers_mnv3
 from systems.ILSVRC12.ResNet.quantize import pact_recipe as quantize_resnet, get_pact_controllers as controllers_resnet
 from systems.DVS128.dvs_cnn.quantize import pact_recipe as quantize_dvsnet, get_pact_controllers as controllers_dvsnet
+from systems.MNIST.simpleCNN import simpleCNN
+from systems.MNIST.simpleCNN.quantize import pact_recipe as quantize_simpleCNN, get_pact_controllers as controllers_simpleCNN
 
 # import the DORY backend
 from quantlib.backends.dory import export_net, export_dvsnet, DORYHarmonizePass
@@ -128,7 +134,8 @@ _QUANT_UTILS = {
     'MobileNetV3': QuantUtil(problem='ILSVRC12', topo='MobileNetV3', quantize=quantize_mnv3, get_controllers=controllers_mnv3, network=MobileNetV3, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
     'ResNet': QuantUtil(problem='ILSVRC12', topo='ResNet', quantize=quantize_resnet, get_controllers=controllers_resnet, network=ResNet, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=160000),
     'ResNetCIFAR': QuantUtil(problem='CIFAR10', topo='ResNet', quantize=quantize_resnet_cifar, get_controllers=controllers_resnet_cifar, network=ResNetCIFAR, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=128, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=120000),
-    'dvs_cnn' : QuantUtil(problem='DVS128', topo='dvs_cnn', quantize=quantize_dvsnet, get_controllers=controllers_dvsnet, network=DVSHybridNet, network_args={'inject_eps':False}, in_shape=None, eps_in=1., D=2**19, bs=128, get_in_shape=get_in_shape_dvsnet, load_dataset_fn=load_dvs128, transform=DVSAugmentTransform, n_levels_in=3, export_fn=export_dvsnet, code_size=340000)
+    'dvs_cnn' : QuantUtil(problem='DVS128', topo='dvs_cnn', quantize=quantize_dvsnet, get_controllers=controllers_dvsnet, network=DVSHybridNet, network_args={'inject_eps':False}, in_shape=None, eps_in=1., D=2**19, bs=128, get_in_shape=get_in_shape_dvsnet, load_dataset_fn=load_dvs128, transform=DVSAugmentTransform, n_levels_in=3, export_fn=export_dvsnet, code_size=340000),
+    'simpleCNN': QuantUtil(problem='MNIST', topo='simpleCNN', quantize=quantize_simpleCNN, get_controllers=controllers_simpleCNN, network=simpleCNN, in_shape=(1,1,32,32), eps_in=_MNIST_EPS, D=2**19, bs=256, get_in_shape=None, load_dataset_fn=load_mnist, transform=MNISTPACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000)
 }
 
 # the topology directory where the specified network is defined
