@@ -30,7 +30,7 @@
     "network": {
         "class": "simpleCNN",
         "kwargs": {
-            "pretrained": "/scratch2/wiesep/quantlab/systems/MNIST/simpleCNN/logs/exp0000/fold0/saves/best.ckpt",
+            "pretrained": "/scratch2/wiesep/quantlab/systems/MNIST/simpleCNN/logs/exp0002/fold0/saves/best.ckpt",
             "config": "standard",
             "capacity": 1,
             "use_bn_features": false,
@@ -40,35 +40,18 @@
             "function": "pact_recipe",
             "kwargs": {
                 "config": {
-                    "mixed_precision_search": {
-                        "enable": false,
-                        "min_wt_bits": 4,
-                        "min_act_bits": 2,
-                        "in_size": 224,
-                        "delta": 0.05,
-                        "mem_rw": 409600,
-                        "mem_ro": 209700152,
-                        "linear_layer_split_factor": 5,
-                        "method": "pulp"
-                    },
                     "PACTConv2d": {
                         "pilot.0$": {},
-                        "features.1$": {
-                            "init_clip": "max"
-                        },
-                        "features.4$": {
-                            "init_clip": "max"
-                        },
-                        "features.7$": {
-                            "init_clip": "max"
-                        },
+                        "features.1$": {},
+                        "features.4$": {},
+                        "features.7$": {},
                         "kwargs": {
                             "n_levels": 256,
                             "quantize": "per_channel",
                             "init_clip": "max",
-                            "learn_clip": false,
+                            "learn_clip": true,
                             "symm_wts": true,
-                            "tqt": false
+                            "tqt": true
                         }
                     },
                     "PACTLinear": {
@@ -77,9 +60,9 @@
                             "n_levels": 256,
                             "quantize": "per_layer",
                             "init_clip": "max",
-                            "learn_clip": false,
+                            "learn_clip": true,
                             "symm_wts": true,
-                            "tqt": false
+                            "tqt": true
                         }
                     },
                     "PACTUnsignedAct": {
@@ -87,21 +70,16 @@
                         "features.2$": {},
                         "features.5$": {},
                         "features.8$": {},
+                        "classifier.2$": {},
                         "kwargs": {
                             "n_levels": 256,
-                            "init_clip": "const",
+                            "init_clip": "std",
                             "nb_std": 3,
                             "act_kind": "relu",
                             "noisy": false,
-                            "tqt": false,
+                            "tqt": true,
                             "learn_clip": true,
                             "rounding": true
-                        }
-                    },
-                    "PACTIntegerSoftmax": {
-                        "classifier.2$": {},
-                        "kwargs": {
-                            "n_levels": 256
                         }
                     }
                 }
@@ -118,7 +96,7 @@
                 "class": "PACTSGD",
                 "kwargs": {
                     "pact_decay": 0.001,
-                    "lr": 0.001,
+                    "lr": 0.1,
                     "momentum": 0.9
                 },
                 "takes_net": true
@@ -134,7 +112,7 @@
                 }
             }
         },
-        "n_epochs": 20,
+        "n_epochs": 21,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
@@ -146,12 +124,6 @@
                         ]
                     },
                     "linear": {
-                        "0": [
-                            "verbose_on",
-                            "start"
-                        ]
-                    },
-                    "softmax": {
                         "0": [
                             "verbose_on",
                             "start"

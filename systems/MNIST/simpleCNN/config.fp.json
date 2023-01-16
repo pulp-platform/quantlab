@@ -62,7 +62,7 @@
                 }
             }
         },
-        "n_epochs": 20
+        "n_epochs": 21
     },
     "meters": {
         "train": {

@@ -52,13 +52,13 @@ def pact_recipe(net : nn.Module,
     filter_conv2d = TypeFilter(nn.Conv2d)
     filter_linear = TypeFilter(nn.Linear)
     filter_acts = TypeFilter(nn.ReLU)
-    filter_softmax = TypeFilter(nn.LogSoftmax) #WIESEP: Not sure if this works
+    # filter_softmax = TypeFilter(nn.LogSoftmax) #WIESEP: Not sure if this works
 
     rhos = []
     conv_cfg = config["PACTConv2d"]
     lin_cfg = config["PACTLinear"]
     act_cfg = config["PACTUnsignedAct"]
-    softmax_cfg = config["PACTIntegerSoftmax"]
+    # softmax_cfg = config["PACTIntegerSoftmax"]
 
 
     def make_rules(cfg : dict,
@@ -80,8 +80,8 @@ def pact_recipe(net : nn.Module,
                        qlr.pact.ReplaceConvLinearPACTRule)
     rhos += make_rules(act_cfg,
                        qlr.pact.ReplaceActPACTRule)
-    rhos += make_rules(softmax_cfg,
-                       qlr.pact.ReplaceSoftmaxPACTRule)
+    # rhos += make_rules(softmax_cfg,
+    #                    qlr.pact.ReplaceSoftmaxPACTRule)
 
     lwg = qlw.LightweightGraph(net)
     lwe = qlw.LightweightEditor(lwg)
@@ -117,12 +117,12 @@ def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict
 
     net_nodes = LightweightGraph.build_nodes_list(net)
     filter_softmax = TypeFilter(PACTSoftmax)
-    softmax_modules =  [n.module for n in filter_softmax(net_nodes)]
+    # softmax_modules =  [n.module for n in filter_softmax(net_nodes)]
 
     lin_ctrl = PACTLinearController(lin_modules, schedules["linear"], **kwargs_linear)
     act_ctrl = PACTActController(act_modules, schedules["activation"], **kwargs_activation)
     tracer = LeafTracer(PACT_OPS_INCLUSIVE)
-    softmax_ctrl = PACTEpsController(net, softmax_modules, schedules["softmax"], tracer, AnnotateEpsPass(eps_in=1.0, n_levels_in=256))
+    # softmax_ctrl = PACTEpsController(net, softmax_modules, schedules["softmax"], tracer, AnnotateEpsPass(eps_in=1.0, n_levels_in=256))
     try:
         enable_dynamic = dynamic["cfg"]["enable"]
     except KeyError:
@@ -152,6 +152,6 @@ def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict
         # the dyn_ctrl must come first, because the step_xx functions are
         # called in order on each controller!
         ########################
-        return dyn_ctrl, lin_ctrl, act_ctrl, softmax_ctrl
+        return dyn_ctrl, lin_ctrl, act_ctrl
 
-    return lin_ctrl, act_ctrl, softmax_ctrl
+    return lin_ctrl, act_ctrl
