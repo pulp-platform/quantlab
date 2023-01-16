@@ -202,7 +202,9 @@ def train(args: argparse.Namespace):
         # [recovery] the collected statistics about epochs and iterations carried out after the last stored checkpoint are erased
         if (not platform.is_horovod_run) or platform.is_master:
             logbook.logs_manager.create_writers(start_epoch_id=start_epoch_id, n_batches_train=len(train_loader), n_batches_valid=len(valid_loader))
-
+    
+        print("=== PyTorch Network===\n", net)
+    
         # cycle over epochs (one loop for each fold)
         for epoch_id in range(start_epoch_id, logbook.n_epochs):
 
