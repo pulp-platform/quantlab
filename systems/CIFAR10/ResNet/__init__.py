@@ -23,7 +23,6 @@ from .preprocess import *
 from .resnet import ResNet
 from .postprocess import *
 from .quantize import *
-from .statistics import *
 
 from quantlib.algorithms.bb import BBSGD, BBCrossEntropyLoss
 
