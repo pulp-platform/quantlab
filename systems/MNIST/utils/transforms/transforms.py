@@ -29,6 +29,7 @@ from torchvision.transforms import Compose
 from torchvision.transforms import RandomHorizontalFlip  # statistical augmentation transforms
 from torchvision.transforms import Lambda
 from torchvision.transforms import Pad
+from torchvision.transforms import CenterCrop
 from torchvision.transforms import RandomCrop            # "evil" transforms combining statistical augmentation with structural aspects
 from torchvision.transforms import ToTensor              # structural transforms
 
@@ -66,7 +67,7 @@ class Transform(Compose):
     r"""MNIST normalizing transform with optional augmentation. Uses per-channel
     normalization parameters.
     """
-    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 4):
+    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 8):
 
         transforms = []
         if augment:
@@ -74,6 +75,7 @@ class Transform(Compose):
             transforms.append(RandomCrop(crop_size, padding=padding))
         else:
             transforms.append(Pad(padding=padding))
+            transforms.append(CenterCrop(crop_size))
 
         transforms.append(ToTensor())
         transforms.append(MNISTNormalize())
@@ -87,7 +89,7 @@ class MNISTPACTQuantTransform(Compose):
     The input can be fake-quantized (`quantize == 'fake'`) or true-quantized
     (`quantize == 'int'`).
     """
-    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 4, quantize='none', n_q=256, pad_channels : Optional[int] = None, clip : bool = False):
+    def __init__(self, augment: bool, crop_size : int = 32, padding : int = 8, quantize='none', n_q=256, pad_channels : Optional[int] = None, clip : bool = False):
 
         transforms = []
         transforms.append(Transform(augment, crop_size=crop_size, padding=padding))
