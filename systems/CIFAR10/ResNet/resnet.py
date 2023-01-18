@@ -84,12 +84,7 @@ class BasicBlock(nn.Module):
         self.relu2 = act_type(inplace=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-
-        # downsampling/skip branch
-        if self.downsample is not None:
-            identity = self.downsample(x)
-        else:
-            identity = x
+        x_in = x
 
         # residual branch
         # layer 1
@@ -99,6 +94,12 @@ class BasicBlock(nn.Module):
         # layer 2
         x = self.conv2(x)
         x = self.bn2(x)
+
+        # downsampling/skip branch
+        if self.downsample is not None:
+            identity = self.downsample(x_in)
+        else:
+            identity = x_in
 
         # merge branches
         x += identity
@@ -231,6 +232,7 @@ class ResNet(nn.Module):
         self.maxpool    = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) if do_maxpool else None
         self.features   = self._make_features(block_cfgs, block_class, in_planes_features, out_planes_features, n_groups, group_capacity)
         self.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten    = nn.Flatten()
         self.classifier = nn.Linear(out_channels_features, num_classes)
         if pretrained == True: # load weights from torchvision model
             self.preload_torchvision(config)
@@ -302,7 +304,8 @@ class ResNet(nn.Module):
         x = self.features(x)
         x = self.avgpool(x)
 
-        x = x.view(x.size(0), -1)
+        x = self.flatten(x)
+        #x = x.view(x.size(0), -1)
 
         x = self.classifier(x)
 

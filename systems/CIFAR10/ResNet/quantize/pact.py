@@ -35,7 +35,8 @@ from quantlib.algorithms.pact.pact_controllers import *
 
 def pact_recipe(net : nn.Module,
                 config : dict,
-                precision_spec_file : Optional[str] = None,):
+                precision_spec_file : Optional[str] = None,
+                finetuning_ckpt : Optional[str] = None):
 
     # config is expected to contain 3 keys:
     # PACTConv2d, PACTLinear, PACTUnsignedAct
