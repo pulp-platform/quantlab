@@ -90,7 +90,8 @@ class simpleCNN(nn.Module):
         x = self.pilot(x)
         x = self.features(x)
 
-        x = x.view(x.size(0), -1)  # https://stackoverflow.com/questions/57234095/what-is-the-difference-of-flatten-and-view-1-in-pytorch
+        # x = x.view(x.size(0), -1)  # https://stackoverflow.com/questions/57234095/what-is-the-difference-of-flatten-and-view-1-in-pytorch
+        x = x.flatten(1,-1)  # https://stackoverflow.com/questions/57234095/what-is-the-difference-of-flatten-and-view-1-in-pytorch
 
         x = self.classifier(x)
 
