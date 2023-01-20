@@ -2,9 +2,9 @@
 # visionstatistics.py
 # 
 # Author(s):
-# Matteo Spallanzani <spmatteo@iis.ee.ethz.ch>
+# Philip Wiese <wiesep@student.ethz.ch>
 # 
-# Copyright (c) 2020-2021 ETH Zurich.
+# Copyright (c) 2023 ETH Zurich.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
