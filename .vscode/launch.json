@@ -1,0 +1,62 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "QuantLab Train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "args": [
+                "--problem=${input:problem}",
+                "--topology=${input:topology}",
+                "train",
+                "--exp_id=${input:exp_id}"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1"
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "problem",
+            "type": "pickString",
+            "description": "QuantLab Problem",
+            "options": [
+                "CIFAR10",
+                "DVS128",
+                "ILSVRC12",
+                "MNIST"
+              ],
+            "default": "MNIST"
+        },
+        {
+            "id": "topology",
+            "type": "pickString",
+            "description": "QuantLab Topology",
+            "options": [
+                "ResNet",
+                "VGG",
+                "dvs_cnn",
+                "AlexNet",
+                "MobileNetV1",
+                "MobileNetV2",
+                "MobileNetV3",
+                "simpleCNN",
+              ],
+            "default": "simpleCNN"
+        },
+        {
+            "id": "exp_id",
+            "type": "promptString",
+            "description": "Experiment ID",
+            "default": "0"
+        }
+    ]
+}
