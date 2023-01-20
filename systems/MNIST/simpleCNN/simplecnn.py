@@ -81,7 +81,7 @@ class simpleCNN(nn.Module):
         modules += [] if use_bn_classifier else [nn.Dropout()]
         modules += [nn.Linear(512 * capacity, num_classes, bias=not use_bn_classifier)]
         modules += [nn.BatchNorm1d(num_classes)] if use_bn_classifier else []
-        modules += [nn.ReLU(1)]
+        modules += [nn.LogSoftmax(1)]
 
         return nn.Sequential(*modules)
 

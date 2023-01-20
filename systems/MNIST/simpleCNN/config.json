@@ -46,11 +46,11 @@
                         "features.9$": {},
                         "kwargs": {
                             "n_levels": 256,
-                            "quantize": "per_channel",
+                            "quantize": "per_layer",
                             "init_clip": "max",
                             "learn_clip": true,
                             "symm_wts": true,
-                            "tqt": true
+                            "tqt": false
                         }
                     },
                     "PACTLinear": {
@@ -61,7 +61,7 @@
                             "init_clip": "max",
                             "learn_clip": true,
                             "symm_wts": true,
-                            "tqt": true
+                            "tqt": false
                         }
                     },
                     "PACTUnsignedAct": {
@@ -76,7 +76,7 @@
                             "nb_std": 3,
                             "act_kind": "relu",
                             "noisy": false,
-                            "tqt": true,
+                            "tqt": false,
                             "learn_clip": true,
                             "rounding": true
                         }

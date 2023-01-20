@@ -480,7 +480,7 @@ def export_unquant_net(net: nn.Module, cfg: dict, key: str, export_dir: str,
                        name: str):
     out_path = Path(export_dir)
     out_path.mkdir(parents=True, exist_ok=True)
-    onnx_file = f"{name}.onnx"
+    onnx_file = f"{name}_unquant.onnx"
     onnx_path = out_path.joinpath(onnx_file)
     ds = get_valid_dataset(key, cfg, quantize='none')
     test_input = ds[42][0].unsqueeze(0)

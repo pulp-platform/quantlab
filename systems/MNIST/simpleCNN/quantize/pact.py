@@ -85,12 +85,16 @@ def pact_recipe(net : nn.Module,
 
     lwg = qlw.LightweightGraph(net)
     lwe = qlw.LightweightEditor(lwg)
-
+    
+    print("=== Original Network ===")
+    lwg.show_nodes_list()
     lwe.startup()
     for rho in rhos:
         lwe.set_lwr(rho)
         lwe.apply()
     lwe.shutdown()
+    print("=== PACT Network ===")
+    lwg.show_nodes_list()
 
     return lwe._graph.net
 

@@ -104,6 +104,8 @@ def train(args: argparse.Namespace):
     platform = PlatformManager()
     platform.startup(horovod=args.horovod)
 
+    platform.show()
+
     # === FLOW: START ===
 
     # === FLOW: PREAMBLE ===
