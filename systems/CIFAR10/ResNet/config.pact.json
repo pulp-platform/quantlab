@@ -34,9 +34,9 @@
     "network": {
         "class": "ResNet",
         "kwargs": {
-            "config": "ResNet20",
+            "config": "ResNet8",
             "activation": "ReLU6",
-            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/CIFAR10/ResNet/pretrained/resnet20.ckpt"
+            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/CIFAR10/ResNet/pretrained/resnet8.ckpt"
         },
         "quantize": {
             "function": "pact_recipe",
@@ -83,7 +83,7 @@
                             "n_levels": 256
                         },
                         "kwargs": {
-                            "init_clip": "std",
+                            "init_clip": "max",
                             "noisy": false,
                             "rounding": true,
                             "learn_clip": true,
@@ -120,11 +120,11 @@
             "lr_sched": {
                 "class": "CosineAnnealingLR",
                 "kwargs": {
-                    "T_max": 150
+                    "T_max": 220
                 }
             }
         },
-        "n_epochs": 150,
+        "n_epochs": 220,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {

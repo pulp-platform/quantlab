@@ -180,6 +180,11 @@ _CONFIGS = {
                   'block_cfgs': [( 3,  16, 1),
                                  ( 3, 32, 2),
                                  ( 3, 64, 2)],
+                  'maxpool': False},
+    'ResNet8': {'block_class': BasicBlock,
+                  'block_cfgs': [( 1,  16, 1),
+                                 ( 1, 32, 2),
+                                 ( 1, 64, 2)],
                   'maxpool': False}
 }
 
@@ -226,8 +231,8 @@ class ResNet(nn.Module):
         in_planes_features    = out_channels_pilot
         out_planes_features   = 64 * block_class.expansion_factor
         out_channels_features = out_planes_features
-        self.act_type = nn.ReLU if activation == 'relu' else nn.ReLU6
-        
+        self.act_type = nn.ReLU if activation.lower() == 'relu' else nn.ReLU6
+
         self.pilot      = self._make_pilot(out_channels_pilot)
         self.maxpool    = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) if do_maxpool else None
         self.features   = self._make_features(block_cfgs, block_class, in_planes_features, out_planes_features, n_groups, group_capacity)

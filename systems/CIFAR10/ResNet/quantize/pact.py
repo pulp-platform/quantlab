@@ -57,22 +57,7 @@ def pact_recipe(net : nn.Module,
 
     harmonize_cfg = config["harmonize"]
 
-    
-    prec_override_spec = {}
-     # the precision_spec_file is (for example) dumped by a Bayesian Bits
-    # training run and overrides the 'n_levels' spec from config.json
-    if precision_spec_file is not None:
-        print(f"Overriding precision specification from config.json with spec from <{precision_spec_file}>...")
-        with open(precision_spec_file, 'r') as fh:
-            prec_override_spec = json.load(fh)['layer_levels']
-        # deal with nn.DataParallel wrapping
 
-        if all(k.startswith('module.') for k in prec_override_spec.keys()):
-            prec_override_spec = {k.lstrip('module.'):v for k,v in prec_override_spec.items()}
-        for cfg in (conv_cfg, lin_cfg, act_cfg):
-            appl_keys = [k for k in prec_override_spec.keys() if k in cfg.keys()]
-            for k in appl_keys:
-                cfg[k]['n_levels'] = prec_override_spec[k]
 
     def make_rules(cfg : dict,
                    rule : type):
@@ -101,7 +86,28 @@ def pact_recipe(net : nn.Module,
     for rho in rhos:
         lwe.set_lwr(rho)
         lwe.apply()
-    lwe.shutdown()
+    lwe.shutdown()    
+    prec_override_spec = {}
+     # the precision_spec_file is (for example) dumped by a Bayesian Bits
+    # training run and overrides the 'n_levels' spec from config.json
+    if precision_spec_file is not None:
+        print(f"Overriding precision specification from config.json with spec from <{precision_spec_file}>...")
+        with open(precision_spec_file, 'r') as fh:
+            prec_override_spec = json.load(fh)['layer_levels']
+        # deal with nn.DataParallel wrapping
+
+        if all(k.startswith('module.') for k in prec_override_spec.keys()):
+            prec_override_spec = {k.lstrip('module.'):v for k,v in prec_override_spec.items()}
+        net_nodes = LightweightGraph.build_nodes_list(net)
+        net_layer_names = [node.name for node in net_nodes]
+        appl_keys = [k for k in prec_override_spec.keys() if k.rstrip('$') in net_layer_names]
+        for k in appl_keys:
+                #cfg[k]['n_levels'] = prec_override_spec[k]
+            filt = NameFilter(k)
+            target_module = filt(net_nodes)[0].module
+            print(f"Setting module {k}'s 'n_levels' from {target_module.n_levels} to {prec_override_spec[k]}...")
+            target_module.n_levels = prec_override_spec[k]
+
     # now harmonize the graph
     harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
     #harmonize_pass = HarmonizePACTNetPass(n_levels=harmonize_cfg["n_levels"])

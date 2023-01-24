@@ -29,11 +29,14 @@ def load_data_set(partition: str,
                   n_folds: int,
                   current_fold_id: int,
                   cv_seed: int,
-                  transform: torchvision.transforms.Compose) -> torch.utils.data.Dataset:
+                  transform: torchvision.transforms.Compose,
+                  use_pseudo_folds : bool = False) -> torch.utils.data.Dataset:
 
     if partition in {'train', 'valid'}:
 
-        if n_folds > 1:  # this is a cross-validation experiment
+        if n_folds > 1 and not use_pseudo_folds:  # this is a cross-validation
+            # experiment
+            # use_pseudo_folds means use the standard split n_folds times
 
             dataset = torchvision.datasets.CIFAR10(root=path_data, train=True, download=True, transform=transform)
             train_fold_indices, valid_fold_indices = default_dataset_cv_split(dataset=dataset, n_folds=n_folds, current_fold_id=current_fold_id, cv_seed=cv_seed)
