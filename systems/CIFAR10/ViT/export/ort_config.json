@@ -1,0 +1,24 @@
+{
+  "opset": null,
+  "optimization": {
+    "disable_attention": false,
+    "disable_bias_gelu": false,
+    "disable_bias_skip_layer_norm": false,
+    "disable_embed_layer_norm": true,
+    "disable_gelu": false,
+    "disable_layer_norm": false,
+    "disable_shape_inference": false,
+    "disable_skip_layer_norm": true,
+    "enable_gelu_approximation": false,
+    "fp16": false,
+    "no_attention_mask": false,
+    "optimization_level": 2,
+    "optimize_for_gpu": false,
+    "optimize_with_onnxruntime_only": false,
+    "use_mask_index": false
+  },
+  "optimum_version": "1.4.1",
+  "quantization": {},
+  "transformers_version": "4.25.1",
+  "use_external_data_format": false
+}

@@ -11,10 +11,14 @@ from systems.CIFAR10.utils.transforms.transforms import CIFAR10STATS
 
 # Import the networks
 from systems.CIFAR10.VGG import VGG
+from systems.CIFAR10.ViT import ViT
+from systems.CIFAR10.ICCT import ICCT
 from systems.CIFAR10.ResNet import ResNet as ResNetCIFAR
 
 # Import the quantization functions
 from systems.CIFAR10.VGG.quantize import pact_recipe as quantize_vgg, get_pact_controllers as controllers_vgg
+from systems.CIFAR10.ViT.quantize import pact_recipe as quantize_vit, get_pact_controllers as controllers_vit
+from systems.CIFAR10.ICCT.quantize import pact_recipe as quantize_icct, get_pact_controllers as controllers_icct
 from systems.CIFAR10.ResNet.quantize import pact_recipe as quantize_resnet_cifar, get_pact_controllers as controllers_resnet_cifar
 
 ################################################################################

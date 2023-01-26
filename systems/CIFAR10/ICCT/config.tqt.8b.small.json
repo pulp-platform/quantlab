@@ -1,0 +1,190 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": true
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 512
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 512
+            }
+        }
+    },
+    "network": {
+        "class": "ICCT",
+        "kwargs": {
+            "num_layers": 6,
+            "pool": "mean",
+            "pretrained": "/scratch2/wiesep/quantlab/systems/CIFAR10/ICCT/logs/exp0000/fold0/saves/best.ckpt"
+        },
+        "quantize": {
+            "function": "pact_recipe",
+            "kwargs": {
+                "config": {
+                    "PACTConv2d": {
+                        "tokenizer.conv_layers.0.0$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "quantize": "per_channel",
+                            "init_clip": "max",
+                            "learn_clip": true,
+                            "symm_wts": true,
+                            "tqt": true
+                        }
+                    },
+                    "PACTLinear": {
+                        "transformer.layers.*.*.fn.attention.WQ$": {},
+                        "transformer.layers.*.*.fn.attention.WK$": {},
+                        "transformer.layers.*.*.fn.attention.WV$": {},
+                        "transformer.layers.*.*.fn.attention.out$": {},
+                        "transformer.layers.*.*.fn.net.0$": {},
+                        "transformer.layers.*.*.fn.net.3$": {},
+                        "classifier$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "quantize": "per_layer",
+                            "init_clip": "max",
+                            "learn_clip": true,
+                            "symm_wts": true,
+                            "tqt": true
+                        }
+                    },
+                    "PACTUnsignedAct": {
+                        "transformer.layers.*.*.fn.attention.AttentionMechanism.Softmax$": {
+                            "act_kind": "softmax",
+                            "signed": "true"
+                        },
+                        "transformer.layers.0.1.fn.net.1$": {
+                            "act_kind": "gelu",
+                            "signed": "true"
+                        },
+                        "kwargs": {
+                            "n_levels": 256,
+                            "init_clip": "std",
+                            "nb_std": 3,
+                            "noisy": false,
+                            "tqt": true,
+                            "learn_clip": true,
+                            "rounding": true
+                        }
+                    },
+                    "harmonize": {
+                        "n_levels": 256,
+                        "init_clip": "max",
+                        "noisy": false,
+                        "rounding": true,
+                        "force_out_eps": true,
+                        "tqt": true,
+                        "learn_clip": true
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "PACTSGD",
+                "kwargs": {
+                    "pact_decay": 0.001,
+                    "lr": 0.1,
+                    "momentum": 0.9
+                },
+                "takes_net": true
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0": 1,
+                        "5": 0.1,
+                        "15": 0.01
+                    }
+                }
+            }
+        },
+        "n_epochs": 20,
+        "quantize": {
+            "function": "get_pact_controllers",
+            "kwargs": {
+                "schedules": {
+                    "activation": {
+                        "5": [
+                            "verbose_on",
+                            "start"
+                        ]
+                    },
+                    "linear": {
+                        "10": [
+                            "verbose_on",
+                            "start"
+                        ]
+                    }
+                },
+                "kwargs_linear": {
+                    "update_every": "batch"
+                },
+                "kwargs_activation": {
+                    "init_clip_hi": 6.0
+                }
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+                {
+                    "class": "CIFAR10InputsSnapshot",
+                    "kwargs": {
+                        "name": "tokenizer.conv_layers.0.0",
+                        "start": 0,
+                        "period": 98,
+                        "n_inputs": 4,
+                        "preprocessing_type": 1
+                    }
+                    
+                },
+                {
+                    "class": "OutputFeaturesSnapshot",
+                    "kwargs": {
+                        "name": "tokenizer.conv_layers.0.0",
+                        "start": 0,
+                        "period": 98,
+                        "n_inputs": 4
+                    }
+                    
+                }
+            ]
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    },
+    "experiment": {
+        "target_loss": "valid",
+        "ckpt_period": 5
+    }
+}

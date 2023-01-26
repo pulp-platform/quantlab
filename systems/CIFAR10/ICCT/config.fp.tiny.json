@@ -1,0 +1,101 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": true
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 512
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": false
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 512
+            }
+        }
+    },
+    "network": {
+        "class": "ICCT",
+        "kwargs": {
+            "num_layers": 1,
+            "pool": "mean"
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "AdamW",
+                "kwargs": {
+                    "lr": 1e-3,
+                    "eps": 1e-8
+                },
+                "takes_net": false
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0": 1,
+                        "10": 0.1,
+                        "20": 0.01,
+                        "30": 0.001
+                    }
+                }
+            }
+        },
+        "n_epochs": 40
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+                {
+                    "class": "CIFAR10InputsSnapshot",
+                    "kwargs": {
+                        "name": "tokenizer.conv_layers.0.0",
+                        "start": 0,
+                        "period": 98,
+                        "n_inputs": 4,
+                        "preprocessing_type": 1
+                    }
+                    
+                },
+                {
+                    "class": "OutputFeaturesSnapshot",
+                    "kwargs": {
+                        "name": "tokenizer.conv_layers.0.0",
+                        "start": 0,
+                        "period": 98,
+                        "n_inputs": 4
+                    }
+                    
+                }
+            ]
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    },
+    "experiment": {
+        "target_loss": "valid",
+        "ckpt_period": 5
+    }
+}

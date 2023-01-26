@@ -1,0 +1,192 @@
+{
+    "data": {
+        "train": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": true,
+                        "image_size": 28
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 512
+            }
+        },
+        "valid": {
+            "dataset": {
+                "transform": {
+                    "class": "TransformB",
+                    "kwargs": {
+                        "augment": false,
+                        "image_size": 28
+                    }
+                }
+            },
+            "dataloader": {
+                "bs": 512
+            }
+        }
+    },
+    "network": {
+        "class": "ViT",
+        "kwargs": {
+            "config": "Tiny",
+            "pretrained": "/scratch2/wiesep/quantlab/systems/CIFAR10/ViT/logs/exp0000/fold0/saves/best.ckpt"
+
+        },
+        "quantize": {
+            "function": "pact_recipe",
+            "kwargs": {
+                "config": {
+                    "PACTConv2d": {
+                        "model.vit.embeddings.patch_embeddings.projection$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "quantize": "per_channel",
+                            "init_clip": "max",
+                            "learn_clip": true,
+                            "symm_wts": true,
+                            "tqt": true
+                        }
+                    },
+                    "PACTLinear": {
+                        "model.vit.encoder.layer.0.attention.attention.query$": {},
+                        "model.vit.encoder.layer.0.attention.attention.key$": {},
+                        "model.vit.encoder.layer.0.attention.attention.value$": {},
+                        "model.vit.encoder.layer.0.attention.output.dense$": {},
+                        "model.vit.encoder.layer.0.intermediate.dense$": {},
+                        "model.vit.encoder.layer.0.output.dense$": {},
+                        "model.classifier$": {},
+                        "kwargs": {
+                            "n_levels": 256,
+                            "quantize": "per_layer",
+                            "init_clip": "max",
+                            "learn_clip": true,
+                            "symm_wts": true,
+                            "tqt": true
+                        }
+                    },
+                    "PACTUnsignedAct": {
+                        "model.vit.encoder.layer.0.intermediate.intermediate_act_fn$": {
+                            "act_kind": "gelu",
+                            "signed": "true"
+                        },
+                        "model.vit.encoder.layer.0.attention.attention.softmax$": {
+                            "act_kind": "softmax",
+                            "signed": "true"
+                        },
+                        "kwargs": {
+                            "n_levels": 256,
+                            "init_clip": "std",
+                            "nb_std": 3,
+                            "noisy": false,
+                            "tqt": true,
+                            "learn_clip": true,
+                            "rounding": true
+                        }
+                    },
+                    "harmonize": {
+                        "n_levels": 256,
+                        "init_clip": "max",
+                        "noisy": false,
+                        "rounding": true,
+                        "force_out_eps": true,
+                        "tqt": true,
+                        "learn_clip": true
+                    }
+                }
+            }
+        }
+    },
+    "training": {
+        "loss_fn": {
+            "class": "CrossEntropyLoss",
+            "kwargs": {}
+        },
+        "gd": {
+            "opt": {
+                "class": "PACTSGD",
+                "kwargs": {
+                    "pact_decay": 0.001,
+                    "lr": 0.1,
+                    "momentum": 0.9
+                },
+                "takes_net": true
+            },
+            "lr_sched": {
+                "class": "HandScheduler",
+                "kwargs": {
+                    "schedule": {
+                        "0": 1,
+                        "4": 0.1,
+                        "7": 0.01
+                    }
+                }
+            }
+        },
+        "n_epochs": 12,
+        "quantize": {
+            "function": "get_pact_controllers",
+            "kwargs": {
+                "schedules": {
+                    "activation": {
+                        "0": [
+                            "verbose_on",
+                            "start"
+                        ]
+                    },
+                    "linear": {
+                        "1": [
+                            "verbose_on",
+                            "start"
+                        ]
+                    }
+                },
+                "kwargs_linear": {
+                    "update_every": "batch"
+                },
+                "kwargs_activation": {
+                    "init_clip_hi": 6.0
+                }
+            }
+        }
+    },
+    "meters": {
+        "train": {
+            "compute_profiling_statistic": true,
+            "compute_task_statistic": true,
+            "tensor_statistics": [
+                {
+                    "class": "CIFAR10InputsSnapshot",
+                    "kwargs": {
+                        "name": "model.vit.embeddings.patch_embeddings.projection",
+                        "start": 0,
+                        "period": 98,
+                        "n_inputs": 4,
+                        "preprocessing_type": 2
+                    }
+                    
+                },
+                {
+                    "class": "OutputFeaturesSnapshot",
+                    "kwargs": {
+                        "name": "model.vit.embeddings.patch_embeddings.projection",
+                        "start": 0,
+                        "period": 98,
+                        "n_inputs": 4
+                    }
+                    
+                }
+            ]
+        },
+        "valid": {
+            "compute_profiling_statistic": true
+        }
+    },
+    "experiment": {
+        "target_loss": "valid",
+        "ckpt_period": 5
+    }
+}

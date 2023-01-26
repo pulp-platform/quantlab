@@ -21,6 +21,26 @@
             "env": {
                 "CUDA_VISIBLE_DEVICES": "1"
             }
+        },
+        {
+            "name": "QuantLab Integerize",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/examples/dumpo_export/integerize_pactnets.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "args": [
+                "--net=${input:topology}",
+                "--ckpt_id=-1",
+                "--no_dory_harmonize",
+                "--export_name=network",
+                "--export_dir=/usr/scratch2/badile40/wiesep/dumpo/dumpotest/Tests/ViT",
+                "--exp_id=${input:exp_id}"
+            ],
+            "env": {
+                "CUDA_VISIBLE_DEVICES": "1"
+            }
         }
     ],
     "inputs": [
@@ -34,7 +54,7 @@
                 "ILSVRC12",
                 "MNIST"
               ],
-            "default": "MNIST"
+            "default": "CIFAR10"
         },
         {
             "id": "topology",
@@ -49,8 +69,10 @@
                 "MobileNetV2",
                 "MobileNetV3",
                 "simpleCNN",
+                "ViT",
+                "ICCT"
               ],
-            "default": "simpleCNN"
+            "default": "ICCT"
         },
         {
             "id": "exp_id",
