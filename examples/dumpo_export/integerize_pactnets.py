@@ -342,7 +342,8 @@ def get_network(key: str,
     # the checkpoint may be from a nn.DataParallel instance, so we need to
     # strip the 'module.' from all the keys
     if all(k.startswith('module.') for k in state_dict.keys()):
-        state_dict = {k.lstrip('module.'): v for k, v in state_dict.items()}
+        state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
+
     quant_net.load_state_dict(state_dict)
     qctrls = qu.get_controllers(quant_net, **ctrl_cfg)
     for ctrl, sd in zip(qctrls, ckpt['qnt_ctrls']):

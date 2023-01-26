@@ -30,6 +30,8 @@ from typing import Tuple, Union
 
 __all__ = [
     'OutputFeaturesSnapshot',
+    'RGBInputsSnapshot',
+    'GrayscaleInputsSnapshot'
 ]
 
 
@@ -75,7 +77,7 @@ class RGBInputsSnapshot(InstantaneousCallbackBasedStatistic):
             if self._preprocessing_type == _RGB_01_NORMALIZED:
                 pass
             elif self._preprocessing_type == _RGB_DATA_SET_NORMALIZED:
-                denormalised_input = input_ * self._std + self._mean
+                denormalised_input = input_ * self._std.to(input_.device) + self._mean.to(input_.device)
             elif self._preprocessing_type == _RGB_UINT8:
                 denormalised_input = input_ / 255.0  # map to the range [0, 1]
 
