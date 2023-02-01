@@ -1,4 +1,5 @@
 {
+    "description": "TQT Version of Tiny-ICCT (1-4-64-64)",
     "data": {
         "train": {
             "dataset": {
@@ -31,8 +32,10 @@
         "class": "ICCT",
         "kwargs": {
             "num_layers": 1,
-            "pool": "mean",
-            "pretrained": "/scratch2/wiesep/quantlab/systems/CIFAR10/ICCT/logs/exp0000/fold0/saves/best.ckpt"
+            "num_heads": 4,
+            "embedding_dim": 64,
+            "projection_dim": 64,
+            "pool": "mean"
         },
         "quantize": {
             "function": "pact_recipe",
@@ -50,13 +53,13 @@
                         }
                     },
                     "PACTLinear": {
-                        "transformer.layers.*.*.fn.attention.WQ$": {},
-                        "transformer.layers.*.*.fn.attention.WK$": {},
-                        "transformer.layers.*.*.fn.attention.WV$": {},
-                        "transformer.layers.*.*.fn.attention.out$": {},
+                        ".*attention.WQ.0$": {},
+                        ".*attention.WK.0$": {},
+                        ".*attention.WV.0$": {},
+                        ".*attention.out.0$": {},
                         "transformer.layers.*.*.fn.net.0$": {},
                         "transformer.layers.*.*.fn.net.3$": {},
-                        "classifier$": {},
+                        "classifier.0$": {},
                         "kwargs": {
                             "n_levels": 256,
                             "quantize": "per_layer",
@@ -67,13 +70,46 @@
                         }
                     },
                     "PACTUnsignedAct": {
-                        "transformer.layers.*.*.fn.attention.AttentionMechanism.Softmax$": {
-                            "act_kind": "softmax",
-                            "signed": "true"
+                        ".*attention.WQ.1$": {
+                            "act_kind": "identity",
+                            "signed": true,
+                            "init_clip": "max"
                         },
-                        "transformer.layers.0.1.fn.net.1$": {
-                            "act_kind": "gelu",
-                            "signed": "true"
+                        ".*attention.WK.1$": {
+                            "act_kind": "identity",
+                            "signed": true,
+                            "init_clip": "max"
+                        },
+                        ".*attention.WV.1$": {
+                            "act_kind": "identity",
+                            "signed": true,
+                            "init_clip": "max"
+                        },
+                        ".*attention.AttentionMechanism.scores_activation$": {
+                            "act_kind": "identity",
+                            "signed": true,
+                            "rounding": false,
+                            "init_clip": "max"
+                        },
+                        ".*attention.AttentionMechanism.output_activation$": {
+                            "act_kind": "identity",
+                            "signed": true,
+                            "rounding": false,
+                            "init_clip": "max"
+                        },
+                        ".*attention.out.1$": {
+                            "act_kind": "identity",
+                            "signed": true,
+                            "init_clip": "max"
+                        },
+                        "transformer.layers.*.*.fn.net.1$": {
+                            "act_kind": "relu"
+                        },
+                        "tokenizer.conv_layers.0.2": {
+                            "act_kind": "relu"
+                        },
+                        "classifier.1$": {
+                            "act_kind": "relu"
                         },
                         "kwargs": {
                             "n_levels": 256,
@@ -108,35 +144,37 @@
                 "class": "PACTSGD",
                 "kwargs": {
                     "pact_decay": 0.001,
-                    "lr": 0.1,
+                    "lr": 0.01,
                     "momentum": 0.9
                 },
                 "takes_net": true
             },
             "lr_sched": {
-                "class": "HandScheduler",
-                "kwargs": {
-                    "schedule": {
-                        "0": 1,
-                        "4": 0.1,
-                        "7": 0.01
-                    }
-                }
+                "class": "ReduceLROnPlateau",
+                "kwargs": {}
             }
         },
-        "n_epochs": 12,
+        "n_epochs": 100,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
                 "schedules": {
-                    "activation": {
-                        "0": [
-                            "verbose_on",
-                            "start"
-                        ]
-                    },
                     "linear": {
                         "1": [
+                            "verbose_on",
+                            "start"
+                        ],
+                        "99": "freeze"
+                    },
+                    "activation": {
+                        "1": [
+                            "verbose_on",
+                            "start"
+                        ],
+                        "99": "freeze"
+                    },
+                    "eps": {
+                        "98": [
                             "verbose_on",
                             "start"
                         ]
@@ -165,7 +203,6 @@
                         "n_inputs": 4,
                         "preprocessing_type": 1
                     }
-                    
                 },
                 {
                     "class": "OutputFeaturesSnapshot",
@@ -175,7 +212,6 @@
                         "period": 98,
                         "n_inputs": 4
                     }
-                    
                 }
             ]
         },

@@ -32,7 +32,10 @@ from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
 from quantlib.algorithms.pact.dynamic_precision import *
 
+from systems.CIFAR10.ICCT.model.transformer import Attention
 
+from systems.CIFAR10.utils.transforms.transforms import CIFAR10STATS
+_CIFAR10_EPS = CIFAR10STATS['quantize']['eps']
 
 def pact_recipe(net : nn.Module,
                 config : dict):
@@ -74,6 +77,16 @@ def pact_recipe(net : nn.Module,
     rhos += make_rules(act_cfg,
                        qlr.pact.ReplaceActPACTRule)
 
+    # ICCT = set([Attention])
+    # PACTTracer = LeafTracer(leaf_types=list(PACT_OPS_INCLUSIVE | ICCT))
+    # mhsa_tracer = partial(custom_symbolic_trace, tracer=PACTTracer)
+
+    # def ICCT_MHSA():
+    #     return Attention(dim=64, heads=4, dim_head=64)
+    # wrap_mhsa_pass = WrapModulePass(Attention, ICCT_MHSA)
+
+    # net = mhsa_tracer(net)
+    # net = wrap_mhsa_pass(net)
 
     lwg = qlw.LightweightGraph(net)
     lwe = qlw.LightweightEditor(lwg)
@@ -98,8 +111,8 @@ def pact_recipe(net : nn.Module,
     net = PACT_symbolic_trace(net)
     net = approximate_gelu_pass(net)
     net = approximate_softmax_pass(net)
-    net = canonicalize_layernorm_pass(net)
     net = harmonize_pass(net)
+    net = canonicalize_layernorm_pass(net)
     
     lwg = qlw.LightweightGraph(net)
 
@@ -112,9 +125,13 @@ def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict
     lin_modules = PACTLinearController.get_modules(net)
     act_modules = PACTActController.get_modules(net)
     intadd_modules = PACTIntegerModulesController.get_modules(net)
-
+    eps_modules = PACTEpsController.get_modules(net)
+    
+    annotate_eps_pass = AnnotateEpsPass(eps_in=_CIFAR10_EPS, prop_eps=True, prop_n_levels = True, prop_sign = True,  verbose=False)
+    eps_ctrl = PACTEpsController(net, eps_modules, schedules["eps"], PACTTracer,annotate_eps_pass)
     lin_ctrl = PACTLinearController(lin_modules, schedules["linear"], **kwargs_linear)
     act_ctrl = PACTActController(act_modules, schedules["activation"], **kwargs_activation)
     intadd_ctrl = PACTIntegerModulesController(intadd_modules)
 
-    return lin_ctrl, act_ctrl, intadd_ctrl
+    return lin_ctrl, act_ctrl, intadd_ctrl, eps_ctrl
+    # return lin_ctrl, act_ctrl, intadd_ctrl

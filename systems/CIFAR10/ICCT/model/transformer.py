@@ -63,10 +63,13 @@ class VanillaAttention(nn.Module):
         super().__init__()
 
         self.Softmax = nn.Softmax(dim=-1)
+        self.scores_activation = nn.Identity()
+        self.output_activation = nn.Identity()
 
     def forward(self, q, k, v, dim, mask=None, dropout=None):
 
-        scores = torch.matmul(q, k.transpose(-2, -1)) #/  math.sqrt(dim)
+        scores = torch.matmul(q, k.transpose(-2, -1))
+        scores = self.scores_activation(scores)
 
         scores = self.Softmax(scores / math.sqrt(dim))
 
@@ -74,6 +77,7 @@ class VanillaAttention(nn.Module):
             scores = dropout(scores)
 
         output = torch.matmul(scores, v)
+        output = self.output_activation(output)
 
         return output
 
@@ -94,19 +98,17 @@ class MultiHeadAttention(nn.Module):
         if fix_q:
             self.WQ = nn.Identity
         else:
-            self.WQ = nn.Linear(dim, self.inner_dim, bias=True)
+            self.WQ = nn.Sequential(nn.Linear(dim, self.inner_dim, bias=True), nn.Identity())
 
-        self.WK = nn.Linear(dim, self.inner_dim, bias=True)
+        self.WK = nn.Sequential(nn.Linear(dim, self.inner_dim, bias=True), nn.Identity())
 
         if share_kv:
             self.WV = self.WK
         else:
-            self.WV = nn.Linear(dim, self.inner_dim, bias=True)
+            self.WV = nn.Sequential(nn.Linear(dim, self.inner_dim, bias=True), nn.Identity())
 
         self.AttentionMechanism = AttentionMechanism(*args, **kwargs)
-
-        self.dropout = nn.Dropout(dropout)
-        self.out = nn.Linear(self.inner_dim, self.out_dim)
+        self.out = nn.Sequential(nn.Linear(self.inner_dim, self.out_dim), nn.Identity())
 
     def forward(self, q, k, v):
         mask = None
@@ -138,8 +140,10 @@ class Attention(nn.Module):
     def __init__(self, dim, heads = 8, dim_head = 64, dropout = 0.):
         super().__init__()
 
-        self.heads = heads
-        self.scale = dim_head ** -0.5
+        # Make sure to use the same names as in quantlib/editing/fx/passes/pact/harmonize.py:736
+        self.out_dim = dim
+        self.dim = dim_head
+        self.h = heads
 
         self.attention = MultiHeadAttention(dim, heads, dim_head, VanillaAttention, dropout)
 
