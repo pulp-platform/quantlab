@@ -91,7 +91,7 @@ def pact_recipe(net : nn.Module,
     lwg = qlw.LightweightGraph(net)
     lwe = qlw.LightweightEditor(lwg)
 
-    print("=== Original Network ===")
+    print("[QuantLab] === Original Network ===")
     lwg.show_nodes_list()
 
     lwe.startup()
@@ -116,7 +116,7 @@ def pact_recipe(net : nn.Module,
     
     lwg = qlw.LightweightGraph(net)
 
-    print("=== PACT Network ===")
+    print("[QuantLab] === PACT Network ===")
     lwg.show_nodes_list()
 
     return net
