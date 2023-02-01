@@ -300,7 +300,10 @@ def train(args: argparse.Namespace):
 
             # (possibly) change learning rate
             if gd.lr_sched is not None:
-                gd.lr_sched.step()
+                if isinstance(gd.lr_sched, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    gd.lr_sched.step(loss)
+                else:
+                    gd.lr_sched.step()
 
             # has the target metric improved during the current epoch?
             if logbook.target_loss == 'train':
