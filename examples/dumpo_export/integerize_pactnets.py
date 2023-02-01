@@ -450,7 +450,11 @@ def integerize_network(net: nn.Module, key: str, fix_channels: bool,
                                          D=qu.D,
                                          n_levels_in=qu.n_levels_in,
                                          fix_channel_numbers=fix_channels,
-                                         requant_node=True)
+                                         requant_node=True,
+                                         export_layernorm_node = True, 
+                                        export_softmax_node = True,
+                                        export_gelu_node = True, 
+                                        export_div_node = True)
         int_net = int_pass(net)
         if fix_channels:
             # we may have modified the # of input channels so we need to adjust the
