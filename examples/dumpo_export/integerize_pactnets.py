@@ -76,9 +76,6 @@ class QuantUtil:
     quant_transform_args: dict = field(default_factory=dict)
 
 
-#QuantUtil = namedtuple('QuantUtil', 'problem quantize get_controllers network in_shape eps_in D bs get_in_shape load_dataset_fn transform quant_transform_args n_levels_in export_fn')
-
-
 # get a validation dataset from the problem name.
 def get_valid_dataset(key: str,
                       cfg: dict,

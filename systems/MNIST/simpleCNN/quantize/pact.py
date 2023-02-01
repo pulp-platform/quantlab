@@ -80,19 +80,19 @@ def pact_recipe(net : nn.Module,
                        qlr.pact.ReplaceConvLinearPACTRule)
     rhos += make_rules(act_cfg,
                        qlr.pact.ReplaceActPACTRule)
-    # rhos += make_rules(softmax_cfg,
-    #                    qlr.pact.ReplaceSoftmaxPACTRule)
 
     lwg = qlw.LightweightGraph(net)
     lwe = qlw.LightweightEditor(lwg)
     
     print("=== Original Network ===")
     lwg.show_nodes_list()
+    
     lwe.startup()
     for rho in rhos:
         lwe.set_lwr(rho)
         lwe.apply()
     lwe.shutdown()
+
     print("=== PACT Network ===")
     lwg.show_nodes_list()
 

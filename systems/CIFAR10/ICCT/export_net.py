@@ -107,7 +107,6 @@ def export_onnx_cct(args):
         enable_bias_gelu=False,
     )
     optimizer =  optimize_model(str(onnx_path), optimization_options=optimization_config)
-    optimizer.optimize
     optimizer.save_model_to_file(str(onnx_path))
 
     # Load optimzed model and perform shape inference

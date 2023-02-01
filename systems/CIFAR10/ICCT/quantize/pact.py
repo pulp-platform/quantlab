@@ -19,17 +19,14 @@
 # limitations under the License.
 # 
 
-from typing import List
-
 from torch import nn
 
 import quantlib.editing.lightweight as qlw
-from quantlib.editing.lightweight import LightweightGraph
 import quantlib.editing.lightweight.rules as qlr
-from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter, SubTypeFilter
-from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace, LeafTracer, PACT_OPS_INCLUSIVE
-from quantlib.editing.fx.passes import AnnotateEpsPass
-from quantlib.editing.fx.passes.pact import ApproximateGELUPass, ApproximateSoftmaxPass, CanonicalizeLayerNormPass
+from quantlib.editing.lightweight.rules.filters import NameFilter
+from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACTTracer, PACT_symbolic_trace
+from quantlib.editing.fx.passes.pact import WrapModulePass
+from quantlib.editing.fx.passes.pact import ApproximateGELUPass, ApproximateSoftmaxPass, CanonicalizeLayerNormPass, AnnotateEpsPass
 
 from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
@@ -80,24 +77,35 @@ def pact_recipe(net : nn.Module,
 
     lwg = qlw.LightweightGraph(net)
     lwe = qlw.LightweightEditor(lwg)
-    
+
+    print("=== Original Network ===")
+    lwg.show_nodes_list()
+
     lwe.startup()
     for rho in rhos:
         lwe.set_lwr(rho)
         lwe.apply()
     lwe.shutdown()
 
+    net = lwg.net
+
     approximate_gelu_pass = ApproximateGELUPass()
     approximate_softmax_pass = ApproximateSoftmaxPass()
     canonicalize_layernorm_pass = CanonicalizeLayerNormPass()
     harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
+
     
-    net = PACT_symbolic_trace(lwg.net)
+    net = PACT_symbolic_trace(net)
     net = approximate_gelu_pass(net)
     net = approximate_softmax_pass(net)
     net = canonicalize_layernorm_pass(net)
     net = harmonize_pass(net)
     
+    lwg = qlw.LightweightGraph(net)
+
+    print("=== PACT Network ===")
+    lwg.show_nodes_list()
+
     return net
 
 def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict = {}, kwargs_activation : dict = {}, dynamic : dict = {}):
