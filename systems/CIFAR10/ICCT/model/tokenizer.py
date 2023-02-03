@@ -22,8 +22,8 @@
 # Source: https://github.com/lucidrains/vit-pytorch/blob/500e23105a294b55a585462deab1884af264888a/vit_pytorch/cct.py#L58
 
 import torch
-import torch.nn.functional as F
-from torch import nn, einsum
+from torch import nn
+
 
 def exists(val):
     return val is not None
@@ -68,26 +68,22 @@ class Tokenizer(nn.Module):
                           kernel_size=(kernel_size, kernel_size),
                           stride=(stride, stride),
                           padding=(padding, padding),
-                          bias=conv_bias),
-                nn.BatchNorm2d(chan_out),
+                          bias=conv_bias), nn.BatchNorm2d(chan_out),
                 nn.Identity() if not exists(activation) else activation(),
-                nn.MaxPool2d(kernel_size=pooling_kernel_size,
-                             stride=pooling_stride,
-                             padding=pooling_padding) if max_pool else nn.
-                Identity()) for chan_in, chan_out in n_filter_list_pairs
+                nn.MaxPool2d(kernel_size=pooling_kernel_size, stride=pooling_stride, padding=pooling_padding
+                             ) if max_pool else nn.Identity()) for chan_in, chan_out in n_filter_list_pairs
         ])
 
         self.apply(self.init_weight)
 
     def sequence_length(self, n_channels=3, height=224, width=224):
-        return self.forward(torch.zeros(
-            (1, n_channels, height, width))).shape[1]
+        return self.forward(torch.zeros((1, n_channels, height, width))).shape[1]
 
     def forward(self, x: torch.Tensor):
         x = self.conv_layers(x)
 
         x = x.transpose(3, 1)
-        b, _, _, c  = x.shape
+        b, _, _, c = x.shape
         x = x.reshape(b, -1, c)
         return x
 

@@ -61,18 +61,3 @@ from systems.ILSVRC12.MobileNetV2.quantize import pact_recipe as quantize_mnv2, 
 from systems.ILSVRC12.MobileNetV3.quantize import pact_recipe as quantize_mnv3, get_pact_controllers as controllers_mnv3
 from systems.ILSVRC12.ResNet.quantize import pact_recipe as quantize_resnet, get_pact_controllers as controllers_resnet
 
-################################################################################
-#   Topology:       DVS128
-#   Problem:        DVSHybridNet
-#   Quantization:   PACT
-################################################################################
-
-# Import the get_dataset functions
-from systems.DVS128.dvs_cnn.preprocess import load_data_set as load_dvs128, DVSAugmentTransform
-
-# Import the networks
-from systems.DVS128.dvs_cnn import DVSHybridNet, get_input_shape as get_in_shape_dvsnet
-
-# Import the quantization functions
-from systems.DVS128.dvs_cnn.quantize import pact_recipe as quantize_dvsnet, get_pact_controllers as controllers_dvsnet
-

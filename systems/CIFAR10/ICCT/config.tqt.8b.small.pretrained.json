@@ -1,5 +1,5 @@
 {
-    "description": "TQT Version of Tiny-ICCT (1-4-64-64)",
+    "description": "TQT 8-Bit Version of Small-ICCT (6-4-64-64)",
     "data": {
         "train": {
             "dataset": {
@@ -31,11 +31,12 @@
     "network": {
         "class": "ICCT",
         "kwargs": {
-            "num_layers": 1,
+            "num_layers": 6,
             "num_heads": 4,
             "embedding_dim": 64,
             "projection_dim": 64,
-            "pool": "mean"
+            "pool": "mean",
+            "pretrained": "/scratch2/wiesep/quantlab/systems/CIFAR10/ICCT/logs/exp0002/fold0/saves/best.ckpt"
         },
         "quantize": {
             "function": "pact_recipe",
@@ -53,12 +54,12 @@
                         }
                     },
                     "PACTLinear": {
-                        ".*attention.WQ.0$": {},
-                        ".*attention.WK.0$": {},
-                        ".*attention.WV.0$": {},
-                        ".*attention.out.0$": {},
-                        "transformer.layers.*.*.fn.net.0$": {},
-                        "transformer.layers.*.*.fn.net.3$": {},
+                        ".*mhsa.WQ$": {},
+                        ".*mhsa.WK$": {},
+                        ".*mhsa.WV$": {},
+                        ".*mhsa.out$": {},
+                        "transformer.layers.*.*.fn.ff.0$": {},
+                        "transformer.layers.*.*.fn.ff.3$": {},
                         "classifier.0$": {},
                         "kwargs": {
                             "n_levels": 256,
@@ -70,41 +71,6 @@
                         }
                     },
                     "PACTUnsignedAct": {
-                        ".*attention.WQ.1$": {
-                            "act_kind": "identity",
-                            "signed": true,
-                            "init_clip": "max"
-                        },
-                        ".*attention.WK.1$": {
-                            "act_kind": "identity",
-                            "signed": true,
-                            "init_clip": "max"
-                        },
-                        ".*attention.WV.1$": {
-                            "act_kind": "identity",
-                            "signed": true,
-                            "init_clip": "max"
-                        },
-                        ".*attention.AttentionMechanism.scores_activation$": {
-                            "act_kind": "identity",
-                            "signed": true,
-                            "rounding": false,
-                            "init_clip": "max"
-                        },
-                        ".*attention.AttentionMechanism.output_activation$": {
-                            "act_kind": "identity",
-                            "signed": true,
-                            "rounding": false,
-                            "init_clip": "max"
-                        },
-                        ".*attention.out.1$": {
-                            "act_kind": "identity",
-                            "signed": true,
-                            "init_clip": "max"
-                        },
-                        "transformer.layers.*.*.fn.net.1$": {
-                            "act_kind": "relu"
-                        },
                         "tokenizer.conv_layers.0.2": {
                             "act_kind": "relu"
                         },
@@ -113,12 +79,15 @@
                         },
                         "kwargs": {
                             "n_levels": 256,
-                            "init_clip": "std",
+                            "init_clip": "max",
                             "nb_std": 3,
-                            "noisy": false,
                             "tqt": true,
                             "learn_clip": true,
-                            "rounding": true
+                            "rounding": true,
+                            "noisy": false,
+                            "upper_percentile": 1.0,
+                            "lower_percentile": 0.0,
+                            "leaky": 0.0
                         }
                     },
                     "harmonize": {
@@ -141,20 +110,18 @@
         },
         "gd": {
             "opt": {
-                "class": "PACTSGD",
+                "class": "AdamW",
                 "kwargs": {
-                    "pact_decay": 0.001,
-                    "lr": 0.01,
-                    "momentum": 0.9
+                    "lr": 1e-5
                 },
-                "takes_net": true
+                "takes_net": false
             },
             "lr_sched": {
                 "class": "ReduceLROnPlateau",
                 "kwargs": {}
             }
         },
-        "n_epochs": 100,
+        "n_epochs": 15,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
@@ -164,20 +131,18 @@
                             "verbose_on",
                             "start"
                         ],
-                        "99": "freeze"
+                        "5": "freeze"
                     },
                     "activation": {
                         "1": [
                             "verbose_on",
                             "start"
                         ],
-                        "99": "freeze"
+                        "5": "freeze"
                     },
                     "eps": {
-                        "98": [
-                            "verbose_on",
-                            "start"
-                        ]
+                        "1": "verbose_on",
+                        "5": "start"
                     }
                 },
                 "kwargs_linear": {

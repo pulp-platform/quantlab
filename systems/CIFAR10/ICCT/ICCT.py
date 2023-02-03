@@ -33,19 +33,23 @@ class ICCT(nn.Module):
 
     def __init__(
         self,
-        embedding_dim=64,
+        embedding_dim = 64,
         projection_dim = 64,
-        num_heads=4,
-        num_layers=1,
-        final_pool="mean",
-        n_conv_layers=1,
-        n_input_channels=3,
-        conv_kernel_size=3,
-        conv_padding=3,
-        conv_stride=2,
-        pooling_kernel_size=3,
-        pooling_padding=0,
-        pooling_stride=2,
+        num_heads = 4,
+        num_layers = 1,
+        final_pool = "mean",
+        n_conv_layers = 1,
+        n_input_channels = 3,
+        conv_kernel_size = 3,
+        conv_padding = 3,
+        conv_stride = 2,
+        pooling_kernel_size = 3,
+        pooling_padding = 0,
+        pooling_stride = 2,
+        dropout = 0.1,
+        attention_bias = True,
+        mlp_bias = True,
+        conv_bias = False,
         pretrained: str = "",
         seed: int = -1,
         *args,
@@ -58,31 +62,30 @@ class ICCT(nn.Module):
         if seed >= 0:
             torch.manual_seed(seed)
 
-        self.tokenizer = Tokenizer(n_input_channels=n_input_channels,
-                                   n_output_channels=embedding_dim,
-                                   kernel_size=conv_kernel_size,
-                                   stride=conv_stride,
-                                   padding=conv_padding,
-                                   pooling_kernel_size=pooling_kernel_size,
-                                   pooling_stride=pooling_stride,
-                                   pooling_padding=pooling_padding,
-                                   max_pool=True,
-                                   activation=nn.ReLU,
-                                   n_conv_layers=n_conv_layers,
-                                   conv_bias=False)
+        self.tokenizer = Tokenizer(n_input_channels = n_input_channels,
+                                   n_output_channels = embedding_dim,
+                                   kernel_size = conv_kernel_size,
+                                   stride = conv_stride,
+                                   padding = conv_padding,
+                                   pooling_kernel_size = pooling_kernel_size,
+                                   pooling_stride = pooling_stride,
+                                   pooling_padding = pooling_padding,
+                                   max_pool = True,
+                                   activation = nn.ReLU,
+                                   n_conv_layers = n_conv_layers,
+                                   conv_bias = conv_bias)
 
-        self.transformer = Transformer(dim=embedding_dim,
-                                       depth=num_layers,
-                                       heads=num_heads,
-                                       dim_head=projection_dim,
-                                       mlp_dim=4 * embedding_dim,
-                                       dropout=0.0)
-                                       
+        self.transformer = Transformer(dim = embedding_dim,
+                                       depth = num_layers,
+                                       heads = num_heads,
+                                       dim_head = projection_dim,
+                                       mlp_dim = 4 * embedding_dim,
+                                       dropout = dropout,
+                                       attention_bias = attention_bias,
+                                       mlp_bias = mlp_bias)
+
         self.last_norm = nn.LayerNorm(embedding_dim)
-        self.classifier = nn.Sequential(
-            nn.Linear(embedding_dim, 10),
-            nn.LogSoftmax()
-        )
+        self.classifier = nn.Sequential(nn.Linear(embedding_dim, 10, bias = mlp_bias), nn.LogSoftmax(dim = 1))
 
         if pretrained != "":
             state_dict = torch.load(pretrained)
@@ -91,13 +94,12 @@ class ICCT(nn.Module):
             else:
                 self.load_state_dict(state_dict)
             print(f"[QuantLab] Loading state from {pretrained}")
-    
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.tokenizer(x)
         x = self.transformer(x)
         x = self.last_norm(x)
-        x = x.mean(dim=1) if self.pool == 'mean' else x[:, 0]
+        x = x.mean(dim = 1) if self.pool == 'mean' else x[:, 0]
         x = self.classifier(x)
 
         return x

@@ -1,5 +1,5 @@
 {
-    "description": "Floating Point Version of Tiny-ICCT (1-4-64-64)",
+    "description": "Floating Point Version of Base-ICCT (12-4-64-64)",
     "data": {
         "train": {
             "dataset": {
@@ -31,7 +31,7 @@
     "network": {
         "class": "ICCT",
         "kwargs": {
-            "num_layers": 1,
+            "num_layers": 12,
             "num_heads": 4,
             "embedding_dim": 64,
             "projection_dim": 64,
