@@ -19,7 +19,7 @@
 # limitations under the License.
 # 
 from functools import partial
-from typing import Union
+from typing import Union, Literal
 
 from torch import nn
 
@@ -32,14 +32,13 @@ from quantlib.editing.lightweight.rules.bb import *
 import quantlib.editing.lightweight.rules as qlr
 from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter
 from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace
-from quantlib.editing.fx.passes.bb import HarmonizeBBNetPass, BB_symbolic_trace
+from quantlib.editing.fx.passes.bb import  BB_symbolic_trace
 
 from quantlib.algorithms.bb.bb_ops import *
 from quantlib.algorithms.bb.bb_controllers import *
 from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
 from quantlib.editing.fx.passes.bb import *
-
 
 def bb_recipe(net : nn.Module,
               config : dict,
@@ -103,9 +102,9 @@ def bb_recipe(net : nn.Module,
         lwe.apply()
     lwe.shutdown()
 
-    # now harmonize the graph according to the configuration
-    harmonize_pass = HarmonizeBBNetPass(**harmonize_cfg)
-    harmonized_net = harmonize_pass(net)
+    # # now harmonize the graph according to the configuration
+    # harmonize_pass = HarmonizeBBNetPass(**harmonize_cfg)
+    # harmonized_net = harmonize_pass(net)
 
     # now we can attach the controllers
     ctrl_pass = BBActConvControllerInitPass(shape_in=(1, 3, 224, 224), gate_init=gate_init, input_prec=8, joint_distribution=joint_distribution, shared_gates=shared_gates, target=target, latency_spec_file=latency_spec_file)
