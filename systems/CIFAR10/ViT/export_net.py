@@ -37,8 +37,8 @@ sys.path.append(str(_QL_ROOTPATH))
 from systems.CIFAR10.utils.data import load_data_set as load_cifar10
 
 # Import the networks
-from systems.CIFAR10.ICCT import ICCT
-from systems.CIFAR10.ICCT.preprocess import TransformB
+from systems.CIFAR10.ViT import ViT
+from systems.CIFAR10.ViT.preprocess import TransformB
 
 # Import runtime
 import onnxruntime
@@ -60,16 +60,16 @@ class OptimizationConfig:
     enable_shape_inference: bool = True
     attention_mask_format: int = 3
 
-def export_onnx_cct(args):
+def export_onnx_vit(args):
     if args.exp_id != None:
         config_path =  Path(__file__).absolute().parent.joinpath('logs').joinpath(f"exp{args.exp_id:04}").joinpath("config.json")
         print("Loading from", config_path)
         with open(config_path, 'r') as fp:
             config = json.load(fp)
             kwargs = config["network"]["kwargs"]
-            model = ICCT(**kwargs)
+            model = ViT(**kwargs)
     else:
-        model = ICCT()
+        model = ViT()
 
     print(model)
 
@@ -143,4 +143,4 @@ if __name__ == '__main__':
                         help='The ID of the experiment run to take the config from')
     args = parser.parse_args()
 
-    export_onnx_cct(args)
+    export_onnx_vit(args)
