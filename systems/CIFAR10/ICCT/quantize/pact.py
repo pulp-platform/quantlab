@@ -43,6 +43,7 @@ class CanonAndApprox(SequentialPass):
     def __init__(self, harmonize_cfg, lin_cfg, act_cfg):
         _passes = []
         _passes.append(passes.RetracePass(PACT_symbolic_trace))
+        _passes.append(passes.AnnotateEpsPass(eps_in=1.0, n_levels_in=256, signed_in=True, prop_n_levels=False, prop_eps=False))
         _passes.append(passes.approximate.ApproximateSoftmaxPass())
         _passes.append(passes.approximate.ApproximateGELUPass())
         _passes.append(passes.approximate.CanonicalizeLayerNormPass(**lin_cfg))
