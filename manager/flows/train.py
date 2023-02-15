@@ -30,8 +30,6 @@ from manager.assistants import NetworkAssistant
 from manager.assistants import TrainingAssistant
 from manager.assistants import MeterAssistant
 
-from quantlib.editing.fx.passes.pact import PACT_symbolic_trace_inclusive
-
 
 def train(args: argparse.Namespace):
     """Train a DNN or (possibly) a QNN.
@@ -208,10 +206,7 @@ def train(args: argparse.Namespace):
             logbook.logs_manager.create_writers(start_epoch_id=start_epoch_id, n_batches_train=len(train_loader), n_batches_valid=len(valid_loader))
         
         print()
-        print("[QuantLab] === PyTorch Network ===")
-        gm = PACT_symbolic_trace_inclusive(net)
-        print(gm.modules)
-        gm.graph.print_tabular()
+        print("[QuantLab] === PyTorch Network ===\n", net)
         print()
     
         # cycle over epochs (one loop for each fold)
