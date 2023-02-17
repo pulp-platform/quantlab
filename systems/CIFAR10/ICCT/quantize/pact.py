@@ -44,7 +44,9 @@ class CanonAndApprox(SequentialPass):
         _passes = []
         _passes.append(passes.RetracePass(PACT_symbolic_trace))
         _passes.append(passes.AnnotateEpsPass(eps_in=1.0, n_levels_in=256, signed_in=True, prop_n_levels=False, prop_eps=False))
-        _passes.append(passes.approximate.ApproximateSoftmaxPass())
+        # _passes.append(passes.approximate.ApproximateSoftmaxPass(mode='I-Bert'))
+        _passes.append(passes.approximate.ApproximateSoftmaxPass(mode='ITA'))
+        # _passes.append(passes.approximate.ApproximateSoftmaxPass(mode='ITA-Partial'))
         _passes.append(passes.approximate.ApproximateGELUPass())
         _passes.append(passes.approximate.CanonicalizeLayerNormPass(**lin_cfg))
         _passes.append(passes.harmonize.MeanReplacementPass())
