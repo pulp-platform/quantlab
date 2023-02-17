@@ -101,6 +101,6 @@ class ILSVRC12Statistic(TaskStatistic):
 
         # master-only point: print the running statistic to screen
         if (not self._platform.is_horovod_run) or self._platform.is_master:
-            message = manager.QUANTLAB_PREFIX + "Epoch [{:3d}/{:3d}] : Batch [{:5d}/{:5d}] - Accuracy TOP1: {:6.2f}%, Accuracy TOP5: {:6.2f}%".format(self._epoch_id, self._n_epochs, self._batch_id, self._n_batches, self._value_top1.item(), self._value_top5.item())
+            message = manager.QUANTLAB_PREFIX + "Epoch [{:3d}/{:3d}] : Batch [{:5d}/{:5d}] - Accuracy TOP1: {:6.2f}%, Accuracy TOP5: {:6.2f}%".format(self._epoch_id, self._n_epochs-1 self._batch_id, self._n_batches, self._value_top1.item(), self._value_top5.item())
             print(message)
 
