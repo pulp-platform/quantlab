@@ -116,7 +116,7 @@ def get_pact_controllers(net : nn.Module, schedules : dict, kwargs_linear : dict
     act_modules = PACTActController.get_modules(net)
 
     net_nodes = LightweightGraph.build_nodes_list(net)
-    filter_softmax = TypeFilter(PACTSoftmax)
+    filter_softmax = TypeFilter(PACTSoftmax, PACTITAMax, PACTITAPartialMax)
     # softmax_modules =  [n.module for n in filter_softmax(net_nodes)]
 
     lin_ctrl = PACTLinearController(lin_modules, schedules["linear"], **kwargs_linear)

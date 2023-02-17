@@ -33,9 +33,8 @@
             "args": [
                 "--net=${input:topology}",
                 "--ckpt_id=-1",
-                "--no_dory_harmonize",
                 "--export_name=network",
-                "--export_dir=/usr/scratch2/badile40/wiesep/dumpo/dumpotest/Tests/ViT",
+                "--export_dir=/usr/scratch2/badile40/wiesep/dumpo/dumpotest/Tests/ICCT",
                 "--exp_id=${input:exp_id}"
             ],
             "env": {
