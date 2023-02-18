@@ -90,7 +90,8 @@ class VanillaAttention(nn.Module):
 
     def forward(self, q, k, v, dim, mask = None, dropout = None):
 
-        scores = self.Softmax(q @ k.transpose(-2, -1))
+        # scores = self.Softmax(q @ k.transpose(-2, -1))
+        scores = self.Softmax(torch.matmul(q, k.transpose(-2, -1)))
 
         if dropout is not None:
             scores = dropout(scores)
