@@ -90,6 +90,6 @@ class DVS128Statistic(TaskStatistic):
 
         # master-only point: print the running statistic to screen
         if (not self._platform.is_horovod_run) or self._platform.is_master:
-            message = manager.QUANTLAB_PREFIX + "Epoch [{:3d}/{:3d}] : Batch [{:5d}/{:5d}] - Accuracy: {:6.2f}%".format(self._epoch_id, self._n_epochs-1 self._batch_id, self._n_batches, self._value.item())
+            message = manager.QUANTLAB_PREFIX + "Epoch [{:3d}/{:3d}] : Batch [{:5d}/{:5d}] - Accuracy: {:6.2f}%".format(self._epoch_id, self._n_epochs-1, self._batch_id, self._n_batches, self._value.item())
             print(message)
 
