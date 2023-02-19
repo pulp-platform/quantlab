@@ -33,8 +33,7 @@ Therefore, if you plan to install QuantLab with GPU support, ensure that your CU
 After creating the Anaconda environment, it can make your life easier to install the `quantlib` quantization library in your Anaconda environment:
 ```
 $ conda activate quantlab
-(quantlab) $ cd quantlib
-(quantlab) $ python setup.py install
+(quantlab) $ pip install -e quantlib
 (quantlab) $ python
 (quantlab) >>> import quantlib
 (quantlab) >>> quantlib.editing.graphs.traces.trace.trace_pytorch_modules()
