@@ -90,6 +90,10 @@ class ICCT(nn.Module):
         if pretrained != "":
             state_dict = torch.load(pretrained)
             if 'net' in state_dict:
+                # In case you exported using nnParallel
+                if all(k.startswith('module.') for k in state_dict['net'].keys()):
+                    state_dict['net'] = {k.replace("module.", ""): v for k, v in state_dict['net'].items()}
+                    
                 self.load_state_dict(state_dict['net'])
             else:
                 self.load_state_dict(state_dict)
