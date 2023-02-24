@@ -26,7 +26,7 @@ import quantlib.editing.lightweight.rules as qlr
 import quantlib.editing.fx.passes.pact as passes
 
 from quantlib.editing.fx.passes import SequentialPass
-from quantlib.editing.fx.passes.pact import PACTInclusiveTracer, PACT_symbolic_trace
+from quantlib.editing.fx.passes.pact import PACTInclusiveTracer, PACT_symbolic_trace, PACT_OPS, PACT_OPS_INCLUSIVE
 from quantlib.editing.lightweight.rules.filters import NameFilter
 
 from quantlib.algorithms.pact.pact_ops import *
@@ -119,7 +119,9 @@ def pact_recipe(net: nn.Module, config: dict) -> fx.GraphModule:
 
     print()
     print("[QuantLab] === Original Network ===")
-    lwg.show_nodes_list()
+    nodelist = qlw.LightweightGraph.build_nodes_list(net, leaf_types=PACT_OPS_INCLUSIVE)
+    for lwn in nodelist:
+        print("    {:30s} {}".format(lwn.name, lwn.type_))
     print()
 
     lwe.startup()
@@ -135,8 +137,9 @@ def pact_recipe(net: nn.Module, config: dict) -> fx.GraphModule:
 
     print()
     print("[QuantLab] === PACT Network ===")
-    lwg = qlw.LightweightGraph(net)
-    lwg.show_nodes_list()
+    nodelist = qlw.LightweightGraph.build_nodes_list(net, leaf_types=PACT_OPS_INCLUSIVE)
+    for lwn in nodelist:
+        print("    {:30s} {}".format(lwn.name, lwn.type_))
     print()
 
     return net
