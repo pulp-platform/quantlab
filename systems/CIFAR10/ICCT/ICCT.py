@@ -60,6 +60,7 @@ class ICCT(nn.Module):
         self.pool = final_pool
 
         if seed >= 0:
+            print("[ICCT]                    Using seed ", seed)
             torch.manual_seed(seed)
 
         self.tokenizer = Tokenizer(n_input_channels = n_input_channels,

@@ -508,7 +508,7 @@ if __name__ == '__main__':
         validate(int_net, dl, args.accuracy_print_interval)
 
     if args.export_dir is not None:
-        print(f'Exporting integerized network {args.net} to directory {args.export_dir} under name {export_name}')
+        print(f'Exporting integerized network {args.net} to directory {args.export_dir} under name "{export_name}"')
         export_integerized_network(int_net,
                                    exp_cfg,
                                    args.net,
