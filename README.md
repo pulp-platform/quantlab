@@ -30,6 +30,29 @@ $ conda env create -f quantlab.yml
 Note: at the moment of writing, the [PyTorch Anaconda channel](https://anaconda.org/pytorch/pytorch/files?version=) does not provide a distribution package for the combination Python 3.8/PyTorch 1.9 supporting a CUDA version lower than 10.2.
 Therefore, if you plan to install QuantLab with GPU support, ensure that your CUDA version is not lower than 10.2.
 
+To use new PyTorch versions use 
+```sh
+# PyTorch 1.13.1 (Recommended)
+$> conda create --name pytorch-1.13
+$> conda activate pytorch-1.13
+$> conda config --env --add channels conda-forge
+$> conda config --env --add channels pytorch 
+$> conda install python=3.8 pytorch=1.13.1 pytorch-gpu torchvision=0.14.1 torchtext=0.14.1 torchaudio-0.13.1 cudatoolkit=11.6 -c pytorch -c conda-forge
+$> conda install ipython packaging parse setuptools tensorboard tqdm networkx python-graphviz scipy pandas ipdb onnx onnxruntime einops yapf tabulate
+$> pip install setuptools==59.5.0 torchsummary parse coloredlogs netron
+```
+
+```sh
+# PyTorch 1.12.1
+$> conda create --name pytorch-1.12
+$> conda activate pytorch-1.12
+$> conda config --env --add channels conda-forge
+$> conda config --env --add channels pytorch 
+$> conda install python=3.8 pytorch=1.12.1 torchvision=0.13.1 torchtext=0.13.1 torchaudio=0.12.1 -c pytorch -c conda-forge
+$> conda install ipython packaging parse setuptools tensorboard tqdm networkx python-graphviz scipy pandas ipdb onnx onnxruntime einops yapf tabulate
+$> pip install setuptools==59.5.0 torchsummary parse coloredlogs netron
+```
+
 After creating the Anaconda environment, it can make your life easier to install the `quantlib` quantization library in your Anaconda environment:
 ```
 $ conda activate quantlab
@@ -209,4 +232,5 @@ In case you are planning to use QuantLab and `quantlib` in your projects, you mi
 * Matteo Spallanzani <<a href="mailto:spmatteo@iis.ee.ethz.ch">spmatteo@iis.ee.ethz.ch</a>>
 * Georg Rutishauser  <<a href="mailto:georgr@iis.ee.ethz.ch">georgr@iis.ee.ethz.ch</a>>
 * Moritz Scherer     <<a href="mailto:scheremo@iis.ee.ethz.ch">scheremo@iis.ee.ethz.ch</a>>
+* Philip Wiese       <<a href="mailto:wiesep@ethz.ch">wiesep@ethz.ch</a>>
 * Francesco Conti    <<a href="mailto:f.conti@unibo.it">f.conti@unibo.it</a>>
