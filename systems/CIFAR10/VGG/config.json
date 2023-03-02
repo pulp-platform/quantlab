@@ -3,7 +3,7 @@
         "train": {
             "dataset": {
                 "transform": {
-                    "class": "TransformB",
+                    "class": "TransformA",
                     "kwargs": {
                         "augment": true
                     }
@@ -16,271 +16,139 @@
         "valid": {
             "dataset": {
                 "transform": {
-                    "class": "TransformB",
+                    "class": "TransformA",
                     "kwargs": {
                         "augment": false
                     }
                 }
             },
             "dataloader": {
-                "bs": 256
+                "bs": 512
             }
         }
     },
     "network": {
         "class": "VGG",
         "kwargs": {
-            "config": "VGG8",
             "capacity": 1,
+            "config": "VGG9",
             "use_bn_features": true,
-            "use_bn_classifier": true
+            "use_bn_classifier": true,
+            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/CIFAR10/VGG/pretrained/vgg9_fp_val93.ckpt"
         },
         "quantize": {
-            "function": "all_ana_recipe",
+            "function": "pact_recipe",
             "kwargs": {
-                "quantizer_spec": {
-                    "nbits": 2,
-                    "signed": true,
-                    "balanced": true,
-                    "eps": 1.0
-                },
-                "noise_type": "logistic",
-                "strategy": "mode"
+                "config": {
+                    "PACTConv2d": {
+                        "pilot.0$": {
+                            "n_levels": 256
+                        },
+                        "features.0$": {},
+                        "features.4$": {},
+                        "features.7$": {},
+                        "features.11$": {},
+                        "features.14$": {},
+                        "kwargs": {
+                            "quantize": "per_channel",
+                            "init_clip": "sawb_asymm",
+                            "learn_clip": true,
+                            "symm_wts": true,
+                            "tqt": true,
+                            "n_levels": 4
+                        }
+                    },
+                    "PACTLinear": {
+                        "classifier.0$": {},
+                        "classifier.3$": {},
+                        "classifier.6$": {
+                            "n_levels": 256
+                        },
+                        "kwargs": {
+                            "quantize": "per_layer",
+                            "init_clip": "sawb_asymm",
+                            "learn_clip": true,
+                            "symm_wts": true,
+                            "tqt": true,
+                            "n_levels": 4
+                        }
+                    },
+                    "PACTUnsignedAct": {
+                        "pilot.2$": {},
+                        "features.2$": {},
+                        "features.6$": {},
+                        "features.9$": {},
+                        "features.13$": {},
+                        "features.16$": {},
+                        "classifier.2$": {},
+                        "classifier.5$": {
+                            "n_levels": 256
+                        },
+                        "kwargs": {
+                            "init_clip": "percentile",
+                            "rounding": true,
+                            "learn_clip": true,
+                            "tqt": true,
+                            "n_levels": 4,
+                            "nb_std": 3,
+                            "lower_percentile": 0.8,
+                            "upper_percentile": 99.2
+                        }
+                    }
+                }
             }
         }
     },
     "training": {
         "loss_fn": {
             "class": "CrossEntropyLoss",
+            "takes_net": false,
             "kwargs": {}
         },
         "gd": {
             "opt": {
                 "class": "Adam",
+                "takes_net": false,
                 "kwargs": {
-                    "lr": 0.001
+                    "lr": 0.004
                 }
             },
             "lr_sched": {
-                "class": "HandScheduler",
+                "class": "CosineAnnealingLR",
                 "kwargs": {
-                    "schedule": {
-                        "400": 0.1
-                    }
+                    "T_max": 250,
+                    "eta_min": 1e-05
                 }
             }
         },
-        "n_epochs": 500,
+        "n_epochs": 250,
         "quantize": {
-            "function": "all_ana_controller",
+            "function": "get_pact_controllers",
             "kwargs": {
-                "ctrl_spec": [
-                    {
-                        "modules": [
-                            "pilot.0",
-                            "pilot.2"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 0,
-                                "tend": 50,
-                                "alpha": 14
-                            }
-                        }
+                "schedules": {
+                    "linear": {
+                        "0": [
+                            "verbose_on",
+                            "start"
+                        ]
                     },
-                    {
-                        "modules": [
-                            "features.1",
-                            "features.3"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 50,
-                                "tend": 100,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 50,
-                                "tend": 100,
-                                "alpha": 12
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "features.4",
-                            "features.6"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 100,
-                                "tend": 150,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 100,
-                                "tend": 150,
-                                "alpha": 10
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "features.8",
-                            "features.10"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 150,
-                                "tend": 200,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 150,
-                                "tend": 200,
-                                "alpha": 8
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "features.11",
-                            "features.13"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 200,
-                                "tend": 250,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 200,
-                                "tend": 250,
-                                "alpha": 6
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "classifier.0",
-                            "classifier.2"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 250,
-                                "tend": 300,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 250,
-                                "tend": 300,
-                                "alpha": 4
-                            }
-                        }
-                    },
-                    {
-                        "modules": [
-                            "classifier.3",
-                            "classifier.5"
-                        ],
-                        "mi": {
-                            "beta": 0.0,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 300,
-                                "tend": 350,
-                                "alpha": 0
-                            }
-                        },
-                        "sigma": {
-                            "beta": 0.5,
-                            "fun": "bws",
-                            "kwargs": {
-                                "tstart": 300,
-                                "tend": 350,
-                                "alpha": 2
-                            }
-                        }
+                    "activation": {
+                        "0": "verbose_on",
+                        "8": "start"
                     }
-                ]
+                }
             }
         }
     },
     "meters": {
         "train": {
-            "compute_profiling_statistic": true,
+            "compute_profiling_statistic": false,
             "compute_task_statistic": true,
-            "tensor_statistics": [
-                {
-                    "class": "DistributionOutputFeaturesComponents",
-                    "kwargs": {
-                        "name": "pilot.0",
-                        "start": 0,
-                        "period": 157
-                    }
-                },
-                {
-                    "class": "DistributionOutgoingGradientComponents",
-                    "kwargs": {
-                        "name": "pilot.1",
-                        "start": 0,
-                        "period": 157
-                    }
-                },
-                {
-                    "class": "OutputFeaturesSnapshot",
-                    "kwargs": {
-                        "name": "pilot.2",
-                        "start": 0,
-                        "period": 157,
-                        "n_inputs": 4
-                    }
-                }
-            ]
+            "tensor_statistics": []
         },
         "valid": {
-            "compute_profiling_statistic": true
+            "compute_profiling_statistic": false,
+            "tensor_statistics": []
         }
     }
 }
