@@ -51,9 +51,9 @@
                         "features.14$": {},
                         "kwargs": {
                             "quantize": "per_channel",
-                            "init_clip": "sawb_asymm",
-                            "learn_clip": true,
+                            "init_clip": "max",
                             "symm_wts": true,
+                            "learn_clip": true,
                             "tqt": true,
                             "n_levels": 4
                         }
@@ -66,7 +66,7 @@
                         },
                         "kwargs": {
                             "quantize": "per_layer",
-                            "init_clip": "sawb_asymm",
+                            "init_clip": "max",
                             "learn_clip": true,
                             "symm_wts": true,
                             "tqt": true,
@@ -85,12 +85,14 @@
                             "n_levels": 256
                         },
                         "kwargs": {
-                            "init_clip": "std",
+                            "init_clip": "percentile",
                             "rounding": true,
                             "learn_clip": true,
                             "tqt": true,
                             "n_levels": 4,
-                            "nb_std": 3
+                            "nb_std": 3,
+                            "lower_percentile": 0.8,
+                            "upper_percentile": 99.2
                         }
                     }
                 }

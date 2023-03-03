@@ -48,10 +48,6 @@ def pact_recipe(net : nn.Module,
     # Under the key "harmonize", the configuration for the harmonization pass
     # should be stored.
 
-    filter_conv2d = TypeFilter(nn.Conv2d)
-    filter_linear = TypeFilter(nn.Linear)
-    filter_acts = TypeFilter(nn.ReLU)
-
     rhos = []
     conv_cfg = config["PACTConv2d"]
     lin_cfg = config["PACTLinear"]
