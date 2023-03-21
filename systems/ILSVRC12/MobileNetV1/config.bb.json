@@ -167,7 +167,7 @@
                 "gate_init": 2.0,
                 "joint_distribution": false,
                 "shared_gates": false,
-                "target": "latency",
+                "target": "bops",
                 "init_best_latency" : false,
                 "latency_spec_file": "/home/georgr/projects/mixed-precision-inference/ql-pact/benchmark_specs/MobileNetV1_bench_spec_i248_w248_hw_results.xlsx"
             }
@@ -177,7 +177,7 @@
         "loss_fn": {
             "class": "BBCrossEntropyLoss",
             "kwargs": {
-                "mu0": 0.5
+                "mu0": 0.18
             },
             "takes_net": true
         },
