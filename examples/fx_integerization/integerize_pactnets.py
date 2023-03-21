@@ -225,7 +225,7 @@ def get_input_channels(net : fx.GraphModule):
             return conv.in_channels
 
 # THIS IS WHERE THE BUSINESS HAPPENS!
-def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_harmonize : bool, word_align_channels : bool):
+def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_harmonize : bool, word_align_channels : bool, requant_node : bool = False):
     qu = _QUANT_UTILS[key]
     # All we need to do to integerize a fake-quantized network is to run the
     # IntegerizePACTNetPass on it! Afterwards, the ONNX graph it produces will
@@ -257,7 +257,7 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_har
             tcn_int = dory_harmonize_pass_tcn(tcn_int)
         return cnn_int, tcn_int
     else:
-        int_pass = IntegerizePACTNetPass(shape_in=in_shp, eps_in=qu.eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels)
+        int_pass = IntegerizePACTNetPass(shape_in=in_shp, eps_in=qu.eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, requant_node=requant_node)
         int_net = int_pass(net)
         if fix_channels:
             # we may have modified the # of input channels so we need to adjust the
@@ -368,6 +368,8 @@ if __name__ == '__main__':
                         help='Only used in DVS128 export - override clipping bound of RequantShift modules of exported networks to this value')
     parser.add_argument('--code_size', type=int, default=None,
                         help="Override the default 'code reserved space' setting")
+    parser.add_argument('--requant_node', action='store_true',
+                        help='Export RequantShift nodes instead of mul-add-div sequences in ONNX graph')
 
 
     args = parser.parse_args()
@@ -390,7 +392,7 @@ if __name__ == '__main__':
 
     print(f'Integerizing network {args.net}')
 
-    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize, args.word_align_channels)
+    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize, args.word_align_channels, args.requant_node)
 
     if args.fix_channels:
         pad_img = get_input_channels(int_net[0] if isinstance(int_net, tuple) else int_net)
