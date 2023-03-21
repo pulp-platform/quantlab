@@ -58,7 +58,7 @@ def pact_recipe(net : nn.Module,
                    rule : type):
         rules = []
         default_cfg = cfg["kwargs"] if "kwargs" in cfg.keys() else {}
-        layer_keys = [k for k in cfg.keys() if k != "kwargs" and k != "dynamic"]
+        layer_keys = [k for k in cfg.keys() if k != "kwargs"]
         for k in layer_keys:
             filt = NameFilter(k)
             kwargs = default_cfg.copy()

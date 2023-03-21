@@ -107,6 +107,24 @@ class BasicBlock(nn.Module):
 
         return x
 
+class NonResidualBlock(BasicBlock):
+
+    expansion_factor : int = 1
+
+# this block is only for test purposes; nothing residual about it
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # layer 1
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu1(x)
+        # layer 2
+        x = self.conv2(x)
+        x = self.bn2(x)
+
+        x = self.relu2(x)
+
+        return x
+
 
 class BottleneckBlock(nn.Module):
 
@@ -185,6 +203,13 @@ _CONFIGS = {
                   'block_cfgs': [( 1,  16, 1),
                                  ( 1, 32, 2),
                                  ( 1, 64, 2)],
+                  'maxpool': False},
+    'ResNet0': {'block_class': NonResidualBlock,
+                  'block_cfgs': [( 1, 16, 2),
+                                 ( 1, 16, 2),
+                                 ( 1, 16, 2),
+                                 ( 1, 16, 2),
+                                 ( 1, 16, 2)],
                   'maxpool': False}
 }
 
@@ -229,7 +254,7 @@ class ResNet(nn.Module):
 
         out_channels_pilot    = 16
         in_planes_features    = out_channels_pilot
-        out_planes_features   = 64 * block_class.expansion_factor
+        out_planes_features   = block_cfgs[-1][1] * block_class.expansion_factor
         out_channels_features = out_planes_features
         self.act_type = nn.ReLU if activation.lower() == 'relu' else nn.ReLU6
 
