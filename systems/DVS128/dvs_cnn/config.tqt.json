@@ -11,11 +11,12 @@
                 },
                 "load_data_set": {
                     "kwargs": {
-                        "window_stride": 2,
-                        "cnn_win": 8,
-                        "tcn_win": 5,
+                        "window_stride": 1,
+                        "cnn_stride": 6,
+                        "cnn_win": 6,
+                        "tcn_win": 9,
                         "n_val_subjects": 6,
-                        "fps": 30
+                        "fps": 60
                     }
                 }
             },
@@ -34,11 +35,12 @@
                 },
                 "load_data_set": {
                     "kwargs": {
-                        "window_stride": 2,
-                        "cnn_win": 8,
-                        "tcn_win": 5,
+                        "window_stride": 6,
+                        "cnn_stride": 6,
+                        "cnn_win": 6,
+                        "tcn_win": 9,
                         "n_val_subjects": 6,
-                        "fps": 30
+                        "fps": 60
                     }
                 }
             },
@@ -50,12 +52,12 @@
     "network": {
         "class": "DVSHybridNet",
         "kwargs": {
-            "cnn_cfg_key": "ninetysix_ch",
+            "cnn_cfg_key": "96_channels_k3",
             "tcn_cfg_key": "ninetysix_ch",
             "pool_type": "max_pool",
-            "cnn_window": 8,
-            "tcn_window": 5,
-            "activation": "relu6",
+            "cnn_window": 6,
+            "tcn_window": 9,
+            "activation": "htanh",
             "n_classes": 11,
             "classifier_bias": false,
             "fix_cnn_pool": true,
@@ -64,7 +66,9 @@
             "classifier_type": "linear",
             "classifier_out": "last",
             "layer_order": "bn_pool",
-            "last_conv_nopad": true
+            "last_conv_nopad": true,
+            "inject_eps": false,
+            "pretrained": "/home/georgr/projects/mixed-precision-inference/ql-pact/systems/DVS128/dvs_cnn/pretrained/dvs128_fp_cnn6_tcn9_str6_actrelu6_60fps_ds2.ckpt"
         },
         "quantize": {
             "function": "pact_recipe",
@@ -76,7 +80,8 @@
                         "init_clip": "sawb_asymm",
                         "learn_clip": true,
                         "symm_wts": true,
-                        "tqt": true
+                        "tqt": true,
+                        "padding_mode": "eps"
                     },
                     "PACTAsymmetricAct": {
                         "n_levels": 3,
@@ -124,10 +129,10 @@
             "kwargs": {
                     "schedules": {
                         "linear": {
-                            "45": ["start", "verbose_on"]
+                            "8": ["start", "verbose_on"]
                         },
                         "activation": {
-                            "40": ["start", "verbose_on"]
+                            "0": ["start", "verbose_on"]
                         }
                     },
                 "kwargs_activation": {
@@ -148,7 +153,6 @@
         }
     },
     "experiment": {
-        "n_folds": 1,
         "metrics": {
             "target_metric": "valid"
         }
