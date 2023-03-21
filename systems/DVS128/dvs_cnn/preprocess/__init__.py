@@ -34,7 +34,7 @@ def load_data_set(partition: str,
     start_user = max(0, 30-(current_fold_id+1)*n_val_subjects)
     val_subjects = list(range(start_user, 30-current_fold_id*n_val_subjects))
     train_subjects = [i for i in range(1, 30) if i not in val_subjects]
-    file_suffix = "_lo"+"".join([f"_{u}" for u in val_subjects]) + f"_{partition}"
+    file_suffix = "" #"_lo"+"".join([f"_{u}" for u in val_subjects]) + f"_{partition}"
     if partition == "train":
         include_subjects = train_subjects
     else:
