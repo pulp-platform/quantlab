@@ -48,10 +48,6 @@ def pact_recipe(net : nn.Module,
     # Under the key "harmonize", the configuration for the harmonization pass
     # should be stored.
 
-    filter_conv2d = TypeFilter(nn.Conv2d)
-    filter_linear = TypeFilter(nn.Linear)
-    filter_acts = TypeFilter(nn.ReLU)
-
     rhos = []
     conv_cfg = config["PACTConv2d"]
     lin_cfg = config["PACTLinear"]
@@ -62,7 +58,7 @@ def pact_recipe(net : nn.Module,
                    rule : type):
         rules = []
         default_cfg = cfg["kwargs"] if "kwargs" in cfg.keys() else {}
-        layer_keys = [k for k in cfg.keys() if k != "kwargs" and k != "dynamic"]
+        layer_keys = [k for k in cfg.keys() if k != "kwargs"]
         for k in layer_keys:
             filt = NameFilter(k)
             kwargs = default_cfg.copy()

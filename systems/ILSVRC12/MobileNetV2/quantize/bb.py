@@ -1,5 +1,5 @@
 # 
-# pact.py
+# bb.py
 # 
 # Author(s):
 # Georg Rutishauser <georgr@iis.ee.ethz.ch>

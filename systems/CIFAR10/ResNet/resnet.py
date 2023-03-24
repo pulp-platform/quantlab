@@ -84,12 +84,7 @@ class BasicBlock(nn.Module):
         self.relu2 = act_type(inplace=True)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-
-        # downsampling/skip branch
-        if self.downsample is not None:
-            identity = self.downsample(x)
-        else:
-            identity = x
+        x_in = x
 
         # residual branch
         # layer 1
@@ -100,8 +95,32 @@ class BasicBlock(nn.Module):
         x = self.conv2(x)
         x = self.bn2(x)
 
+        # downsampling/skip branch
+        if self.downsample is not None:
+            identity = self.downsample(x_in)
+        else:
+            identity = x_in
+
         # merge branches
         x += identity
+        x = self.relu2(x)
+
+        return x
+
+class NonResidualBlock(BasicBlock):
+
+    expansion_factor : int = 1
+
+# this block is only for test purposes; nothing residual about it
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # layer 1
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu1(x)
+        # layer 2
+        x = self.conv2(x)
+        x = self.bn2(x)
+
         x = self.relu2(x)
 
         return x
@@ -179,6 +198,18 @@ _CONFIGS = {
                   'block_cfgs': [( 3,  16, 1),
                                  ( 3, 32, 2),
                                  ( 3, 64, 2)],
+                  'maxpool': False},
+    'ResNet8': {'block_class': BasicBlock,
+                  'block_cfgs': [( 1,  16, 1),
+                                 ( 1, 32, 2),
+                                 ( 1, 64, 2)],
+                  'maxpool': False},
+    'ResNet0': {'block_class': NonResidualBlock,
+                  'block_cfgs': [( 1, 16, 2),
+                                 ( 1, 16, 2),
+                                 ( 1, 16, 2),
+                                 ( 1, 16, 2),
+                                 ( 1, 16, 2)],
                   'maxpool': False}
 }
 
@@ -223,14 +254,15 @@ class ResNet(nn.Module):
 
         out_channels_pilot    = 16
         in_planes_features    = out_channels_pilot
-        out_planes_features   = 64 * block_class.expansion_factor
+        out_planes_features   = block_cfgs[-1][1] * block_class.expansion_factor
         out_channels_features = out_planes_features
-        self.act_type = nn.ReLU if activation == 'relu' else nn.ReLU6
-        
+        self.act_type = nn.ReLU if activation.lower() == 'relu' else nn.ReLU6
+
         self.pilot      = self._make_pilot(out_channels_pilot)
         self.maxpool    = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) if do_maxpool else None
         self.features   = self._make_features(block_cfgs, block_class, in_planes_features, out_planes_features, n_groups, group_capacity)
         self.avgpool    = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten    = nn.Flatten()
         self.classifier = nn.Linear(out_channels_features, num_classes)
         if pretrained == True: # load weights from torchvision model
             self.preload_torchvision(config)
@@ -302,7 +334,8 @@ class ResNet(nn.Module):
         x = self.features(x)
         x = self.avgpool(x)
 
-        x = x.view(x.size(0), -1)
+        x = self.flatten(x)
+        #x = x.view(x.size(0), -1)
 
         x = self.classifier(x)
 

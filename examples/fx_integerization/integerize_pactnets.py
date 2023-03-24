@@ -133,7 +133,7 @@ _QUANT_UTILS = {
     'MobileNetV2': QuantUtil(problem='ILSVRC12', topo='MobileNetV2', quantize=quantize_mnv2, get_controllers=controllers_mnv2, network=MobileNetV2, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
     'MobileNetV3': QuantUtil(problem='ILSVRC12', topo='MobileNetV3', quantize=quantize_mnv3, get_controllers=controllers_mnv3, network=MobileNetV3, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
     'ResNet': QuantUtil(problem='ILSVRC12', topo='ResNet', quantize=quantize_resnet, get_controllers=controllers_resnet, network=ResNet, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=160000),
-    'ResNetCIFAR': QuantUtil(problem='CIFAR10', topo='ResNet', quantize=quantize_resnet_cifar, get_controllers=controllers_resnet_cifar, network=ResNetCIFAR, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=128, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=120000),
+    'ResNetCIFAR': QuantUtil(problem='CIFAR10', topo='ResNet', quantize=quantize_resnet_cifar, get_controllers=controllers_resnet_cifar, network=ResNetCIFAR, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=128, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=110000),
     'dvs_cnn' : QuantUtil(problem='DVS128', topo='dvs_cnn', quantize=quantize_dvsnet, get_controllers=controllers_dvsnet, network=DVSHybridNet, network_args={'inject_eps':False}, in_shape=None, eps_in=1., D=2**19, bs=128, get_in_shape=get_in_shape_dvsnet, load_dataset_fn=load_dvs128, transform=DVSAugmentTransform, n_levels_in=3, export_fn=export_dvsnet, code_size=340000),
     'simpleCNN': QuantUtil(problem='MNIST', topo='simpleCNN', quantize=quantize_simpleCNN, get_controllers=controllers_simpleCNN, network=simpleCNN, in_shape=(1,1,32,32), eps_in=_MNIST_EPS, D=2**19, bs=256, get_in_shape=None, load_dataset_fn=load_mnist, transform=MNISTPACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000)
 }
@@ -232,7 +232,7 @@ def get_input_channels(net : fx.GraphModule):
             return conv.in_channels
 
 # THIS IS WHERE THE BUSINESS HAPPENS!
-def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_harmonize : bool, word_align_channels : bool):
+def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_harmonize : bool, word_align_channels : bool, requant_node : bool = False):
     qu = _QUANT_UTILS[key]
     # All we need to do to integerize a fake-quantized network is to run the
     # IntegerizePACTNetPass on it! Afterwards, the ONNX graph it produces will
@@ -264,7 +264,7 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_har
             tcn_int = dory_harmonize_pass_tcn(tcn_int)
         return cnn_int, tcn_int
     else:
-        int_pass = IntegerizePACTNetPass(shape_in=in_shp, eps_in=qu.eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels)
+        int_pass = IntegerizePACTNetPass(shape_in=in_shp, eps_in=qu.eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, requant_node=requant_node)
         int_net = int_pass(net)
         if fix_channels:
             # we may have modified the # of input channels so we need to adjust the
@@ -375,6 +375,8 @@ if __name__ == '__main__':
                         help='Only used in DVS128 export - override clipping bound of RequantShift modules of exported networks to this value')
     parser.add_argument('--code_size', type=int, default=None,
                         help="Override the default 'code reserved space' setting")
+    parser.add_argument('--requant_node', action='store_true',
+                        help='Export RequantShift nodes instead of mul-add-div sequences in ONNX graph')
 
 
     args = parser.parse_args()
@@ -397,7 +399,7 @@ if __name__ == '__main__':
 
     print(f'Integerizing network {args.net}')
 
-    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize, args.word_align_channels)
+    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize, args.word_align_channels, args.requant_node)
 
     if args.fix_channels:
         pad_img = get_input_channels(int_net[0] if isinstance(int_net, tuple) else int_net)

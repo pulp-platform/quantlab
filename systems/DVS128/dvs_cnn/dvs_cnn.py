@@ -3,6 +3,11 @@ import torch.nn as nn
 import numpy as np
 from quantlib.algorithms.generic import CausalConv1d
 from quantlib.QTensor import QTensor
+from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+
+
+import os
+from pathlib import Path
 
 __CNN_CFGS__ = {
     'first_try' : [128, 128, 128, 128],
@@ -59,6 +64,7 @@ class DVSNet2D(nn.Module):
         else:
             assert False, "Invalid activation function supplied: {}".format(activation)
 
+        
         assert layer_order in ['pool_bn', 'bn_pool'], "Invalid layer order specified: {}".format(layer_order)
 
         adapter_list = []
@@ -225,7 +231,7 @@ class DVSTCN(nn.Module):
 
 
 class DVSHybridNet(nn.Module):
-    def __init__(self, cnn_window : int, tcn_window : int, cnn_cfg_key : str, tcn_cfg_key : str, n_classes : int = 11, activation : str = 'relu', k_cnn : int = 3, last_conv_nopad : bool = False, pretrained : str = None, inject_eps : bool = False, use_tcn : bool = True, classifier_bias : bool = False, **kwargs):
+    def __init__(self, cnn_window : int, tcn_window : int, cnn_cfg_key : str, tcn_cfg_key : str, n_classes : int = 11, activation : str = 'relu', k_cnn : int = 3, last_conv_nopad : bool = False, pretrained : str = None, inject_eps : bool = False, use_tcn : bool = True, classifier_bias : bool = False, fold_id : int = 0, **kwargs):
         super(DVSHybridNet, self).__init__()
         cnn_cfg = __CNN_CFGS__[cnn_cfg_key]
         embedding_size = cnn_cfg[-1]
@@ -241,8 +247,28 @@ class DVSHybridNet(nn.Module):
             # (equivalent to a linear layer)
             self.tcn = nn.Conv1d(cnn_cfg[-1], n_classes, tcn_window, padding=0, dilation=1, bias=classifier_bias)
         self.inject_eps = inject_eps
+
+        def get_max_acc_ckpt(exp_dir : Path):
+            log_dir = exp_dir.joinpath(f"fold{fold_id}/stats/epoch")
+            saves_dir = exp_dir.joinpath(f"fold{fold_id}/saves")
+            ea = EventAccumulator(str(log_dir)).Reload()
+            max_step, max_acc = max(((evt.step, evt.value) for evt in ea.Scalars("Accuracy/Valid") if saves_dir.joinpath(f'epoch{evt.step:03}.ckpt').exists()), key=lambda tpl:tpl[1])
+            best_acc_state_dict = torch.load(saves_dir.joinpath(f'epoch{max_step:03}.ckpt'))['net']
+            # convert keys for nn.DataParallel
+            if all(k.startswith('module.') for k in best_acc_state_dict.keys()):
+                best_acc_state_dict = {k[7:] : v for k,v in best_acc_state_dict.items()}
+            return best_acc_state_dict
         if pretrained:
-            self.load_state_dict(torch.load(pretrained))
+            pretrained = Path(pretrained)
+            # if pretrained is not a file but a directory, assume it is a QL
+            # log directory and get the pretrained checkpoint for the specified
+            # fold
+
+            if pretrained.is_dir():
+                ckpt = get_max_acc_ckpt(pretrained)
+            elif pretrained.is_file():
+                ckpt = torch.load(pretrained)
+            self.load_state_dict(ckpt)
 
 
     def forward(self, x):

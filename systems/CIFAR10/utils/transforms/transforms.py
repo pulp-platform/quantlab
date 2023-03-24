@@ -115,7 +115,7 @@ class CIFAR10PACTQuantTransform(Compose):
             quantizer.started |= True
         if quantize == 'int':
             eps = transforms[-1].get_eps()
-            div_by_eps = lambda x: x/eps
+            div_by_eps = lambda x: torch.round(x/eps)
             transforms.append(Lambda(div_by_eps))
         if pad_channels is not None and pad_channels != 3:
             assert pad_channels > 3, "Can't pad CIFAR10 data to <3 channels!"

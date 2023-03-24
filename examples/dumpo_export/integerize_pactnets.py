@@ -279,7 +279,7 @@ def get_ckpt(key: str, exp_id: int, ckpt_id: Union[int, str]):
     assert len(ckpts_list) > 1, "[QuantLab] No checkpoints found under {chpt_dir}!"
     if ckpt_id == -1:  # discover most recent checkpoint
         ckpt_filepath = max([get_topology_dir(key).joinpath(f'logs/exp{exp_id:04}/fold0/saves/{f}') for f in ckpts_list], key=os.path.getctime)
-      
+
     # ckpt_str = f'epoch{ckpt_id:03}' if ckpt_id != -1 else 'best'
     # ckpt_filepath = get_topology_dir(key).joinpath(f'logs/exp{exp_id:04}/fold0/saves/{ckpt_str}.ckpt')
 
@@ -500,7 +500,7 @@ if __name__ == '__main__':
 
     int_net = integerize_network(qnet, args.net)
 
-   
+
     pad_img = None
 
     if args.validate_tq:

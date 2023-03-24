@@ -101,6 +101,8 @@ class NetworkAssistant(object):
         self._qnt_recipe_fun    = None
         self._qnt_recipe_kwargs = None
 
+        self._pass_fold_id = None
+
         # TODO: support loading a pre-trained model (in it's essence, this is the initial condition of a dynamical system)
         # self._pretrained_fun    = None
         # self._pretrained_kwargs = None
@@ -119,6 +121,11 @@ class NetworkAssistant(object):
         self._network_class  = getattr(networkmessage.library.module, networkmessage.config['class'])
         self._network_kwargs = networkmessage.config['kwargs']
         self._network_seeds  = networkmessage.config['seeds']
+        try:
+            self._pass_fold_id = networkmessage.config['takes_fold_id']
+        except KeyError:
+            self._pass_fold_id = False
+
 
         # quantization recipe (optional)
         if ('quantize' in networkmessage.config.keys()) and (networkmessage.config['quantize'] is not None):
@@ -145,8 +152,10 @@ class NetworkAssistant(object):
                 speed up computations.
 
         """
-
-        net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id])  # WARNING: all QuantLab networks require a seed now!
+        if not self._pass_fold_id:
+            net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id])  # WARNING: all QuantLab networks require a seed now!
+        else:
+            net = self._network_class(**self._network_kwargs, seed=self._network_seeds[fold_id], fold_id=fold_id)
 
         if self._qnt_recipe_fun:
             net = self._qnt_recipe_fun(net, **self._qnt_recipe_kwargs)
