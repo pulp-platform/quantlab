@@ -26,7 +26,7 @@
             "name": "QuantLab Integerize",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/examples/dumpo_export/integerize_pactnets.py",
+            "program": "${workspaceFolder}/examples/deeploy_export/integerize_pactnets.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "justMyCode": false,
@@ -34,7 +34,7 @@
                 "--net=${input:topology}",
                 "--ckpt_id=-1",
                 "--export_name=network",
-                "--export_dir=/usr/scratch2/badile40/wiesep/dumpo/dumpotest/Tests/ICCT",
+                "--export_dir=/usr/scratch2/badile40/wiesep/deeploy/deeploytest/Tests/ICCT",
                 "--exp_id=${input:exp_id}"
             ],
             "env": {

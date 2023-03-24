@@ -44,8 +44,8 @@ _CIFAR10_EPS = CIFAR10STATS['quantize']['eps']
 _ILSVRC12_EPS = ILSVRC12STATS['quantize']['eps']
 _MNIST_EPS = MNISTSTATS['quantize']['eps']
 
-# import the DumpO backend
-from quantlib.backends.dumpo import export_net
+# import the Deeploy backend
+from quantlib.backends.deeploy import export_net
 # import the PACT/TQT integerization pass
 from quantlib.editing.fx.passes.pact import IntegerizePACTNetPass
 from quantlib.editing.fx.util import module_of_node
@@ -76,11 +76,16 @@ class QuantUtil:
 
 
 # get a validation dataset from the problem name.
-def get_valid_dataset(key: str, cfg: dict, quantize: str, pad_img: Optional[int] = None, clip: bool = False):
+def get_valid_dataset(key: str,
+                      cfg: dict,
+                      quantize: str,
+                      pad_img: Optional[int] = None,
+                      clip: bool = False):
     qu = _QUANT_UTILS[key]
     load_dataset_fn = qu.load_dataset_fn
     try:
-        load_dataset_args = cfg['data']['valid']['dataset']['load_data_set']['kwargs']
+        load_dataset_args = cfg['data']['valid']['dataset']['load_data_set'][
+            'kwargs']
     except KeyError:
         load_dataset_args = {}
     transform = qu.transform
@@ -92,8 +97,12 @@ def get_valid_dataset(key: str, cfg: dict, quantize: str, pad_img: Optional[int]
     if key == 'dvs_cnn':
         cnn_win = load_dataset_args['cnn_win']
         transform_args['cnn_window'] = cnn_win
-    transform_inst = transform(quantize=quantize, pad_channels=pad_img, clip=clip, **transform_args)
-    path_data = _QL_ROOTPATH.joinpath('systems').joinpath(qu.problem).joinpath('data')
+    transform_inst = transform(quantize=quantize,
+                               pad_channels=pad_img,
+                               clip=clip,
+                               **transform_args)
+    path_data = _QL_ROOTPATH.joinpath('systems').joinpath(
+        qu.problem).joinpath('data')
     return load_dataset_fn(partition='valid',
                            path_data=str(path_data),
                            n_folds=1,
@@ -256,7 +265,8 @@ _QUANT_UTILS = {
 # the topology directory where the specified network is defined
 def get_topology_dir(key: str):
     topo = _QUANT_UTILS[key].topo
-    return _QL_ROOTPATH.joinpath('systems').joinpath(get_system(key)).joinpath(topo)
+    return _QL_ROOTPATH.joinpath('systems').joinpath(
+        get_system(key)).joinpath(topo)
 
 
 # the QuantLab problem being solved by the specified network.
@@ -266,19 +276,26 @@ def get_system(key: str):
 
 # the experiment config for the exp_id of the network specified by 'key'
 def get_config(key: str, exp_id: int):
-    config_filepath = get_topology_dir(key).joinpath(f'logs/exp{exp_id:04}/config.json')
+    config_filepath = get_topology_dir(key).joinpath(
+        f'logs/exp{exp_id:04}/config.json')
     with open(config_filepath, 'r') as fp:
         config = json.load(fp)
     return config
 
 
 def get_ckpt(key: str, exp_id: int, ckpt_id: Union[int, str]):
-    chpt_dir = get_topology_dir(key).joinpath(f'logs/exp{exp_id:04}/fold0/saves/')
+    chpt_dir = get_topology_dir(key).joinpath(
+        f'logs/exp{exp_id:04}/fold0/saves/')
     ckpts_list = os.listdir(chpt_dir)
 
-    assert len(ckpts_list) > 1, "[QuantLab] No checkpoints found under {chpt_dir}!"
+    assert len(
+        ckpts_list) > 1, "[QuantLab] No checkpoints found under {chpt_dir}!"
     if ckpt_id == -1:  # discover most recent checkpoint
-        ckpt_filepath = max([get_topology_dir(key).joinpath(f'logs/exp{exp_id:04}/fold0/saves/{f}') for f in ckpts_list], key=os.path.getctime)
+        ckpt_filepath = max([
+            get_topology_dir(key).joinpath(
+                f'logs/exp{exp_id:04}/fold0/saves/{f}') for f in ckpts_list
+        ],
+                            key=os.path.getctime)
 
     # ckpt_str = f'epoch{ckpt_id:03}' if ckpt_id != -1 else 'best'
     # ckpt_filepath = get_topology_dir(key).joinpath(f'logs/exp{exp_id:04}/fold0/saves/{ckpt_str}.ckpt')
@@ -287,7 +304,10 @@ def get_ckpt(key: str, exp_id: int, ckpt_id: Union[int, str]):
     return torch.load(ckpt_filepath, map_location=device)
 
 
-def get_network(key: str, exp_id: int, ckpt_id: Union[int, str], quantized=False):
+def get_network(key: str,
+                exp_id: int,
+                ckpt_id: Union[int, str],
+                quantized=False):
     cfg = get_config(key, exp_id)
     qu = _QUANT_UTILS[key]
     quant_cfg = cfg['network']['quantize']['kwargs']
@@ -307,7 +327,10 @@ def get_network(key: str, exp_id: int, ckpt_id: Union[int, str], quantized=False
     # the checkpoint may be from a nn.DataParallel instance, so we need to
     # strip the 'module.' from all the keys
     if all(k.startswith('module.') for k in state_dict.keys()):
-        state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
+        state_dict = {
+            k.replace('module.', ''): v
+            for k, v in state_dict.items()
+        }
 
     quant_net.load_state_dict(state_dict, strict=False)
     qctrls = qu.get_controllers(quant_net, **ctrl_cfg)
@@ -318,7 +341,11 @@ def get_network(key: str, exp_id: int, ckpt_id: Union[int, str], quantized=False
     return quant_net.eval()
 
 
-def get_dataloader(key: str, cfg: dict, quantize: str, pad_img: Optional[int] = None, clip: bool = False):
+def get_dataloader(key: str,
+                   cfg: dict,
+                   quantize: str,
+                   pad_img: Optional[int] = None,
+                   clip: bool = False):
     qu = _QUANT_UTILS[key]
     if torch.cuda.is_available():
         bs = torch.cuda.device_count() * qu.bs
@@ -329,7 +356,9 @@ def get_dataloader(key: str, cfg: dict, quantize: str, pad_img: Optional[int] = 
     return torch.utils.data.DataLoader(ds, bs)
 
 
-def validate(net: nn.Module, dl: torch.utils.data.DataLoader, print_interval: int = 10):
+def validate(net: nn.Module,
+             dl: torch.utils.data.DataLoader,
+             print_interval: int = 10):
     net = net.eval()
     # we assume that the net is on CPU as this is required for some
     # integerization passes
@@ -356,7 +385,8 @@ def validate(net: nn.Module, dl: torch.utils.data.DataLoader, print_interval: in
 
 def get_input_channels(net: fx.GraphModule):
     for node in net.graph.nodes:
-        if node.op == 'call_module' and isinstance(module_of_node(net, node), (nn.Conv1d, nn.Conv2d)):
+        if node.op == 'call_module' and isinstance(module_of_node(net, node),
+                                                   (nn.Conv1d, nn.Conv2d)):
             conv = module_of_node(net, node)
             return conv.in_channels
 
@@ -394,7 +424,11 @@ def export_integerized_network(net: nn.Module,
                                clip: bool = False):
     qu = _QUANT_UTILS[key]
     # use a real image from the validation set
-    ds = get_valid_dataset(key, cfg, quantize='int', pad_img=pad_img, clip=clip)
+    ds = get_valid_dataset(key,
+                           cfg,
+                           quantize='int',
+                           pad_img=pad_img,
+                           clip=clip)
     test_input = ds[in_idx][0].unsqueeze(0)
 
     qu.export_fn(net,
@@ -406,7 +440,8 @@ def export_integerized_network(net: nn.Module,
                  in_data=test_input)
 
 
-def export_unquant_net(net: nn.Module, cfg: dict, key: str, export_dir: str, name: str):
+def export_unquant_net(net: nn.Module, cfg: dict, key: str, export_dir: str,
+                       name: str):
     out_path = Path(export_dir)
     out_path.mkdir(parents=True, exist_ok=True)
     onnx_file = f"{name}_unquant.onnx"
@@ -429,7 +464,9 @@ if __name__ == '__main__':
         '--net',
         required=True,
         type=str,
-        help='Network to treat - can be "MobileNetV1", "MobileNetV2", "MobileNetV3", "VGG" or "dvs_cnn"')
+        help=
+        'Network to treat - can be "MobileNetV1", "MobileNetV2", "MobileNetV3", "VGG" or "dvs_cnn"'
+    )
     parser.add_argument(
         '--exp_id',
         required=True,
@@ -440,41 +477,52 @@ if __name__ == '__main__':
         '--ckpt_id',
         required=True,
         type=int,
-        help='Checkpoint to integerize and export. The specified checkpoint must be fully quantized with PACT/TQT!')
-    parser.add_argument('--clip_inputs', action='store_true', help='ghettofix to clip inputs to be unsigned')
-    parser.add_argument('--validate_fq',
+        help=
+        'Checkpoint to integerize and export. The specified checkpoint must be fully quantized with PACT/TQT!'
+    )
+    parser.add_argument('--clip_inputs',
                         action='store_true',
-                        help='Whether to validate the fake-quantized network on the appropriate dataset')
-    parser.add_argument('--validate_tq',
+                        help='ghettofix to clip inputs to be unsigned')
+    parser.add_argument(
+        '--validate_fq',
+        action='store_true',
+        help=
+        'Whether to validate the fake-quantized network on the appropriate dataset'
+    )
+    parser.add_argument(
+        '--validate_tq',
+        action='store_true',
+        help=
+        'Whether to validate the integerized network on the appropriate dataset'
+    )
+    parser.add_argument('--export_unquant',
                         action='store_true',
-                        help='Whether to validate the integerized network on the appropriate dataset')
-    parser.add_argument('--export_unquant', action='store_true', help='Also export the unquantized network')
-    parser.add_argument('--export_dir',
-                        type=str,
-                        default=None,
-                        help='Export the integerized network to the specified directory.')
+                        help='Also export the unquantized network')
+    parser.add_argument(
+        '--export_dir',
+        type=str,
+        default=None,
+        help='Export the integerized network to the specified directory.')
     parser.add_argument(
         '--export_name',
         type=str,
         default=None,
-        help='Name of the exported ONNX graph. By default, this is identical to the value of the "--net" flag')
+        help=
+        'Name of the exported ONNX graph. By default, this is identical to the value of the "--net" flag'
+    )
     parser.add_argument(
         '--accuracy_print_interval',
         type=int,
         default=10,
-        help='While evaluating networks on the validation set, print the intermediate accuracy every N batches')
-    parser.add_argument('--code_size',
-                        type=int,
-                        default=None,
-                        help="Override the default 'code reserved space' setting")
+        help=
+        'While evaluating networks on the validation set, print the intermediate accuracy every N batches'
+    )
 
     args = parser.parse_args()
 
     if args.export_dir is not None:
         export_name = args.net if args.export_name is None else args.export_name
 
-    if args.code_size is not None:
-        _QUANT_UTILS[args.net].code_size = args.code_size
     exp_id = int(args.exp_id) if args.exp_id.isnumeric() else args.exp_id
 
     platform = PlatformManager()
@@ -487,19 +535,22 @@ if __name__ == '__main__':
     else:
         device = platform.device
 
-    print(f'Loading network {args.net}, experiment {exp_id}, checkpoint {args.ckpt_id}')
+    print(
+        f'Loading network {args.net}, experiment {exp_id}, checkpoint {args.ckpt_id}'
+    )
     qnet = get_network(args.net, exp_id, args.ckpt_id, quantized=True)
 
     exp_cfg = get_config(args.net, exp_id)
     if args.validate_fq:
-        print(f'Validating fake-quantized network {args.net} on dataset {get_system(args.net)}')
+        print(
+            f'Validating fake-quantized network {args.net} on dataset {get_system(args.net)}'
+        )
         dl = get_dataloader(args.net, exp_cfg, quantize='fake')
         validate(qnet, dl, args.accuracy_print_interval)
 
     print(f'Integerizing network {args.net}')
 
     int_net = integerize_network(qnet, args.net)
-
 
     pad_img = None
 
@@ -508,7 +559,9 @@ if __name__ == '__main__':
         validate(int_net, dl, args.accuracy_print_interval)
 
     if args.export_dir is not None:
-        print(f'Exporting integerized network {args.net} to directory {args.export_dir} under name "{export_name}"')
+        print(
+            f'Exporting integerized network {args.net} to directory {args.export_dir} under name "{export_name}"'
+        )
         export_integerized_network(int_net,
                                    exp_cfg,
                                    args.net,
@@ -517,5 +570,9 @@ if __name__ == '__main__':
                                    pad_img=pad_img,
                                    clip=args.clip_inputs)
         if args.export_unquant:
-            net_unq = get_network(args.net, exp_id, args.ckpt_id, quantized=False)
-            export_unquant_net(net_unq, exp_cfg, args.net, args.export_dir, export_name)
+            net_unq = get_network(args.net,
+                                  exp_id,
+                                  args.ckpt_id,
+                                  quantized=False)
+            export_unquant_net(net_unq, exp_cfg, args.net, args.export_dir,
+                               export_name)
