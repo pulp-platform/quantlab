@@ -35,7 +35,8 @@
             "num_heads": 4,
             "embedding_dim": 64,
             "projection_dim": 64,
-            "pool": "mean"
+            "pool": "mean",
+            "attention_bias": false
         }
     },
     "training": {

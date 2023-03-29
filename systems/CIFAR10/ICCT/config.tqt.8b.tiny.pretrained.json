@@ -36,7 +36,8 @@
             "embedding_dim": 64,
             "projection_dim": 64,
             "pool": "mean",
-            "pretrained": "/usr/scratch2/sassauna1/wiesep/quantlab/systems/CIFAR10/ICCT/logs/exp0000/fold0/saves/best.ckpt"
+            "attention_bias": false,
+            "pretrained": "/usr/scratch2/sassauna3/wiesep/quantlab/systems/CIFAR10/ICCT/logs/exp0000/fold0/saves/best.ckpt"
         },
         "quantize": {
             "function": "pact_recipe",
