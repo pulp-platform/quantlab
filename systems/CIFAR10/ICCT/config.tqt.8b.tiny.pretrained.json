@@ -42,6 +42,11 @@
             "function": "pact_recipe",
             "kwargs": {
                 "config": {
+                    "Softmax": {
+                        "kwargs": {
+                            "mode": "ITA-Partial"
+                        }
+                    },
                     "PACTConv2d": {
                         "tokenizer.conv_layers.0.0$": {},
                         "kwargs": {
@@ -121,7 +126,7 @@
                 "kwargs": {}
             }
         },
-        "n_epochs": 15,
+        "n_epochs": 3,
         "quantize": {
             "function": "get_pact_controllers",
             "kwargs": {
@@ -131,18 +136,18 @@
                             "verbose_on",
                             "start"
                         ],
-                        "5": "freeze"
+                        "2": "freeze"
                     },
                     "activation": {
                         "1": [
                             "verbose_on",
                             "start"
                         ],
-                        "5": "freeze"
+                        "2": "freeze"
                     },
                     "eps": {
                         "1": "verbose_on",
-                        "5": "start"
+                        "2": "start"
                     }
                 },
                 "kwargs_linear": {
@@ -186,6 +191,6 @@
     },
     "experiment": {
         "target_loss": "valid",
-        "ckpt_period": 5
+        "ckpt_period": 1
     }
 }

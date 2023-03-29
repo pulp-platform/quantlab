@@ -40,11 +40,11 @@ _CIFAR10_EPS = CIFAR10STATS['quantize']['eps']
 
 class CanonAndApprox(SequentialPass):
 
-    def __init__(self, harmonize_cfg, lin_cfg, act_cfg):
+    def __init__(self, harmonize_cfg, lin_cfg, act_cfg, softmax_cfg):
         _passes = []
         _passes.append(passes.RetracePass(PACT_symbolic_trace))
         _passes.append(passes.AnnotateEpsPass(eps_in=1.0, n_levels_in=256, signed_in=True, prop_n_levels=False, prop_eps=False))
-        _passes.append(passes.approximate.ApproximateSoftmaxPass(mode='ITA-Partial')) # mode can be 'I-BERT' 'ITA' or 'ITA-Partial' 
+        _passes.append(passes.approximate.ApproximateSoftmaxPass(**softmax_cfg)) # mode can be 'I-BERT' 'ITA' or 'ITA-Partial'
         _passes.append(passes.approximate.ApproximateGELUPass())
         _passes.append(passes.approximate.CanonicalizeLayerNormPass(**lin_cfg))
         _passes.append(passes.harmonize.MeanReplacementPass())
@@ -84,6 +84,7 @@ def pact_recipe(net: nn.Module, config: dict) -> fx.GraphModule:
     conv_cfg = config["PACTConv2d"]
     lin_cfg = config["PACTLinear"]
     act_cfg = config["PACTUnsignedAct"]
+    softmax_cfg = config['Softmax']
 
     harmonize_cfg = config["harmonize"]
 
@@ -132,7 +133,7 @@ def pact_recipe(net: nn.Module, config: dict) -> fx.GraphModule:
 
     net = lwg.net
 
-    canon_approx_pass = CanonAndApprox(harmonize_cfg = harmonize_cfg, lin_cfg = lin_cfg['kwargs'], act_cfg = act_cfg['kwargs'])
+    canon_approx_pass = CanonAndApprox(harmonize_cfg = harmonize_cfg, lin_cfg = lin_cfg['kwargs'], act_cfg = act_cfg['kwargs'], softmax_cfg=softmax_cfg['kwargs'])
     net = canon_approx_pass(net)
 
     print()
