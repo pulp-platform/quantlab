@@ -134,7 +134,7 @@ class MultiHeadAttention(nn.Module):
             self.WV = nn.Linear(dim, self.inner_dim, bias = bias)
 
         self.attention = AttentionMechanism(*args, **kwargs)
-        self.out = nn.Linear(self.inner_dim, self.out_dim)
+        self.out = nn.Linear(self.inner_dim, self.out_dim, bias = bias)
 
     def forward(self, q, k, v):
         mask = None
