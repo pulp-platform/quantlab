@@ -43,13 +43,13 @@ class CanonAndApprox(SequentialPass):
     def __init__(self, harmonize_cfg, lin_cfg, act_cfg, softmax_cfg):
         _passes = []
         _passes.append(passes.RetracePass(PACT_symbolic_trace))
-        _passes.append(passes.AnnotateEpsPass(eps_in=1.0, n_levels_in=256, signed_in=True, prop_n_levels=False, prop_eps=False))
+        _passes.append(passes.AnnotateEpsPass(eps_in=1.0, n_levels_in=256, signed_in=True, prop_n_levels=False, prop_eps=True))
         _passes.append(passes.approximate.ApproximateSoftmaxPass(**softmax_cfg)) # mode can be 'I-BERT' 'ITA' or 'ITA-Partial'
         _passes.append(passes.approximate.ApproximateGELUPass())
         _passes.append(passes.approximate.CanonicalizeLayerNormPass(**lin_cfg))
         _passes.append(passes.harmonize.MeanReplacementPass())
-        _passes.append(passes.harmonize.AddTreeReplacementPass(**harmonize_cfg))
         _passes.append(passes.harmonize.MatmulReplacementPass(**harmonize_cfg))
+        _passes.append(passes.AnnotateEpsPass(eps_in=1.0, n_levels_in=256, signed_in=True, prop_n_levels=True, prop_eps=True))
         # _passes.append(passes.harmonize.TruedivReplacementPass(Delta = 1, eps = 1e-5, stable = False))
         _passes.append(passes.harmonize.AddTreeReplacementPass(**harmonize_cfg))
         _passes.append(passes.harmonize.ConcatTreeReplacementPass(act_cfg['n_levels']))
