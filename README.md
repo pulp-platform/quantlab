@@ -37,7 +37,7 @@ $> conda create --name pytorch-1.13
 $> conda activate pytorch-1.13
 $> conda config --env --add channels conda-forge
 $> conda config --env --add channels pytorch 
-$> conda install python=3.8 pytorch=1.13.1 pytorch-gpu torchvision=0.14.1 torchtext=0.14.1 torchaudio-0.13.1 cudatoolkit=11.6 -c pytorch -c conda-forge
+$> conda install python=3.8 pytorch=1.13.1 pytorch-gpu torchvision=0.14.1 torchtext=0.14.1 torchaudio=0.13.1 cudatoolkit=11.6 -c pytorch -c conda-forge
 $> conda install ipython packaging parse setuptools tensorboard tqdm networkx python-graphviz scipy pandas ipdb onnx onnxruntime einops yapf tabulate
 $> pip install setuptools==59.5.0 torchsummary parse coloredlogs netron
 ```
