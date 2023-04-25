@@ -23,6 +23,7 @@
 
 import argparse
 import json
+import importlib
 
 import sys
 from typing import Union
@@ -42,10 +43,11 @@ sys.path.append(str(_QL_ROOTPATH))
 
 from systems.DVS128.dvs_cnn import DVSHybridNet, get_input_shape, load_data_set, DVSAugmentTransform
 
-from systems.DVS128.dvs_cnn.quantize import pact_recipe as quant_pact, get_pact_controllers
+
 from systems.DVS128.utils.data.dvs128_dataset import DVS128DataSet
 from quantlib.backends.cutie import convert_net, export_net
 
+from test_gen.compute_DVSTNN import compute_tnn
 
 _TOPOLOGY_PATH = _QL_ROOTPATH.joinpath('systems/DVS128/dvs_cnn')
 _BATCH_SIZE_PER_GPU = 48
@@ -67,15 +69,21 @@ def get_ckpt(exp_id : int, ckpt_id : Union[int, str], fold_id : int = 0):
 
 def get_network(exp_id : int, ckpt_id : Union[int, str], fold_id : int = 0, quantized=False):
     cfg = get_config(exp_id)
-    quant_cfg = cfg['network']['quantize']['kwargs']
-    ctrl_cfg = cfg['training']['quantize']['kwargs']
     net_cfg = cfg['network']['kwargs']
     in_shape = get_input_shape(cfg)
+
 
     net = DVSHybridNet(**net_cfg)
     if not quantized:
         return net.eval()
-    quant_net = quant_pact(net, **quant_cfg)
+    quant_fun_name = cfg['network']['quantize']['function']
+    ctrl_fun_name = cfg['training']['quantize']['function']
+    quant_cfg = cfg['network']['quantize']['kwargs']
+    quant_module = importlib.import_module('.quantize', package='systems.DVS128.dvs_cnn')
+    quant_func = getattr(quant_module, quant_fun_name)
+    ctrl_func = getattr(quant_module, ctrl_fun_name)
+    ctrl_cfg = cfg['training']['quantize']['kwargs']
+    quant_net = quant_func(net, **quant_cfg)
     ckpt = get_ckpt(exp_id, ckpt_id, fold_id)
     state_dict = ckpt['net']
     # the checkpoint may be from a nn.DataParallel instance, so we need to
@@ -83,7 +91,7 @@ def get_network(exp_id : int, ckpt_id : Union[int, str], fold_id : int = 0, quan
     if all(k.startswith('module.') for k in state_dict.keys()):
         state_dict = {k.lstrip('module.'): v for k, v in state_dict.items()}
     quant_net.load_state_dict(state_dict)
-    qctrls = get_pact_controllers(quant_net, **ctrl_cfg)
+    qctrls = ctrl_func(quant_net, **ctrl_cfg)
     for ctrl, sd in zip(qctrls, ckpt['qnt_ctrls']):
         ctrl.load_state_dict(sd)
 
@@ -143,7 +151,7 @@ def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval :
         if argmax_offsets is not None:
             yn += argmax_offsets[None, :]
         if eps_w is not None:
-            yn *= eps_w.squeeze()[None, :]
+            yn *= eps_w.reshape((1,-1))
         n_tot += xb.shape[0]
         n_correct += (yn.argmax(dim=1) == yb).sum()
         if ((i+1)%print_interval == 0):
@@ -209,11 +217,16 @@ if __name__ == '__main__':
                         help='Whether to validate the integerized network on the appropriate dataset')
     parser.add_argument('--export_dir', type=str, default=None,
                         help='Export the integerized network to the specified directory.')
+
+    parser.add_argument('--c_out_dir', '-c', type=str, default=None, help='Where to export the Kraken C application. If not provided, it will go to a subdirectory "application" in "export_dir"')
     parser.add_argument('--fold_id', type=int, default=0)
     parser.add_argument('--ckpt_id', required=True, type=int,
                         help='Checkpoint to integerize and export. The specified checkpoint must be fully quantized with PACT/TQT!')
+    parser.add_argument('--n_windows', '-n', type=int, default=None)
 
     args = parser.parse_args()
+
+    name = f'DVSTNN_exp{args.exp_id}_ckpt{args.ckpt_id}'
 
     exp_id = int(args.exp_id) if args.exp_id.isnumeric() else args.exp_id
     print(f'Loading DVSHybridNet, experiment {exp_id}, checkpoint {args.ckpt_id}')
@@ -234,5 +247,12 @@ if __name__ == '__main__':
         validate(int_net, dl, 1, argmax_offsets, eps_w)
 
     print(in_data.requires_grad)
-    import ipdb; ipdb.set_trace()
-    export_net(int_net, args.export_dir, in_data, f'DVSTNN_exp{args.exp_id}_ckpt{args.ckpt_id}', split_input=exp_cfg['network']['kwargs']['cnn_window'])
+
+
+    export_net(int_net.cpu(), args.export_dir, in_data, name, split_input=exp_cfg['network']['kwargs']['cnn_window'])
+
+    c_out_path = Path(args.c_out_dir).resolve() if args.c_out_dir is not None else Path(args.export_dir).joinpath('application').resolve()
+    c_out_path.mkdir(parents=True, exist_ok=True)
+
+    compute_tnn(n_layers=0, in_directory=args.export_dir, in_prefix=name, out_directory=c_out_path, n_windows=args.n_windows)
+
