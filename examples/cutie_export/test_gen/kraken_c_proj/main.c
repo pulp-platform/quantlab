@@ -76,9 +76,7 @@ int main() {
         clf_done_CUTIE();
 
         //Write activations
-        write_acts_CUTIE(cutieActsLen, cutieActs + (i * cutieActsLen << 2));
-        for (int k=0; k<2000; k++)
-          asm volatile ("nop;");
+        write_acts_CUTIE(cutieActsLen, cutieActs + i * (cutieActsLen << 2));
         // Start CUTIE
         turn_on_CUTIE();
 

@@ -130,10 +130,12 @@ uint32_t check_fp_resp_CUTIE(uint32_t n_responses, int32_t* responses) {
         if ((data & LAYER_PARAMS_FP_OUT_0_FP_OUT_0_MASK) !=
             (responses[i] & LAYER_PARAMS_FP_OUT_0_FP_OUT_0_MASK)) {
             num_faults++;
+            printf("Mismatch in response %d - expected %d, got %d\n", i, responses[i] & LAYER_PARAMS_FP_OUT_0_FP_OUT_0_MASK, data & LAYER_PARAMS_FP_OUT_0_FP_OUT_0_MASK);
         }
         if (i != n_responses-1) {
           if ((data >> LAYER_PARAMS_FP_OUT_0_FP_OUT_1_OFFSET) !=
               (responses[i+1] & LAYER_PARAMS_FP_OUT_0_FP_OUT_1_MASK)) {
+            printf("Mismatch in response %d - expected %d, got %d\n", i, responses[i+1] & LAYER_PARAMS_FP_OUT_0_FP_OUT_1_MASK, data >> LAYER_PARAMS_FP_OUT_0_FP_OUT_1_OFFSET);
             num_faults++;
           }
         }
@@ -150,14 +152,12 @@ uint32_t check_resp_CUTIE(uint32_t n_responses, uint8_t bank, int32_t* responses
     for (int i=0; i<n_responses; i++){
         addr = responses[i<<2];
         addr += (bank<<15); // Choose right bank
-        if(pulp_read32(addr) != responses[(i<<2)+1]){
+        for (int blk=1; blk<=3; blk++) {
+          uint32_t resp_act = pulp_read32(addr);
+          if(resp_act != responses[(i<<2)+blk]){
             num_faults++;
-        }
-        if(pulp_read32(addr) != responses[(i<<2)+2]){
-            num_faults++;
-        }
-        if(pulp_read32(addr) != responses[(i<<2)+3]){
-            num_faults++;
+            printf("el %d/block %d: expected 0x%x, got 0x%x\n", i, blk-1, responses[(i<<2)+blk], resp_act);
+          }
         }
     }
 

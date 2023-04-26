@@ -690,11 +690,11 @@ def compute_tnn(n_layers : int, in_directory : str, in_prefix : str, out_directo
         all_inputs.append(input_f)
         result, outshapes = net(torch.Tensor(input_f).unsqueeze(0))
         all_results.append(result)
+        print(f"result {i} in compute_dvstnn:")
+        print(result.detach().squeeze().numpy())
 
     #for i, r in enumerate(all_results):
 #        print(f"result {i+1}:\n{r}")
-    print("result in compute_dvstnn:")
-    print(result.detach().squeeze().numpy())
 
     # input_f = np.load(os.path.join(in_directory, f'{}_input_{i}.npy'))
     # result, outshapes = net(torch.Tensor(input_f).unsqueeze(0))
@@ -899,14 +899,9 @@ def compute_tnn(n_layers : int, in_directory : str, in_prefix : str, out_directo
         try:
             assert ocu_thresh_pos >= ocu_thresh_neg-1
         except AssertionError:
-            import ipdb; ipdb.set_trace()
-        if ocu_thresh_pos < ocu_thresh_neg:
-            print('sus OCU thresholds detected!!')
+            assert False, "Got impossible threshold values!"
 
         thresh_addr += 1
-        thresholds_t = _thresholds(pos=ocu_thresh_pos,
-                                 neg=ocu_thresh_neg,
-                                 we=ocu_thresholds_save_enable)
 
 
         thresh_writes_str += str('0x{:04X},'.format(int(ocu_thresh_pos) & (2**16-1)))
@@ -926,9 +921,8 @@ def compute_tnn(n_layers : int, in_directory : str, in_prefix : str, out_directo
     f_actmem_writes_c.write('#ifndef __ACTIVATIONS_INCLUDE_GUARD\n')
     f_actmem_writes_c.write('#define __ACTIVATIONS_INCLUDE_GUARD\n\n')
     f_actmem_writes_c.write('uint32_t cutieNumExecs = %d;\n' % num_execs)
-    #f_actmem_writes_c.write('uint32_t cutieActsLen = %d;\n' % (rounded_ni[0]
-    #// (ni // weight_stagger) * input_imagewidth * input_imageheight))
-    f_actmem_writes_c.write('uint32_t cutieActsLen = %d;\n' %  (input_imagewidth * input_imageheight))
+    f_actmem_writes_c.write('uint32_t cutieActsLen = %d;\n' % (rounded_ni[0] // (ni // weight_stagger) * input_imagewidth * input_imageheight))
+    #f_actmem_writes_c.write('uint32_t cutieActsLen = %d;\n' %  (input_imagewidth * input_imageheight))
     f_actmem_writes_c.write('int32_t cutieActs[] PI_L2 = {\n')
 
     f_responses_c = open(os.path.join(out_directory, 'responses_intf.h'), 'w')
@@ -936,8 +930,8 @@ def compute_tnn(n_layers : int, in_directory : str, in_prefix : str, out_directo
     f_responses_c.write('#define __RESPONSES_INCLUDE_GUARD\n\n')
     f_responses_c.write('bool cutieUseFPoutput = {};\n'.format('false' if num_dense_layers==0 else 'true'))
     if num_dense_layers == 0:
-        #f_responses_c.write('uint32_t cutieResponsesLen = %d;\n' % (rounded_no[-1] // (no // weight_stagger) * torch.prod(torch.tensor(outshapes[-1][2:])).item()))
-        f_responses_c.write('uint32_t cutieResponsesLen = %d;\n' % (torch.prod(torch.tensor(outshapes[-1][2:])).item()))
+        f_responses_c.write('uint32_t cutieResponsesLen = %d;\n' % (rounded_no[-1] // (no // weight_stagger) * torch.prod(torch.tensor(outshapes[-1][2:])).item()))
+        #f_responses_c.write('uint32_t cutieResponsesLen = %d;\n' % (torch.prod(torch.tensor(outshapes[-1][2:])).item()))
     else:
         f_responses_c.write('uint32_t cutieResponsesLen = %d;\n' % (n_classes))
     f_responses_c.write('int32_t cutieResponses[] PI_L2 = {\n')
@@ -972,7 +966,7 @@ def compute_tnn(n_layers : int, in_directory : str, in_prefix : str, out_directo
                     responses_write_str += str('0x%08x,' %  i) # Print Address
                 responses_write_str += str('\n') # Print Address
         else:
-            for i, data in enumerate(result.squeeze()):
+            for i, data in enumerate(all_results[i].squeeze()):
                 if data < 0:
                     responses_write_str += "0x%s,\n" % (hex((int(data.item()) + (1 << 32)) % (1 << 32))[2:])
                 else:

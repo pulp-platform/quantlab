@@ -222,7 +222,7 @@ if __name__ == '__main__':
     parser.add_argument('--fold_id', type=int, default=0)
     parser.add_argument('--ckpt_id', required=True, type=int,
                         help='Checkpoint to integerize and export. The specified checkpoint must be fully quantized with PACT/TQT!')
-    parser.add_argument('--n_windows', '-n', type=int, default=None)
+    parser.add_argument('--n_windows', '-n', type=int, default=None, help='Number of windows to run')
 
     args = parser.parse_args()
 
