@@ -93,7 +93,7 @@ int main() {
             num_faults = check_fp_resp_CUTIE(cutieResponsesLen, cutieResponses + i * cutieResponsesLen);
         }
         else {
-            num_faults = check_resp_CUTIE(cutieResponsesLen, (cutieLayerParamsLen/4)%2, cutieResponses);
+            num_faults = check_resp_CUTIE(cutieResponsesLen, (cutieLayerParamsLen/4)%2, cutieResponses + i*cutieResponsesLen);
         }
 
         tot_faults += num_faults;
