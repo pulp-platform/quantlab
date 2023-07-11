@@ -128,6 +128,8 @@ class MeterAssistant(object):
         self._writerstub_epoch = metermessage.writerstub_epoch
         self._writerstub_step  = metermessage.writerstub_step
 
+        self._task_stat_kwargs = metermessage.config['task_statistic_kwargs']
+
     @staticmethod
     def _names_2_modules(module: torch.nn.Module, parent_name: str = '', n2m: OrderedDict = OrderedDict()):
         """Compute a mapping of ``Module`` names to ``Module`` objects."""
@@ -153,7 +155,7 @@ class MeterAssistant(object):
 
         # task statistic (optional)
         if self._compute_task_statistic:
-            meter.register_statistic(self._task_statistic_class(platform=platform, writerstub=self._writerstub_epoch, n_epochs=meter.n_epochs, n_batches=meter.n_batches, train=True if self._partition == 'train' else False))
+            meter.register_statistic(self._task_statistic_class(platform=platform, writerstub=self._writerstub_epoch, n_epochs=meter.n_epochs, n_batches=meter.n_batches, train=True if self._partition == 'train' else False, **self._task_stat_kwargs))
 
         # learning rate statistic (always computed)
         if self._partition == 'train':

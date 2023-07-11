@@ -210,6 +210,21 @@ class Logbook(object):
         else:
             writerstub_step = self.logs_manager.writerstub_step_valid if self.logs_manager is not None else WriterStub()
 
+        # HACK georgr - taskstatistic kwargs under 'meters' is default, update
+        # with those under each partition
+        try:
+            partition_ts_kwargs = self.config['meters'][partition]['task_statistic_kwargs']
+        except KeyError:
+            partition_ts_kwargs = {}
+
+        try:
+            ts_kwargs = self.config['meters']['task_statistic_kwargs'].copy()
+        except KeyError:
+            ts_kwargs = {}
+
+        ts_kwargs.update(partition_ts_kwargs)
+        self.config['meters'][partition]['task_statistic_kwargs'] = ts_kwargs
+
         return manager.assistants.MeterMessage(self.n_epochs, self.config['meters'][partition], self._tlib, self._plib, writerstub_epoch=writerstub_epoch, writerstub_step=writerstub_step)
 
     # === PROPERTIES OF THE EXPERIMENTAL RUN'S TRAINING FLOW ===
