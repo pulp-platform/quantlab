@@ -57,7 +57,7 @@ class TernaryDownsampleTransform(object):
         # second step: sum the subsampled arrays together
         # shape: (k, x/factor, y/factor)
         summed = subsampled.sum(axis=0)
-        out = np.zeros_like(summed, dtype=np.int)
+        out = np.zeros_like(summed, dtype=np.float32)
         # third step: threshold the summed array to get ternary result
         out[summed<self.low] = -1
         out[summed>self.high] = 1
