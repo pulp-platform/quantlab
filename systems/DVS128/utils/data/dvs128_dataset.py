@@ -106,7 +106,7 @@ class DVS128DataSet(torch.utils.data.Dataset):
         print("Dataset generation complete.")
 
     def extract_data(self, data, idxs, labels, include_subjects):
-        self.dat = np.concatenate([data[u] for u in include_subjects], axis=0)
+        self.dat = np.concatenate([data[u] for u in include_subjects], axis=0).astype(np.float32)
         start_idxs = np.cumsum([0] + [int(data[u].shape[0]) for u in include_subjects[:-1]])
         self.indices = np.concatenate([idxs[u] + start_idxs[i] for i, u in enumerate(include_subjects)], axis=0)
         self.labels = np.concatenate([labels[u] for u in include_subjects], axis=0)

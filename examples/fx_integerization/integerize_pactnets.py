@@ -200,7 +200,7 @@ def get_dataloader(key : str, cfg : dict, quantize : str, pad_img : Optional[int
     return torch.utils.data.DataLoader(ds, bs)
 
 
-def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval : int = 10):
+def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval : int = 10, n_valid_batches : int = None):
     net = net.eval()
     # we assume that the net is on CPU as this is required for some
     # integerization passes
@@ -218,8 +218,10 @@ def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval :
         yn = net(xb.to(device))
         n_tot += xb.shape[0]
         n_correct += (yn.to('cpu').argmax(dim=1) == yb).sum()
-        if ((i+1)%10 == 0):
+        if ((i+1)%print_interval == 0):
             print(f'Accuracy after {i+1} batches: {n_correct/n_tot}')
+        if (i+1) == n_valid_batches:
+            break
 
     print(f'Final accuracy: {n_correct/n_tot}')
     net.to('cpu')
@@ -377,6 +379,9 @@ if __name__ == '__main__':
                         help="Override the default 'code reserved space' setting")
     parser.add_argument('--requant_node', action='store_true',
                         help='Export RequantShift nodes instead of mul-add-div sequences in ONNX graph')
+    parser.add_argument('--n_valid_batch', type=int, default=None,
+                        help='number of validation batches to run')
+    
 
 
     args = parser.parse_args()
@@ -395,7 +400,7 @@ if __name__ == '__main__':
     if args.validate_fq:
         print(f'Validating fake-quantized network {args.net} on dataset {get_system(args.net)}')
         dl = get_dataloader(args.net, exp_cfg, quantize='fake')
-        validate(qnet, dl, args.accuracy_print_interval)
+        validate(qnet, dl, args.accuracy_print_interval, n_valid_batches=args.n_valid_batch)
 
     print(f'Integerizing network {args.net}')
 
@@ -408,7 +413,7 @@ if __name__ == '__main__':
 
     if args.validate_tq:
         dl = get_dataloader(args.net, exp_cfg, quantize='int', pad_img=pad_img)
-        validate(int_net, dl, args.accuracy_print_interval)
+        validate(int_net, dl, args.accuracy_print_interval, n_valid_batches=args.n_valid_batch)
 
     if args.export_dir is not None:
         print(f'Exporting integerized network {args.net} to directory {args.export_dir} under name {export_name}')

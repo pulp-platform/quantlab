@@ -52,8 +52,9 @@ def make_frames(evts : list, fps : int, prefix : str, out_mode : str = "np"):
     if out_mode == "cv2":
         # out_mode == "cv2" requires openCV which has lots of dependency
         # issues, so only import if needed
-        import cv2
-        fcc = cv2.VideoWriter_fourcc((*"XVID"))
+        # import cv2
+        raise NotImplementedError('out_mode cv2 not supported!')
+        #fcc = cv2.VideoWriter_fourcc((*"XVID"))
         writer = cv2.VideoWriter(prefix+".avi", fcc, float(fps), (128, 128), 0)
         out_file = prefix+".avi"
     curr_frame = np.zeros((128, 128), dtype=np.int8)

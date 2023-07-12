@@ -253,7 +253,10 @@ class DVSHybridNet(nn.Module):
             saves_dir = exp_dir.joinpath(f"fold{fold_id}/saves")
             ea = EventAccumulator(str(log_dir)).Reload()
             max_step, max_acc = max(((evt.step, evt.value) for evt in ea.Scalars("Accuracy/Valid") if saves_dir.joinpath(f'epoch{evt.step:03}.ckpt').exists()), key=lambda tpl:tpl[1])
-            best_acc_state_dict = torch.load(saves_dir.joinpath(f'epoch{max_step:03}.ckpt'))['net']
+            load_opts = {}
+            if not torch.cuda.is_available():
+                load_opts['map_location'] = torch.device('cpu')
+            best_acc_state_dict = torch.load(saves_dir.joinpath(f'epoch{max_step:03}.ckpt'), **load_opts)['net']
             # convert keys for nn.DataParallel
             if all(k.startswith('module.') for k in best_acc_state_dict.keys()):
                 best_acc_state_dict = {k[7:] : v for k,v in best_acc_state_dict.items()}
@@ -263,11 +266,13 @@ class DVSHybridNet(nn.Module):
             # if pretrained is not a file but a directory, assume it is a QL
             # log directory and get the pretrained checkpoint for the specified
             # fold
-
             if pretrained.is_dir():
                 ckpt = get_max_acc_ckpt(pretrained)
             elif pretrained.is_file():
-                ckpt = torch.load(pretrained)
+                load_opts = {}
+                if not torch.cuda.is_available():
+                    load_opts['map_location'] = torch.device('cpu')
+                ckpt = torch.load(pretrained, **load_opts)
             self.load_state_dict(ckpt)
 
 
@@ -275,8 +280,10 @@ class DVSHybridNet(nn.Module):
         # we get a (cnn_window * tcn_window)-sized stack of frame batches
         # => shape: (n_batch, cnn_window*tcn_window, H, W)
         # 1. split it up into cnn_window-sized stacks
+
         if self.inject_eps:
-            x = QTensor(x, eps=1.)
+            #x = QTensor(x, eps=1.)
+            pass
         #print(f"type of x - hybridnet: {type(x)}")
         cnn_wins = torch.split(x, self.cnn_window, dim=1)
         #print(f"eps of x - hybridnet after split: {tuple(w.eps for w in cnn_wins)}")

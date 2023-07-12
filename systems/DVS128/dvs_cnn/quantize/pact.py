@@ -49,6 +49,14 @@ def pact_recipe(net : nn.Module,
 
     rhos = []
     conv_kwargs = config["PACTConvNd"]
+    # if we are training a BNN, don't use TQT for the classifier as it causes
+    # it to crash by blowing up the clipping bounds.
+    if conv_kwargs['n_levels'] == 2:
+        filter_convs = filter_convs & (~NameFilter('tcn.classifier'))
+        cls_kwargs = conv_kwargs.copy()
+        cls_kwargs['tqt'] = False
+        cls_kwargs['learn_clip'] = False
+        rhos.append(qlr.pact.ReplaceConvLinearPACTRule(NameFilter('tcn.classifier'), **cls_kwargs))
     signed_act_kwargs = config["PACTAsymmetricAct"]
     unsigned_act_kwargs = config["PACTUnsignedAct"]
 
