@@ -312,8 +312,14 @@ class LogsManager(object):
             else:  # load requested checkpoint; this mode should only be used by the test flow
                 ckpt_filename = self.make_ckpt_path('best.ckpt' if ckpt_id == -1 else _FORMAT_CKPT_FILE.format(ckpt_id))
 
+            # if we don't have CUDA but are loading a checkpoint, we need to
+            # map CUDA tensors to CPU
+            loadopts = {}
+            if platform.n_gpus == 0:
+                loadopts['map_location'] = torch.device('cpu')
+
             # load the checkpoint into the proper structures
-            ckpt = torch.load(ckpt_filename)
+            ckpt = torch.load(ckpt_filename, **loadopts)
             assert ckpt['experiment']['fold_id'] == self._fold_id  # if not, something weird must have happened during a call to `store_checkpoint`...
 
             # epoch ID
