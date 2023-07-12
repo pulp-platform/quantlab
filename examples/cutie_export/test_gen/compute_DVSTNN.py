@@ -956,7 +956,7 @@ def compute_tnn(n_layers : int, in_directory : str, in_prefix : str, out_directo
                 activations_write_str += str('0x%08x,' %  i) # Print Address
             activations_write_str += str('\n') # Print Address
         if num_dense_layers == 0:
-            encoded_result, decoded_result = translate_image_to_actmem(result)
+            encoded_result, decoded_result = translate_image_to_actmem(all_results[i])
             for addr, (enc_word, dec_word) in enumerate(zip(encoded_result, decoded_result)):
                 act_int = [int(jjj, 2) for jjj in ["".join([str(jj) for jj in dec_word[j:j + 2]]) for j in range(0, 96, 2)]][::-1]
                 act_word_string = [int(jjj, 2) for jjj in ["".join(["{0:02b}".format(j) for j in act_int])[jj:jj + 32] for jj in range(0, 96, 32)][::-1]]
@@ -966,7 +966,7 @@ def compute_tnn(n_layers : int, in_directory : str, in_prefix : str, out_directo
                     responses_write_str += str('0x%08x,' %  i) # Print Address
                 responses_write_str += str('\n') # Print Address
         else:
-            for i, data in enumerate(all_results[i].squeeze()):
+            for data in all_results[i].squeeze():
                 if data < 0:
                     responses_write_str += "0x%s,\n" % (hex((int(data.item()) + (1 << 32)) % (1 << 32))[2:])
                 else:
