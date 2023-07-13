@@ -97,13 +97,14 @@
                         }
                     },
                     "harmonize": {
-                        "n_levels": 256,
-                        "init_clip": "max",
+                        "init_clip": "std",
+                        "n_levels": [256, 256],
                         "noisy": false,
                         "rounding": true,
-                        "force_out_eps": true,
+                        "force_out_eps": false,
                         "tqt": true,
-                        "learn_clip": true
+                        "infer_outact" : true,
+                        "infer_sign": true
                     }
                 }
             }
