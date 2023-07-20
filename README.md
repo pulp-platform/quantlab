@@ -57,12 +57,6 @@ After creating the Anaconda environment, it can make your life easier to install
 ```
 $ conda activate quantlab
 (quantlab) $ pip install -e quantlib
-(quantlab) $ python
-(quantlab) >>> import quantlib
-(quantlab) >>> quantlib.editing.graphs.traces.trace.trace_pytorch_modules()
-(quantlab) >>> quantlib.editing.graphs.traces.trace.trace_quantlib_modules()
-(quantlab) >>> exit()
-(quantlab) $ cd ..
 ```
 Also, this installation is mandatory in case you intend to run some of the Jupyter notebooks contained in the `examples` folder.
 
