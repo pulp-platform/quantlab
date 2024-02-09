@@ -251,12 +251,11 @@ class ResNet(nn.Module):
         block_class = _CONFIGS[config]['block_class']
         block_cfgs  = _CONFIGS[config]['block_cfgs']
         do_maxpool = _CONFIGS[config]['maxpool']
-
         out_channels_pilot    = 16
         in_planes_features    = out_channels_pilot
         out_planes_features   = block_cfgs[-1][1] * block_class.expansion_factor
         out_channels_features = out_planes_features
-        self.act_type = nn.ReLU if activation.lower() == 'relu' else nn.ReLU6
+        self.act_type = nn.ReLU if activation.lower() == 'relu' else nn.ReLU6 if activation.lower() == 'relu6' else nn.Hardtanh
 
         self.pilot      = self._make_pilot(out_channels_pilot)
         self.maxpool    = nn.MaxPool2d(kernel_size=3, stride=2, padding=1) if do_maxpool else None

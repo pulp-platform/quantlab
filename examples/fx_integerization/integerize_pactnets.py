@@ -1,23 +1,23 @@
-# 
+#
 # integerize_pactnets.py
-# 
+#
 # Author(s):
 # Georg Rutishauser <georgr@iis.ee.ethz.ch>
-# 
+#
 # Copyright (c) 2020-2021 ETH Zurich.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 # http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# 
+#
 
 import argparse
 
@@ -77,9 +77,17 @@ from systems.MNIST.simpleCNN.quantize import pact_recipe as quantize_simpleCNN, 
 # import the DORY backend
 from quantlib.backends.dory import export_net, export_dvsnet, DORYHarmonizePass
 # import the PACT/TQT integerization pass
-from quantlib.editing.fx.passes.pact import IntegerizePACTNetPass
+from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, IntegerizePACTNetPass, PACT_symbolic_trace
 from quantlib.editing.fx.util import module_of_node
+from quantlib.editing.fx.passes import RetracePass
 from quantlib.algorithms.pact.pact_ops import *
+from quantlib.algorithms.pact.pact_controllers import *
+
+def read_json(filename : str):
+    with open(filename, 'r') as fp:
+        the_dict = json.load(fp)
+    return the_dict
+
 # organize quantization functions, datasets and transforms by network
 @dataclass
 class QuantUtil:
@@ -130,7 +138,7 @@ def get_valid_dataset(key : str, cfg : dict, quantize : str, pad_img : Optional[
 _QUANT_UTILS = {
     'VGG': QuantUtil(problem='CIFAR10', topo='VGG', quantize=quantize_vgg, get_controllers=controllers_vgg, network=VGG, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=256, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
     'MobileNetV1': QuantUtil(problem='ILSVRC12', topo='MobileNetV1', quantize=quantize_mnv1, get_controllers=controllers_mnv1, network=MobileNetV1, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=96, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=135000),
-    'MobileNetV2': QuantUtil(problem='ILSVRC12', topo='MobileNetV2', quantize=quantize_mnv2, get_controllers=controllers_mnv2, network=MobileNetV2, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
+    'MobileNetV2': QuantUtil(problem='ILSVRC12', topo='MobileNetV2', quantize=quantize_mnv2, get_controllers=controllers_mnv2, network=MobileNetV2, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=43, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
     'MobileNetV3': QuantUtil(problem='ILSVRC12', topo='MobileNetV3', quantize=quantize_mnv3, get_controllers=controllers_mnv3, network=MobileNetV3, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
     'ResNet': QuantUtil(problem='ILSVRC12', topo='ResNet', quantize=quantize_resnet, get_controllers=controllers_resnet, network=ResNet, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=160000),
     'ResNetCIFAR': QuantUtil(problem='CIFAR10', topo='ResNet', quantize=quantize_resnet_cifar, get_controllers=controllers_resnet_cifar, network=ResNetCIFAR, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=128, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=110000),
@@ -159,7 +167,7 @@ def get_ckpt(key : str, exp_id : int, ckpt_id : Union[int, str]):
     ckpt_filepath = get_topology_dir(key).joinpath(f'logs/exp{exp_id:04}/fold0/saves/{ckpt_str}.ckpt')
     return torch.load(ckpt_filepath)
 
-def get_network(key : str, exp_id : int, ckpt_id : Union[int, str], quantized=False):
+def get_network(key : str, exp_id : int, ckpt_id : Union[int, str], quantized : bool = False, harmonize_cfg : str = None):
     cfg = get_config(key, exp_id)
     qu = _QUANT_UTILS[key]
     quant_cfg = cfg['network']['quantize']['kwargs']
@@ -185,11 +193,51 @@ def get_network(key : str, exp_id : int, ckpt_id : Union[int, str], quantized=Fa
     for ctrl, sd in zip(qctrls, ckpt['qnt_ctrls']):
         ctrl.load_state_dict(sd)
 
-
     # we don't want to train this network anymore
-    return quant_net.eval()
+    quant_net = quant_net.eval()
+    # if requested, harmonize the net
+    if harmonize_cfg is not None:
+        hc = read_json(harmonize_cfg)
+        dl = get_dataloader(key, cfg, 'none', shuffle=True)
+        try:
+            init_clip_lo = cfg['training']['quantize']['kwargs_activation']['init_clip_lo']
+        except KeyError:
+            init_clip_lo = -1.
+        try:
+            init_clip_hi = cfg['training']['quantize']['kwargs_activation']['init_clip_hi']
+        except KeyError:
+            init_clip_hi = -1.
 
-def get_dataloader(key : str, cfg : dict, quantize : str, pad_img : Optional[int] = None, clip : bool = False):
+        quant_net = harmonize_network(quant_net, dl, hc, init_clip_lo, init_clip_hi)
+    return quant_net
+
+def harmonize_network(net : nn.Module, dl : torch.utils.data.DataLoader, harmonize_cfg : dict, init_clip_lo : float = -1., init_clip_hi : float = 1.):
+    print("Harmonizing trained network...")
+    harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
+    net_traced = PACT_symbolic_trace(net)
+    # get all acts prior to harmonization so we can make a controller that only
+    # cares about the ones inserted by the harmonization pass
+    pre_harmonize_acts = PACTActController.get_modules(net_traced)
+    harmonized_net = harmonize_pass(net_traced)
+    print("Harmonization done!")
+    post_harmonize_acts = PACTActController.get_modules(harmonized_net)
+    harmonize_acts = [a for a in post_harmonize_acts if a not in pre_harmonize_acts]
+    act_schedule = {"0":["verbose_on", "start"]}
+    act_ctrl = PACTActController(harmonize_acts, act_schedule, init_clip_lo=init_clip_lo, init_clip_hi=init_clip_hi)
+    int_modules = PACTIntegerModulesController.get_modules(harmonized_net)
+    int_ctrl = PACTIntegerModulesController(int_modules)
+    #import ipdb; ipdb.set_trace()
+    print("Calibrating activations inserted by harmonization with validation set...")
+    validate(harmonized_net, dl, n_valid_batches=50)
+
+    act_ctrl.step_pre_training_epoch(0)
+    int_ctrl.step_pre_validation_epoch()
+    print("Done!")
+    return harmonized_net
+
+
+
+def get_dataloader(key : str, cfg : dict, quantize : str, pad_img : Optional[int] = None, clip : bool = False, shuffle : bool = False):
     qu = _QUANT_UTILS[key]
     if torch.cuda.is_available():
         bs = torch.cuda.device_count() * qu.bs
@@ -197,7 +245,7 @@ def get_dataloader(key : str, cfg : dict, quantize : str, pad_img : Optional[int
         # network will be executed on CPU (not recommended!!)
         bs = 16
     ds = get_valid_dataset(key, cfg, quantize, pad_img=pad_img, clip=clip)
-    return torch.utils.data.DataLoader(ds, bs)
+    return torch.utils.data.DataLoader(ds, bs, shuffle=shuffle)
 
 
 def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval : int = 10, n_valid_batches : int = None):
@@ -234,7 +282,7 @@ def get_input_channels(net : fx.GraphModule):
             return conv.in_channels
 
 # THIS IS WHERE THE BUSINESS HAPPENS!
-def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_harmonize : bool, word_align_channels : bool, requant_node : bool = False):
+def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_harmonize : bool, word_align_channels : bool, requant_node : bool = False, ternarize : bool = False):
     qu = _QUANT_UTILS[key]
     # All we need to do to integerize a fake-quantized network is to run the
     # IntegerizePACTNetPass on it! Afterwards, the ONNX graph it produces will
@@ -245,13 +293,30 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_har
         in_shp_cnn = (in_shp[0], in_shp[1]//net.tcn_window, in_shp[2], in_shp[3])
         in_shp_tcn = (1, net.tcn.features[0].in_channels, net.tcn_window)
         tcn_eps_in = net.cnn.features[-1].get_eps()
-        cnn_int_pass = IntegerizePACTNetPass(shape_in=in_shp_cnn, eps_in=qu.eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, word_align_channels=word_align_channels)
+        cnn_int_pass = IntegerizePACTNetPass(shape_in=in_shp_cnn, eps_in=qu.eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, word_align_channels=word_align_channels, ternarize=ternarize)
         cnn_int = cnn_int_pass(net.cnn)
-        tcn_int_pass = IntegerizePACTNetPass(shape_in=in_shp_tcn, eps_in=tcn_eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels)
-        net.tcn.classifier = get_new_classifier(net.tcn.classifier)
-        net.tcn.cls_replaced = True
+        tcn_int_pass = IntegerizePACTNetPass(shape_in=in_shp_tcn, eps_in=tcn_eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, ternarize=ternarize)
+        #net.tcn.classifier = get_new_classifier(net.tcn.classifier)
+        #net.tcn.cls_replaced = True
 
         tcn_int = tcn_int_pass(net.tcn)
+        tcn_nodes = list(tcn_int.graph.nodes)
+        for n in tcn_nodes[::-1]:
+            if n.op == 'call_method' and 'squeeze' in n.target:
+                squeeze_node = n
+            if n.op == 'call_module':
+                cls_node = n
+                break
+        tcn_int.__setattr__(cls_node.target, get_new_classifier(module_of_node(tcn_int, cls_node)))
+        squeeze_node.replace_all_uses_with(squeeze_node.all_input_nodes[0])
+        tcn_int.graph.erase_node(squeeze_node)
+        tcn_int.recompile()
+
+        cnn_retracer = RetracePass(PACT_symbolic_trace)
+        tcn_retracer = RetracePass(PACT_symbolic_trace)
+        # dissolve the "Module"s that FX makes out of sequentials
+        cnn_int = cnn_retracer(cnn_int)
+        tcn_int = tcn_retracer(tcn_int)
         if fix_channels:
             in_shp_l_cnn = list(in_shp_cnn)
             in_shp_l_cnn[1] = get_input_channels(cnn_int)
@@ -285,13 +350,13 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_har
 
         return int_net
 
-def export_integerized_network(net : nn.Module, cfg : dict, key : str, export_dir : str, name : str, in_idx : int = 42, pad_img : Optional[int] = None, clip : bool = False, change_n_levels : int = None):
+def export_integerized_network(net : nn.Module, cfg : dict, key : str, export_dir : str, name : str, in_idx : int = 42, pad_img : Optional[int] = None, clip : bool = False, change_n_levels : int = None, ternarize : bool = False):
     qu = _QUANT_UTILS[key]
     # use a real image from the validation set
     ds = get_valid_dataset(key, cfg, quantize='int', pad_img=pad_img, clip=clip)
     test_input = ds[in_idx][0].unsqueeze(0)
     if key == 'dvs_cnn':
-        qu.export_fn(*net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, change_n_levels=change_n_levels, code_size=qu.code_size)
+        qu.export_fn(*net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, change_n_levels=change_n_levels, code_size=qu.code_size, compressed=ternarize)
     else:
         qu.export_fn(net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, code_size=qu.code_size)
 
@@ -313,32 +378,29 @@ def export_unquant_net(net : nn.Module, cfg : dict, key : str, export_dir : str,
 # quite hacky but there is no other way
 
 def get_new_classifier(classifier: PACTConv1d):
+
     new_classifier = nn.Sequential(nn.Flatten(),
-                                   PACTLinear(
-            in_features=classifier.in_channels*classifier.kernel_size[0],
-            out_features=classifier.out_channels+1,
-            bias=True,
-            n_levels=classifier.n_levels,
-            quantize=classifier.quantize,
-            init_clip=classifier.init_clip,
-            learn_clip=classifier.learn_clip,
-            symm_wts=classifier.symm_wts,
-            nb_std=classifier.nb_std,
-            tqt=classifier.tqt,
-            tqt_beta=classifier.tqt_beta,
-            tqt_clip_grad=classifier.tqt_clip_grad))
+                                   nn.Linear(
+                                       in_features=classifier.in_channels*classifier.kernel_size[0],
+                                       out_features=classifier.out_channels,
+                                       bias=True))
 
     new_weights = classifier.weight.reshape(classifier.out_channels, -1)
-    new_weights = torch.cat((new_weights, torch.zeros(new_weights.shape[1]).unsqueeze(0)))
+    #new_weights = torch.cat((new_weights, torch.zeros(new_weights.shape[1]).unsqueeze(0)))
     new_classifier[1].weight.data.copy_(new_weights)
     if classifier.bias is not None:
-        new_classifier[1].bias.data.copy_(torch.cat((classifier.bias, torch.Tensor([0]))))
+        #new_classifier[1].bias.data.copy_(torch.cat((classifier.bias, torch.Tensor([0]))))
+        new_classifier[1].bias.data.copy_(classifier.bias)
     else:
         new_classifier[1].bias.data.fill_(0)
-    new_classifier[1].clip_lo = torch.nn.Parameter(torch.cat((classifier.clip_lo.squeeze(2), -torch.ones(1,1))))
-    new_classifier[1].clip_hi = torch.nn.Parameter(torch.cat((classifier.clip_hi.squeeze(2), torch.ones(1,1))))
-    new_classifier[1].clipping_params = classifier.clipping_params
-    new_classifier[1].started = classifier.started
+   #new_classifier[1].clip_lo = torch.nn.Parameter(torch.cat((classifier.clip_lo.squeeze(2), -torch.ones(1,1))))
+   #new_classifier[1].clip_hi = torch.nn.Parameter(torch.cat((classifier.clip_hi.squeeze(2), torch.ones(1,1))))
+   #new_classifier[1].clip_lo = torch.nn.Parameter(classifier.clip_lo.squeeze(2), -torch.ones(1,1))
+   #new_classifier[1].clip_hi = torch.nn.Parameter(classifier.clip_hi.squeeze(2), torch.ones(1,1))
+   #new_classifier[1].clipping_params = classifier.clipping_params
+   #new_classifier[1].started = classifier.started
+   # we just don't care anymore and hardcode this.
+    new_classifier[1].n_levels = classifier.n_levels
     return new_classifier
 
 
@@ -375,14 +437,18 @@ if __name__ == '__main__':
                         help='If supplied, don\'t align averagePool nodes\' associated requantization nodes and replace adders with DORYAdders')
     parser.add_argument('--change_n_levels', type=int, default=None,
                         help='Only used in DVS128 export - override clipping bound of RequantShift modules of exported networks to this value')
+    parser.add_argument('--ternarize', action='store_true', help='Use threshold layers in exported ternary nets? Do not use together with change_n_levels!')
     parser.add_argument('--code_size', type=int, default=None,
                         help="Override the default 'code reserved space' setting")
     parser.add_argument('--requant_node', action='store_true',
                         help='Export RequantShift nodes instead of mul-add-div sequences in ONNX graph')
     parser.add_argument('--n_valid_batch', type=int, default=None,
                         help='number of validation batches to run')
-    
+    parser.add_argument('--harmonize_cfg', type=str, default=None,
+                        help='Run harmonization on the quantized net with this configuration')
 
+
+    # export_dvsnet->compressed == ternarize
 
     args = parser.parse_args()
 
@@ -394,7 +460,8 @@ if __name__ == '__main__':
     exp_id = int(args.exp_id) if args.exp_id.isnumeric() else args.exp_id
 
     print(f'Loading network {args.net}, experiment {exp_id}, checkpoint {args.ckpt_id}')
-    qnet = get_network(args.net, exp_id, args.ckpt_id, quantized=True)
+    qnet = get_network(args.net, exp_id, args.ckpt_id, quantized=True, harmonize_cfg=args.harmonize_cfg)
+
 
     exp_cfg = get_config(args.net, exp_id)
     if args.validate_fq:
@@ -404,7 +471,7 @@ if __name__ == '__main__':
 
     print(f'Integerizing network {args.net}')
 
-    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize, args.word_align_channels, args.requant_node)
+    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize, args.word_align_channels, args.requant_node, ternarize=args.ternarize)
 
     if args.fix_channels:
         pad_img = get_input_channels(int_net[0] if isinstance(int_net, tuple) else int_net)
@@ -413,12 +480,12 @@ if __name__ == '__main__':
 
     if args.validate_tq:
         dl = get_dataloader(args.net, exp_cfg, quantize='int', pad_img=pad_img)
+        print(f'Validating integerized network {args.net} on dataset {get_system(args.net)}')
         validate(int_net, dl, args.accuracy_print_interval, n_valid_batches=args.n_valid_batch)
 
     if args.export_dir is not None:
         print(f'Exporting integerized network {args.net} to directory {args.export_dir} under name {export_name}')
-        export_integerized_network(int_net, exp_cfg, args.net, args.export_dir, export_name, pad_img=pad_img, clip=args.clip_inputs, change_n_levels=args.change_n_levels)
+        export_integerized_network(int_net, exp_cfg, args.net, args.export_dir, export_name, pad_img=pad_img, clip=args.clip_inputs, change_n_levels=args.change_n_levels, ternarize=args.ternarize)
         if args.export_unquant:
             net_unq = get_network(args.net, exp_id, args.ckpt_id, quantized=False)
             export_unquant_net(net_unq, exp_cfg, args.net, args.export_dir, export_name)
-

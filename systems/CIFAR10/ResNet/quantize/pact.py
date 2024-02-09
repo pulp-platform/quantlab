@@ -29,6 +29,7 @@ from quantlib.editing.lightweight import LightweightGraph
 import quantlib.editing.lightweight.rules as qlr
 from quantlib.editing.lightweight.rules.filters import VariadicOrFilter, NameFilter, TypeFilter
 from quantlib.editing.fx.passes.pact import HarmonizePACTNetPass, PACT_symbolic_trace
+from quantlib.editing.fx.util import module_of_node
 
 from quantlib.algorithms.pact.pact_ops import *
 from quantlib.algorithms.pact.pact_controllers import *
@@ -45,39 +46,49 @@ def pact_recipe(net : nn.Module,
     # An additional dict is expected to be stored under the key "kwargs", which
     # is used as the default kwargs.
 
-    filter_conv2d = TypeFilter(nn.Conv2d)
-    filter_linear = TypeFilter(nn.Linear)
-    act_types = (nn.ReLU, nn.ReLU6)
-    filter_acts = VariadicOrFilter(*[TypeFilter(t) for t in act_types])
+    uact_types = (nn.ReLU, nn.ReLU6)
+    sact_types = (nn.Hardtanh,)
 
     rhos = []
     conv_cfg = config["PACTConv2d"]
     lin_cfg = config["PACTLinear"]
-    act_cfg = config["PACTUnsignedAct"]
+    uact_cfg = config["PACTUnsignedAct"]
+
+    try:
+        sact_cfg = config["PACTAsymmetricAct"]
+    except KeyError:
+        sact_cfg = {}
+
+    try:
+        last_add_8b = config['last_add_8b']
+    except KeyError:
+        last_add_8b = False
 
     harmonize_cfg = config["harmonize"]
-
-
-
-    def make_rules(cfg : dict,
-                   rule : type):
+    
+    def make_rules(cfg : dict, t : tuple,
+                   rule : type, **kwargs):
         rules = []
         default_cfg = cfg["kwargs"] if "kwargs" in cfg.keys() else {}
         layer_keys = [k for k in cfg.keys() if k != "kwargs"]
+        type_filter = VariadicOrFilter(*[TypeFilter(tt) for tt in t])
+        print("type filter: ", type_filter)
         for k in layer_keys:
-            filt = NameFilter(k)
-            kwargs = default_cfg.copy()
+            filt = NameFilter(k) & type_filter
+            kwargs.update(default_cfg)
             kwargs.update(cfg[k])
             rho = rule(filt, **kwargs)
             rules.append(rho)
         return rules
 
-    rhos += make_rules(conv_cfg,
+    rhos += make_rules(conv_cfg, (nn.Conv2d,),
                        qlr.pact.ReplaceConvLinearPACTRule)
-    rhos += make_rules(lin_cfg,
+    rhos += make_rules(lin_cfg, (nn.Linear,),
                        qlr.pact.ReplaceConvLinearPACTRule)
-    rhos += make_rules(act_cfg,
-                       qlr.pact.ReplaceActPACTRule)
+    rhos += make_rules(uact_cfg, uact_types,
+                       qlr.pact.ReplaceActPACTRule, signed=False)
+    rhos += make_rules(sact_cfg, sact_types,
+                       qlr.pact.ReplaceActPACTRule, signed=True)
 
     lwg = qlw.LightweightGraph(net)
     lwe = qlw.LightweightEditor(lwg)
@@ -114,6 +125,17 @@ def pact_recipe(net : nn.Module,
     net_traced = PACT_symbolic_trace(lwg.net)
     final_net = harmonize_pass(net_traced)
 
+
+    if last_add_8b:
+        for n in [nn for nn in final_net.graph.nodes][::-1]:
+
+            if n.op == 'call_module':
+                module = module_of_node(final_net, n)
+                if isinstance(module, PACTIntegerAdd):
+                    outact_node = [k for k in n.users.keys()][0]
+                    outact_module = module_of_node(final_net, outact_node)
+                    print(f"Setting node {outact_node}'s output n_levels attribute to 256!")
+                    outact_module.n_levels = 256
 
     # the prec. spec file might include layers that were added by the
     # harmonization pass; those need to be treated separately
