@@ -12,6 +12,7 @@ from pathlib import Path
 __CNN_CFGS__ = {
     'first_try' : [128, 128, 128, 128],
     'ninetysix_ch' : [96, 96, 96, 96],
+    'eighty_ch' : [80, 80, 80, 80],
     'reduced_channels' : [64, 64, 64, 64],
     '128_channels' : [128, 128, 128, 128],
     '96_channels' : [96, 96, 96, 96],
@@ -27,12 +28,13 @@ __TCN_CFGS__ = {
     '64_channels' : [(2, 1, 64), (2, 2, 64), (2, 4, 64)],
     '64_channels_k3' : [(3, 1, 64), (3, 2, 64), (3, 4, 64)],
     '64_channels_k4' : [(4, 1, 64), (4, 2, 64), (4, 4, 64)],
-    'ninetysix_ch' : [(2, 1, 96), (2, 2, 96), (2, 4, 96)],
+    'eighty_ch' : [(2, 1, 80), (2, 2, 80), (2, 4, 80)],
     '128_ch' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
     '128_channels' : [(2, 1, 128), (2, 2, 128), (2, 4, 128)],
     'k3' : [(3, 1, 64), (3, 2, 64), (3, 4, 64)],
     '96_channels' : [(2, 1, 96), (2, 2, 96), (2, 4, 96)],
     '96_channels_k3' : [(3, 1, 96), (3, 2, 96), (3, 4, 96)],
+    '80_channels_k3' : [(3, 1, 80), (3, 2, 80), (3, 4, 80)],
     '96_channels_k4' : [(4, 1, 96), (4, 2, 96), (4, 4, 96)],
     '32_channels' : [(2, 1, 32), (2, 2, 32), (2, 4, 32)],
     '32_channels_k3' : [(3, 1, 32), (3, 2, 32), (3, 4, 32)],
@@ -51,7 +53,7 @@ def get_input_shape(cfg : dict):
 
 class DVSNet2D(nn.Module):
     def __init__(self, cnn_cfg_key : str, pool_type : str = "stride", cnn_window : int = 16, activation : str = 'relu',
-                 out_size : int = 11, use_classifier : bool = True, fix_cnn_pool=False, k : int = 3, layer_order : str = 'pool_bn', last_conv_nopad : bool = False,  **kwargs):
+                 out_size : int = 11, use_classifier : bool = True, fix_cnn_pool=False, k : int = 3, layer_order : str = 'pool_bn', last_conv_nopad : bool = False, adapter_out_ch : int = 32, **kwargs):
         super(DVSNet2D, self).__init__()
         cfg = __CNN_CFGS__[cnn_cfg_key]
         self.k = k
@@ -69,22 +71,22 @@ class DVSNet2D(nn.Module):
 
         adapter_list = []
 
-        adapter_list.append(nn.Conv2d(cnn_window, 32, kernel_size=k, padding=k//2, bias=False))
+        adapter_list.append(nn.Conv2d(cnn_window, adapter_out_ch, kernel_size=k, padding=k//2, bias=False))
         if pool_type != 'max_pool':
             adapter_pool = nn.AvgPool2d(kernel_size=2)
         else:
             adapter_pool = nn.MaxPool2d(kernel_size=2)
         if layer_order == 'pool_bn':
             adapter_list.append(adapter_pool)
-            adapter_list.append(nn.BatchNorm2d(32))
+            adapter_list.append(nn.BatchNorm2d(adapter_out_ch))
         else:
-            adapter_list.append(nn.BatchNorm2d(32))
+            adapter_list.append(nn.BatchNorm2d(adapter_out_ch))
             adapter_list.append(adapter_pool)
         adapter_list.append(self._act(inplace=True))
         adapter = nn.Sequential(*adapter_list)
         self.adapter = adapter
 
-        features = self._get_features(32, cfg, k, pool_type, self._act, layer_order, last_conv_nopad)
+        features = self._get_features(adapter_out_ch, cfg, k, pool_type, self._act, layer_order, last_conv_nopad)
         self.features = features
         # after features block, we should have a 4x4 feature map
         if use_classifier:
@@ -282,8 +284,7 @@ class DVSHybridNet(nn.Module):
         # 1. split it up into cnn_window-sized stacks
 
         if self.inject_eps:
-            #x = QTensor(x, eps=1.)
-            pass
+            x = QTensor(x, eps=1.)
         #print(f"type of x - hybridnet: {type(x)}")
         cnn_wins = torch.split(x, self.cnn_window, dim=1)
         #print(f"eps of x - hybridnet after split: {tuple(w.eps for w in cnn_wins)}")

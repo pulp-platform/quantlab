@@ -28,7 +28,7 @@ from tqdm import tqdm
 import json
 import torch
 from torch import nn, fx
-
+from copy import deepcopy
 
 # set the PYTHONPATH to include QuantLab's root directory
 import sys
@@ -142,7 +142,7 @@ _QUANT_UTILS = {
     'MobileNetV3': QuantUtil(problem='ILSVRC12', topo='MobileNetV3', quantize=quantize_mnv3, get_controllers=controllers_mnv3, network=MobileNetV3, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000),
     'ResNet': QuantUtil(problem='ILSVRC12', topo='ResNet', quantize=quantize_resnet, get_controllers=controllers_resnet, network=ResNet, in_shape=(1,3,224,224), eps_in=_ILSVRC12_EPS, D=2**19, bs=53, get_in_shape=None, load_dataset_fn=load_ilsvrc12, transform=ILSVRC12PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=160000),
     'ResNetCIFAR': QuantUtil(problem='CIFAR10', topo='ResNet', quantize=quantize_resnet_cifar, get_controllers=controllers_resnet_cifar, network=ResNetCIFAR, in_shape=(1,3,32,32), eps_in=_CIFAR10_EPS, D=2**19, bs=128, get_in_shape=None, load_dataset_fn=load_cifar10, transform=CIFAR10PACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=110000),
-    'dvs_cnn' : QuantUtil(problem='DVS128', topo='dvs_cnn', quantize=quantize_dvsnet, get_controllers=controllers_dvsnet, network=DVSHybridNet, network_args={'inject_eps':False}, in_shape=None, eps_in=1., D=2**19, bs=128, get_in_shape=get_in_shape_dvsnet, load_dataset_fn=load_dvs128, transform=DVSAugmentTransform, n_levels_in=3, export_fn=export_dvsnet, code_size=340000),
+    'dvs_cnn' : QuantUtil(problem='DVS128', topo='dvs_cnn', quantize=quantize_dvsnet, get_controllers=controllers_dvsnet, network=DVSHybridNet, network_args={'inject_eps':True}, in_shape=None, eps_in=1., D=2**19, bs=128, get_in_shape=get_in_shape_dvsnet, load_dataset_fn=load_dvs128, transform=DVSAugmentTransform, n_levels_in=3, export_fn=export_dvsnet, code_size=340000),
     'simpleCNN': QuantUtil(problem='MNIST', topo='simpleCNN', quantize=quantize_simpleCNN, get_controllers=controllers_simpleCNN, network=simpleCNN, in_shape=(1,1,32,32), eps_in=_MNIST_EPS, D=2**19, bs=256, get_in_shape=None, load_dataset_fn=load_mnist, transform=MNISTPACTQuantTransform, quant_transform_args={'n_q':256}, n_levels_in=256, export_fn=export_net, code_size=150000)
 }
 
@@ -226,7 +226,6 @@ def harmonize_network(net : nn.Module, dl : torch.utils.data.DataLoader, harmoni
     act_ctrl = PACTActController(harmonize_acts, act_schedule, init_clip_lo=init_clip_lo, init_clip_hi=init_clip_hi)
     int_modules = PACTIntegerModulesController.get_modules(harmonized_net)
     int_ctrl = PACTIntegerModulesController(int_modules)
-    #import ipdb; ipdb.set_trace()
     print("Calibrating activations inserted by harmonization with validation set...")
     validate(harmonized_net, dl, n_valid_batches=50)
 
@@ -248,7 +247,7 @@ def get_dataloader(key : str, cfg : dict, quantize : str, pad_img : Optional[int
     return torch.utils.data.DataLoader(ds, bs, shuffle=shuffle)
 
 
-def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval : int = 10, n_valid_batches : int = None):
+def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval : int = 10, n_valid_batches : int = None, eps_w : torch.Tensor = None):
     net = net.eval()
     # we assume that the net is on CPU as this is required for some
     # integerization passes
@@ -262,10 +261,17 @@ def validate(net : nn.Module, dl : torch.utils.data.DataLoader, print_interval :
 
     n_tot = 0
     n_correct = 0
+
+    n_cls = len(dl.dataset.classes)
+    if eps_w is None:
+        eps_w = torch.ones((1, n_cls))
+    else:
+        eps_w = eps_w.squeeze()[None, :]
+
     for i, (xb, yb) in enumerate(tqdm(dl)):
-        yn = net(xb.to(device))
+        yn = net(xb.to(device)).to('cpu') * eps_w
         n_tot += xb.shape[0]
-        n_correct += (yn.to('cpu').argmax(dim=1) == yb).sum()
+        n_correct += (yn.argmax(dim=1) == yb).sum()
         if ((i+1)%print_interval == 0):
             print(f'Accuracy after {i+1} batches: {n_correct/n_tot}')
         if (i+1) == n_valid_batches:
@@ -289,13 +295,16 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_har
     # contain only integer operations. Any divisions in the integerized graph
     # will be by powers of 2 and can be implemented as bit shifts.
     in_shp = qu.in_shape
+    net_cp = deepcopy(net)
     if key == 'dvs_cnn':
         in_shp_cnn = (in_shp[0], in_shp[1]//net.tcn_window, in_shp[2], in_shp[3])
         in_shp_tcn = (1, net.tcn.features[0].in_channels, net.tcn_window)
         tcn_eps_in = net.cnn.features[-1].get_eps()
+        tcn_sgnd_in = net.cnn.features[-1].signed
+        tcn_last_act_eps = net.tcn.features[-1].get_eps()
         cnn_int_pass = IntegerizePACTNetPass(shape_in=in_shp_cnn, eps_in=qu.eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, word_align_channels=word_align_channels, ternarize=ternarize)
         cnn_int = cnn_int_pass(net.cnn)
-        tcn_int_pass = IntegerizePACTNetPass(shape_in=in_shp_tcn, eps_in=tcn_eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, ternarize=ternarize)
+        tcn_int_pass = IntegerizePACTNetPass(shape_in=in_shp_tcn, eps_in=tcn_eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, ternarize=ternarize, signed_in=tcn_sgnd_in)
         #net.tcn.classifier = get_new_classifier(net.tcn.classifier)
         #net.tcn.cls_replaced = True
 
@@ -307,7 +316,7 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_har
             if n.op == 'call_module':
                 cls_node = n
                 break
-        tcn_int.__setattr__(cls_node.target, get_new_classifier(module_of_node(tcn_int, cls_node)))
+        tcn_int.__setattr__(cls_node.target, get_new_classifier(module_of_node(tcn_int, cls_node), not net.tcn.features[-1].signed, tcn_last_act_eps))
         squeeze_node.replace_all_uses_with(squeeze_node.all_input_nodes[0])
         tcn_int.graph.erase_node(squeeze_node)
         tcn_int.recompile()
@@ -329,7 +338,12 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_har
             cnn_int = dory_harmonize_pass_cnn(cnn_int)
             dory_harmonize_pass_tcn = DORYHarmonizePass(in_shape=in_shp_tcn)
             tcn_int = dory_harmonize_pass_tcn(tcn_int)
-        return cnn_int, tcn_int
+
+        net.cnn = cnn_int
+        net.tcn = tcn_int
+        return net, net_cp, net_cp.tcn.classifier.get_eps_w()
+        #return cnn_int, tcn_int
+
     else:
         int_pass = IntegerizePACTNetPass(shape_in=in_shp, eps_in=qu.eps_in, D=qu.D, n_levels_in=qu.n_levels_in, fix_channel_numbers=fix_channels, requant_node=requant_node)
         int_net = int_pass(net)
@@ -350,13 +364,88 @@ def integerize_network(net : nn.Module, key : str, fix_channels : bool, dory_har
 
         return int_net
 
+# quite hacky but there is no other way
+
+def get_new_classifier(classifier: PACTConv1d, unsigned_in, eps_in : float = 1.):
+
+    new_classifier = nn.Sequential(nn.Flatten(),
+                                   nn.Linear(
+                                       in_features=classifier.in_channels*classifier.kernel_size[0],
+                                       out_features=classifier.out_channels,
+                                       bias=True))
+
+    new_weights = classifier.weight.reshape(classifier.out_channels, -1)
+    #new_weights = torch.cat((new_weights, torch.zeros(new_weights.shape[1]).unsqueeze(0)))
+    new_classifier[1].weight.data.copy_(new_weights)
+    new_bias = torch.zeros_like(new_classifier[1].bias)
+    if unsigned_in:
+        new_bias += torch.round(new_classifier[1].weight.sum(dim=1))# * eps_in)
+    if classifier.bias is not None:
+        new_bias += classifier.bias
+    new_classifier[1].bias.data.copy_(new_bias)
+    new_classifier[1].n_levels = classifier.n_levels
+    return new_classifier
+
+def compare_nets(int_net, fq_net, dl):
+    #indata = dl.dataset[42][0][None, ...]
+    cnn_win = fq_net.cnn.adapter[0].in_channels
+    for j, (indata, _) in tqdm(enumerate(dl)):
+        in_windows = torch.split(indata, cnn_win, dim=1)
+        cnn_outs_fq, cnn_outs_tq = [], []
+        eps_w =fq_net.tcn.classifier.get_eps_w().squeeze()[None, :]
+        def rebuild_subnet(fx_net, subnet_name):
+            subnet_nodes = [n for n in fx_net.graph.nodes if subnet_name in n.name and n.op == 'call_module']
+            subnet_modules = [module_of_node(fx_net, n) for n in subnet_nodes]
+            return nn.Sequential(*subnet_modules)
+        for i,win in enumerate(in_windows):
+            ad_fq = fq_net.cnn.adapter
+            #ad_int = int_net.cnn.adapter
+            ad_int = rebuild_subnet(int_net.cnn, 'adapter')
+            ad_out_fq = ad_fq(win)
+            ad_out_int = ad_int(win)
+            ad_out_int_fq = (ad_out_int + 1) * ad_fq[-1].get_eps()
+            if not torch.all(ad_out_int_fq == ad_out_fq):
+                print(f"failure in adapter, iteration {i}")
+            f_int = rebuild_subnet(int_net.cnn, 'features')
+            f_fq = fq_net.cnn.features
+            f_out_int = f_int(ad_out_int)
+            f_out_fq = f_fq(ad_out_fq)
+            f_out_intfq = (f_out_int+1)*f_fq[-1].get_eps()
+            if not torch.all(f_out_intfq == f_out_fq):
+                print(f"failure in features, iteration {i}")
+            cnn_outs_fq.append(f_out_fq.flatten(start_dim=1))
+            cnn_outs_tq.append(f_out_int.flatten(start_dim=1))
+
+        tcn_in_fq = torch.stack(cnn_outs_fq, dim=2)
+        tcn_in_int = torch.stack(cnn_outs_tq, dim=2)
+        tcn_f_fq = fq_net.tcn.features
+        tcn_f_int = rebuild_subnet(int_net.tcn, 'features')
+        tcn_fout_fq = tcn_f_fq(tcn_in_fq)
+        tcn_fout_int = tcn_f_int(tcn_in_int)
+        tcn_fout_intfq = (tcn_fout_int+1)*tcn_f_fq[-1].get_eps()
+        if not torch.all(tcn_fout_intfq == tcn_fout_fq):
+            print(f"failure in tcn features")
+        tcn_fout_int_fl = tcn_fout_int.flatten(start_dim=1)
+        tcn_out_fq = fq_net.tcn.classifier(tcn_fout_fq)
+        tcn_cls = int_net.tcn._QL_REPLACED__INTEGERIZE_PACT_CONV1D_PASS_0.get_submodule('1')
+        tcn_out_int = tcn_cls(tcn_fout_int_fl) * eps_w
+        if not torch.all(tcn_out_int.argmax(dim=1) == tcn_out_fq.squeeze().argmax(dim=1)):
+            print(f"{torch.sum(tcn_out_int.argmax(dim=1) != tcn_out_fq.squeeze().argmax(dim=1))} failures in result argmax!")
+        net_out_int = int_net(indata)
+        net_out_fq = fq_net(indata)
+
+
 def export_integerized_network(net : nn.Module, cfg : dict, key : str, export_dir : str, name : str, in_idx : int = 42, pad_img : Optional[int] = None, clip : bool = False, change_n_levels : int = None, ternarize : bool = False):
     qu = _QUANT_UTILS[key]
     # use a real image from the validation set
     ds = get_valid_dataset(key, cfg, quantize='int', pad_img=pad_img, clip=clip)
     test_input = ds[in_idx][0].unsqueeze(0)
     if key == 'dvs_cnn':
-        qu.export_fn(*net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, change_n_levels=change_n_levels, code_size=qu.code_size, compressed=ternarize)
+        #qu.export_fn(*net, name=name, out_dir=export_dir, eps_in=qu.eps_in,
+        #integerize=False, D=qu.D, in_data=test_input,
+        #change_n_levels=change_n_levels, code_size=qu.code_size,
+        #compressed=ternarize)
+        qu.export_fn(net.cnn, net.tcn, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, change_n_levels=change_n_levels, code_size=qu.code_size, compressed=ternarize)
     else:
         qu.export_fn(net, name=name, out_dir=export_dir, eps_in=qu.eps_in, integerize=False, D=qu.D, in_data=test_input, code_size=qu.code_size)
 
@@ -375,33 +464,6 @@ def export_unquant_net(net : nn.Module, cfg : dict, key : str, export_dir : str,
                       do_constant_folding=True)
 
 
-# quite hacky but there is no other way
-
-def get_new_classifier(classifier: PACTConv1d):
-
-    new_classifier = nn.Sequential(nn.Flatten(),
-                                   nn.Linear(
-                                       in_features=classifier.in_channels*classifier.kernel_size[0],
-                                       out_features=classifier.out_channels,
-                                       bias=True))
-
-    new_weights = classifier.weight.reshape(classifier.out_channels, -1)
-    #new_weights = torch.cat((new_weights, torch.zeros(new_weights.shape[1]).unsqueeze(0)))
-    new_classifier[1].weight.data.copy_(new_weights)
-    if classifier.bias is not None:
-        #new_classifier[1].bias.data.copy_(torch.cat((classifier.bias, torch.Tensor([0]))))
-        new_classifier[1].bias.data.copy_(classifier.bias)
-    else:
-        new_classifier[1].bias.data.fill_(0)
-   #new_classifier[1].clip_lo = torch.nn.Parameter(torch.cat((classifier.clip_lo.squeeze(2), -torch.ones(1,1))))
-   #new_classifier[1].clip_hi = torch.nn.Parameter(torch.cat((classifier.clip_hi.squeeze(2), torch.ones(1,1))))
-   #new_classifier[1].clip_lo = torch.nn.Parameter(classifier.clip_lo.squeeze(2), -torch.ones(1,1))
-   #new_classifier[1].clip_hi = torch.nn.Parameter(classifier.clip_hi.squeeze(2), torch.ones(1,1))
-   #new_classifier[1].clipping_params = classifier.clipping_params
-   #new_classifier[1].started = classifier.started
-   # we just don't care anymore and hardcode this.
-    new_classifier[1].n_levels = classifier.n_levels
-    return new_classifier
 
 
 
@@ -471,7 +533,11 @@ if __name__ == '__main__':
 
     print(f'Integerizing network {args.net}')
 
-    int_net = integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize, args.word_align_channels, args.requant_node, ternarize=args.ternarize)
+    int_net= integerize_network(qnet, args.net, args.fix_channels, not args.no_dory_harmonize, args.word_align_channels, args.requant_node, ternarize=args.ternarize)
+    #integerizing dvs_cnn also returns the fq network and the last layer's
+    #weight epsilons
+    if args.net == 'dvs_cnn':
+        int_net, fq_net, eps_w = int_net
 
     if args.fix_channels:
         pad_img = get_input_channels(int_net[0] if isinstance(int_net, tuple) else int_net)
@@ -481,7 +547,9 @@ if __name__ == '__main__':
     if args.validate_tq:
         dl = get_dataloader(args.net, exp_cfg, quantize='int', pad_img=pad_img)
         print(f'Validating integerized network {args.net} on dataset {get_system(args.net)}')
-        validate(int_net, dl, args.accuracy_print_interval, n_valid_batches=args.n_valid_batch)
+        # uncomment to debug DVS CNN
+        #compare_nets(int_net, fq_net, dl)
+        validate(int_net, dl, args.accuracy_print_interval, n_valid_batches=args.n_valid_batch, eps_w=eps_w)
 
     if args.export_dir is not None:
         print(f'Exporting integerized network {args.net} to directory {args.export_dir} under name {export_name}')
