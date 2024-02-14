@@ -538,6 +538,8 @@ if __name__ == '__main__':
     #weight epsilons
     if args.net == 'dvs_cnn':
         int_net, fq_net, eps_w = int_net
+    else:
+        eps_w = None
 
     if args.fix_channels:
         pad_img = get_input_channels(int_net[0] if isinstance(int_net, tuple) else int_net)
