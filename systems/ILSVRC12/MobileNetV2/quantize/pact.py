@@ -73,8 +73,12 @@ def pact_recipe(net : nn.Module,
     conv_cfg = config["PACTConv2d"]
     lin_cfg = config["PACTLinear"]
     act_cfg = config["PACTUnsignedAct"]
-
-    harmonize_cfg = config["harmonize"]
+    # we may get a config that does not include a harmonization configuration;
+    # in that case, simply don't harmonize
+    try:
+        harmonize_cfg = config["harmonize"]
+    except KeyError:
+        harmonize_cfg = None
 
 
     prec_override_spec = {}
@@ -124,8 +128,11 @@ def pact_recipe(net : nn.Module,
     lwe.shutdown()
 
     # now harmonize the graph according to the configuration
-    harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
-    final_net = harmonize_pass(net)
+    if harmonize_cfg is not None:
+        harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
+        final_net = harmonize_pass(net)
+    else:
+        final_net = net
 
     # the prec. spec file might include layers that were added by the
     # harmonization pass; those need to be treated separately

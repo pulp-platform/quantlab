@@ -51,7 +51,10 @@ def pact_recipe(net : nn.Module,
     lin_cfg = config["PACTLinear"]
     act_cfg = config["PACTUnsignedAct"]
 
-    harmonize_cfg = config["harmonize"]
+    try:
+        harmonize_cfg = config["harmonize"]
+    except KeyError:
+        harmonize_cfg = None
 
     def make_rules(cfg : dict,
                    rule : type):
@@ -82,10 +85,12 @@ def pact_recipe(net : nn.Module,
         lwe.apply()
     lwe.shutdown()
     # now harmonize the graph
-    harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
-    #harmonize_pass = HarmonizePACTNetPass(n_levels=harmonize_cfg["n_levels"])
-    net_traced = PACT_symbolic_trace(lwg.net)
-    final_net = harmonize_pass(net_traced)
+    if harmonize_cfg is not None:
+        harmonize_pass = HarmonizePACTNetPass(**harmonize_cfg)
+        net_traced = PACT_symbolic_trace(lwg.net)
+        final_net = harmonize_pass(net_traced)
+    else:
+        final_net = lwg.net
 
     return final_net
 
